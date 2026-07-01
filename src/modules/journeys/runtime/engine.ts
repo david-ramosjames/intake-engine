@@ -1,0 +1,127 @@
+// =============================================================================
+// Journey Runtime Engine
+// -----------------------------------------------------------------------------
+// Pure, isomorphic logic that drives a journey: which pages are visible, what
+// comes next given current answers, and how a completed answer set scores &
+// qualifies. Shared by the client player (UX) and the server (authoritative
+// scoring at submission). No React, no DB — just data in, data out.
+// =============================================================================
+
+import { evaluate, evaluateBoolean, type EvalContext } from "../domain/expression";
+import type { Component, JourneyDefinition, Page } from "../domain/schema";
+
+export type Answers = Record<string, unknown>;
+
+/** Build the evaluation context: variable defaults overlaid with answers. */
+export function buildContext(def: JourneyDefinition, answers: Answers): EvalContext {
+  const ctx: EvalContext = {};
+  for (const v of def.variables) {
+    if (v.default !== undefined) ctx[v.key] = v.default;
+  }
+  return { ...ctx, ...answers };
+}
+
+/** Is a page visible given the current answers? */
+export function isPageVisible(page: Page, def: JourneyDefinition, answers: Answers): boolean {
+  return evaluateBoolean(page.condition, buildContext(def, answers));
+}
+
+/** Is a component visible given the current answers? */
+export function isComponentVisible(component: Component, def: JourneyDefinition, answers: Answers): boolean {
+  return evaluateBoolean(component.condition, buildContext(def, answers));
+}
+
+/** All pages currently visible, in order. */
+export function visiblePages(def: JourneyDefinition, answers: Answers): Page[] {
+  return def.pages.filter((p) => isPageVisible(p, def, answers));
+}
+
+/**
+ * Given the current page and answers, resolve the next page id. Honors explicit
+ * `next` branching rules (first truthy wins); otherwise advances to the next
+ * visible page in document order. Returns null when the journey is complete.
+ */
+export function nextPageId(currentPageId: string, def: JourneyDefinition, answers: Answers): string | null {
+  const ctx = buildContext(def, answers);
+  const current = def.pages.find((p) => p.id === currentPageId);
+  if (current?.next) {
+    for (const rule of current.next) {
+      if (evaluateBoolean(rule.when, ctx)) {
+        // Only jump if the target is currently visible; else fall through.
+        const target = def.pages.find((p) => p.id === rule.goTo);
+        if (target && isPageVisible(target, def, answers)) return rule.goTo;
+      }
+    }
+  }
+  const pages = visiblePages(def, answers);
+  const idx = pages.findIndex((p) => p.id === currentPageId);
+  if (idx === -1) return pages[0]?.id ?? null;
+  return pages[idx + 1]?.id ?? null;
+}
+
+export interface ScoreResult {
+  score: number;
+  qualified: boolean;
+  breakdown: Array<{ label: string; points: number }>;
+}
+
+/**
+ * Authoritative scoring & qualification. Sums option-level scores and journey
+ * scoring rules, then applies the qualification policy (rule and/or minScore).
+ */
+export function scoreLead(def: JourneyDefinition, answers: Answers): ScoreResult {
+  const ctx = buildContext(def, answers);
+  const breakdown: Array<{ label: string; points: number }> = [];
+  let score = 0;
+
+  // Option-level scores (score attached to a chosen option).
+  for (const page of def.pages) {
+    for (const c of page.components) {
+      if (!c.key || !c.options) continue;
+      const answer = answers[c.key];
+      const selected = Array.isArray(answer) ? answer : [answer];
+      for (const opt of c.options) {
+        if (opt.score && selected.some((s) => String(s) === opt.value)) {
+          score += opt.score;
+          breakdown.push({ label: `${c.label ?? c.key}: ${opt.label}`, points: opt.score });
+        }
+      }
+    }
+  }
+
+  // Journey-level scoring rules.
+  for (const rule of def.scoring) {
+    if (evaluateBoolean(rule.when, ctx)) {
+      score += rule.points;
+      breakdown.push({ label: rule.label ?? "rule", points: rule.points });
+    }
+  }
+
+  // Qualification policy.
+  let qualified = true;
+  const q = def.qualification;
+  if (q) {
+    if (q.rule !== undefined) qualified = qualified && Boolean(evaluate(q.rule, ctx));
+    if (typeof q.minScore === "number") qualified = qualified && score >= q.minScore;
+  }
+
+  return { score, qualified, breakdown };
+}
+
+/** Extract denormalized contact fields from answers using conventional keys. */
+export function extractContact(def: JourneyDefinition, answers: Answers) {
+  const byType = (t: string) => {
+    for (const page of def.pages) {
+      for (const c of page.components) {
+        if (c.type === t && c.key && answers[c.key]) return String(answers[c.key]);
+      }
+    }
+    return undefined;
+  };
+  const nameKey = ["full_name", "name", "first_name"].find((k) => answers[k]);
+  return {
+    displayName: nameKey ? String(answers[nameKey]) : undefined,
+    email: byType("email"),
+    phone: byType("phone"),
+  };
+}

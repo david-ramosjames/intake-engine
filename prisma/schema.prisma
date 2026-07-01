@@ -1,0 +1,543 @@
+// =============================================================================
+// Intake Engine — Data Model
+// -----------------------------------------------------------------------------
+// A configurable, multi-tenant Customer Journey Platform.
+//
+// Design principles:
+//   1. Multi-tenancy: every tenant-owned row carries `organizationId`. Isolation
+//      is enforced in the application layer via a scoped Prisma client
+//      (see src/server/db.ts) and, in production, PostgreSQL Row-Level Security.
+//   2. Industry-agnostic: there is NO `case`, `patient`, or `matter` table. The
+//      universal object is a LEAD moving through a JOURNEY. Vertical-specific
+//      shape lives in JSON `definition`/`answers`, not in columns.
+//   3. Config over code: a Journey's behavior (pages, components, rules,
+//      scoring) is data — stored as a versioned JSON `definition` validated by
+//      Zod (see src/modules/journeys/domain). New verticals ship as templates.
+//   4. Append-only history: LeadEvent and AuditLog are immutable event streams.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// TENANCY & IDENTITY
+// ============================================================================
+
+model Organization {
+  id        String   @id @default(cuid())
+  slug      String   @unique // used for {slug}.intakeengine.com and admin URLs
+  name      String
+  status    OrgStatus @default(ACTIVE)
+  // Vertical is a hint for template suggestions & analytics — never branching logic.
+  industry  String?
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  domains       Domain[]
+  memberships   Membership[]
+  themes        Theme[]
+  assets        Asset[]
+  templates     Template[]
+  journeys      Journey[]
+  leads         Lead[]
+  automations   Automation[]
+  integrations  Integration[]
+  aiConfigs     AiConfig[]
+  featureFlags  FeatureFlag[]
+  auditLogs     AuditLog[]
+
+  @@index([status])
+}
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+}
+
+// White-label / custom domains. The middleware resolves an incoming host here.
+model Domain {
+  id             String    @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  hostname       String    @unique // e.g. "intake.ramosjames.com"
+  isPrimary      Boolean   @default(false)
+  verifiedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId])
+}
+
+// A global user identity. A user may belong to many organizations via Membership.
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  image         String?
+  passwordHash  String?  // null when using OAuth only
+  emailVerified DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  memberships Membership[]
+  sessions    Session[]
+  auditLogs   AuditLog[]
+  assignedLeads Lead[] @relation("LeadAssignee")
+}
+
+// Auth.js session table (subset; adapter-managed in production).
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+
+  @@index([userId])
+}
+
+// Join table binding a User to an Organization with a Role. This is the unit
+// authorization is checked against.
+model Membership {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           Role     @default(MEMBER)
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER   // can manage journeys & leads
+  AGENT    // works the CRM / leads only
+  VIEWER
+}
+
+// ============================================================================
+// BRANDING & ASSETS
+// ============================================================================
+
+model Theme {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  isDefault      Boolean  @default(false)
+  // Design tokens: colors, typography, radius, spacing, animations, dark mode.
+  tokens         Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  journeys Journey[]
+
+  @@index([organizationId])
+}
+
+model Asset {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  kind           AssetKind
+  url            String   // S3-compatible object key/URL
+  filename       String?
+  mimeType       String?
+  sizeBytes      Int?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, kind])
+}
+
+enum AssetKind {
+  LOGO
+  IMAGE
+  VIDEO
+  ILLUSTRATION
+  DOCUMENT
+  UPLOAD // end-user uploaded file (attached to a lead)
+}
+
+// ============================================================================
+// JOURNEYS  (the flagship aggregate)
+// ============================================================================
+// A Journey is the whole experience from ad-click to customer. Its behavior is
+// versioned JSON. Publishing pins a JourneyVersion as live; drafts iterate
+// freely. A/B tests split traffic across versions.
+
+model Template {
+  id             String   @id @default(cuid())
+  organizationId String?  // null => global/marketplace template
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slug           String
+  name           String
+  industry       String?
+  description    String?
+  definition     Json     // same shape as JourneyVersion.definition
+  isPublic       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, slug])
+  @@index([industry])
+}
+
+model Journey {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slug           String   // unique per org; used in URL /j/{slug}
+  name           String
+  description    String?
+  status         JourneyStatus @default(DRAFT)
+  themeId        String?
+  theme          Theme?   @relation(fields: [themeId], references: [id])
+  // Pointer to the currently-live version. Null until first publish.
+  publishedVersionId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions    JourneyVersion[] @relation("JourneyVersions")
+  published   JourneyVersion?  @relation("PublishedVersion", fields: [publishedVersionId], references: [id])
+  leads       Lead[]
+  experiments Experiment[]
+  automations Automation[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+}
+
+enum JourneyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// An immutable snapshot of a Journey's full definition. Editing creates a new
+// draft version; you never mutate a published version.
+model JourneyVersion {
+  id        String   @id @default(cuid())
+  journeyId String
+  journey   Journey  @relation("JourneyVersions", fields: [journeyId], references: [id], onDelete: Cascade)
+  version   Int
+  label     String?  // e.g. "Add UM/UIM branch"
+  // The complete configuration: pages, components, rules, variables, scoring,
+  // qualification, theme overrides. Validated by Zod on write. This JSON IS the
+  // product — it is what makes the platform config-driven and industry-agnostic.
+  definition Json
+  createdById String?
+  createdAt  DateTime @default(now())
+
+  publishedFor Journey? @relation("PublishedVersion")
+  leads        Lead[]
+  variants     ExperimentVariant[]
+
+  @@unique([journeyId, version])
+  @@index([journeyId])
+}
+
+// ============================================================================
+// A/B TESTING
+// ============================================================================
+
+model Experiment {
+  id        String   @id @default(cuid())
+  journeyId String
+  journey   Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  name      String
+  status    ExperimentStatus @default(RUNNING)
+  createdAt DateTime @default(now())
+  endedAt   DateTime?
+
+  variants ExperimentVariant[]
+
+  @@index([journeyId])
+}
+
+enum ExperimentStatus {
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+model ExperimentVariant {
+  id           String   @id @default(cuid())
+  experimentId String
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  versionId    String
+  version      JourneyVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  name         String   // "A", "B"
+  trafficSplit Int      // 0-100, must sum to 100 across an experiment
+  isControl    Boolean  @default(false)
+
+  @@index([experimentId])
+}
+
+// ============================================================================
+// LEADS  (the universal customer object)
+// ============================================================================
+// A Lead is a person/entity moving through a Journey. Vertical-specific data
+// lives in `answers` (JSON) and normalized LeadAnswer rows for querying.
+
+model Lead {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  journeyId      String
+  journey        Journey  @relation(fields: [journeyId], references: [id])
+  versionId      String?
+  version        JourneyVersion? @relation(fields: [versionId], references: [id])
+
+  status         LeadStatus @default(NEW)
+  // Denormalized contact fields for CRM list views & dedupe. Source of truth
+  // remains the answer set.
+  displayName    String?
+  email          String?
+  phone          String?
+
+  score          Int?     // computed by the rules engine at submission
+  qualified      Boolean?
+  // Full answer snapshot keyed by component key: { "accident_type": "car", ... }
+  answers        Json     @default("{}")
+
+  // Attribution
+  source         String?  // utm_source / channel: facebook, google, referral
+  campaign       String?
+  medium         String?
+  referrer       String?
+
+  assigneeId     String?
+  assignee       User?    @relation("LeadAssignee", fields: [assigneeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  completedAt DateTime?
+
+  leadAnswers LeadAnswer[]
+  events      LeadEvent[]
+  tags        LeadTag[]
+  appointments Appointment[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, journeyId])
+  @@index([email])
+}
+
+enum LeadStatus {
+  NEW
+  IN_PROGRESS   // started but not completed
+  QUALIFIED
+  DISQUALIFIED
+  CONVERTED
+  ARCHIVED
+}
+
+// Normalized answer rows — enables querying/analytics without JSON gymnastics.
+model LeadAnswer {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  componentKey String  // stable key from the journey definition
+  label       String?
+  valueText   String?
+  valueNumber Float?
+  valueJson   Json?    @map("value_json")
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
+  @@index([componentKey])
+}
+
+// Immutable, append-only activity stream for a lead (the CRM timeline).
+model LeadEvent {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      LeadEventType
+  actorId   String?  // user id, or null for system/end-user
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+enum LeadEventType {
+  CREATED
+  PAGE_VIEWED
+  ANSWER_SUBMITTED
+  COMPLETED
+  SCORED
+  QUALIFIED
+  DISQUALIFIED
+  ASSIGNED
+  NOTE_ADDED
+  STATUS_CHANGED
+  AUTOMATION_TRIGGERED
+  MESSAGE_SENT
+  AI_PROCESSED
+}
+
+model LeadTag {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  label  String
+  color  String?
+
+  @@unique([leadId, label])
+}
+
+// ============================================================================
+// SCHEDULING
+// ============================================================================
+
+model Appointment {
+  id             String   @id @default(cuid())
+  organizationId String
+  leadId         String?
+  lead           Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  title          String
+  startsAt       DateTime
+  endsAt         DateTime
+  timezone       String   @default("UTC")
+  status         AppointmentStatus @default(SCHEDULED)
+  location       String?
+  meetingUrl     String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, startsAt])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+// ============================================================================
+// AUTOMATION ENGINE
+// ============================================================================
+// Event-driven. A trigger fires; conditions gate; actions run (some delayed).
+
+model Automation {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  journeyId      String?  // scope to a journey, or org-wide when null
+  journey        Journey? @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  name           String
+  enabled        Boolean  @default(true)
+  trigger        Json     // { event: "LEAD_COMPLETED", filter?: Expression }
+  // Ordered action list: email, sms, slack, webhook, crm_update, ai_process...
+  actions        Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  runs AutomationRun[]
+
+  @@index([organizationId, enabled])
+}
+
+model AutomationRun {
+  id           String   @id @default(cuid())
+  automationId String
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  leadId       String?
+  status       RunStatus @default(PENDING)
+  scheduledFor DateTime? // for delayed workflows
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  error        String?
+  log          Json     @default("[]")
+  createdAt    DateTime @default(now())
+
+  @@index([automationId, status])
+  @@index([status, scheduledFor])
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+// ============================================================================
+// INTEGRATIONS & AI
+// ============================================================================
+
+model Integration {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider       String   // "slack", "twilio", "hubspot", "clio", "webhook"
+  enabled        Boolean  @default(true)
+  // Credentials are envelope-encrypted at the application layer before storage.
+  config         Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, provider])
+}
+
+model AiConfig {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  capability     String   // "qualification", "summary", "ocr", "translation"
+  enabled        Boolean  @default(true)
+  model          String   @default("claude-opus-4-8")
+  prompt         String?  // configurable system prompt / instructions
+  params         Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, capability])
+}
+
+// ============================================================================
+// PLATFORM OPS: feature flags & audit
+// ============================================================================
+
+model FeatureFlag {
+  id             String   @id @default(cuid())
+  organizationId String?  // null => global default
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  key            String
+  enabled        Boolean  @default(false)
+  payload        Json?
+
+  @@unique([organizationId, key])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actorId        String?
+  actor          User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action         String   // "journey.published", "lead.assigned", ...
+  targetType     String?
+  targetId       String?
+  metadata       Json     @default("{}")
+  ip             String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorId])
+}
