@@ -9,25 +9,25 @@ function fmt(d: string) {
 
 export default async function Leads() {
   const org = await getAdminOrg();
-  if (!org) return <div className="px-8 py-10 text-white/50">No organization selected.</div>;
+  if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
 
   const leads = await store.listLeads(org.id);
 
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">Leads</h1>
-      <p className="mt-1 text-sm text-white/50">
+      <h1 className="text-2xl font-semibold text-gray-900">Leads</h1>
+      <p className="mt-1 text-sm text-gray-500">
         {leads.length} lead{leads.length === 1 ? "" : "s"} for {org.name}.
       </p>
 
       {leads.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-white/15 p-12 text-center text-white/40">
+        <div className="mt-8 rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center text-gray-400">
           No leads yet. Submit a journey (Preview → complete it) and it will appear here.
         </div>
       ) : (
-        <div className="mt-8 overflow-x-auto rounded-2xl border border-white/10">
+        <div className="mt-8 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-white/[0.03] text-left text-white/50">
+            <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Contact</th>
@@ -38,29 +38,27 @@ export default async function Leads() {
                 <th className="px-4 py-3 font-medium">Received</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-gray-100">
               {leads.map((l) => (
-                <tr key={l.id} className="transition hover:bg-white/[0.02]">
-                  <td className="px-4 py-3 font-medium">{l.displayName ?? "—"}</td>
-                  <td className="px-4 py-3 text-white/60">
+                <tr key={l.id} className="transition hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{l.displayName ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-600">
                     <div>{l.email ?? "—"}</div>
-                    <div className="text-white/40">{l.phone ?? ""}</div>
+                    <div className="text-gray-400">{l.phone ?? ""}</div>
                   </td>
-                  <td className="px-4 py-3 text-white/60">{l.journeySlug}</td>
-                  <td className="px-4 py-3">{l.score}</td>
+                  <td className="px-4 py-3 text-gray-600">{l.journeySlug}</td>
+                  <td className="px-4 py-3 text-gray-900">{l.score}</td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        l.qualified
-                          ? "bg-emerald-400/10 text-emerald-300"
-                          : "bg-white/10 text-white/50"
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        l.qualified ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
                       }`}
                     >
                       {l.qualified ? "Qualified" : "Disqualified"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-white/60">{l.source ?? "—"}</td>
-                  <td className="px-4 py-3 text-white/40">{fmt(l.createdAt)}</td>
+                  <td className="px-4 py-3 text-gray-600">{l.source ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-400">{fmt(l.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

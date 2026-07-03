@@ -21,6 +21,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The admin is a light-themed console; scope color-scheme so native controls
+   (selects, date pickers) render light regardless of the global dark chrome. */
+.admin-light {
+  color-scheme: light;
+}
+
 /* Premium focus ring used across runtime inputs and admin controls. */
 .focus-ring:focus-visible {
   outline: 2px solid color-mix(in srgb, currentColor 60%, transparent);
