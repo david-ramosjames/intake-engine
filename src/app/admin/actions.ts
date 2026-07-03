@@ -53,6 +53,6 @@ export async function createJourney(formData: FormData) {
 
   await store.createJourney(org.id, { name, slug, description: template.description, definition });
 
-  revalidatePath("/admin");
-  redirect("/admin");
+  revalidatePath("/admin/journeys");
+  redirect("/admin/journeys");
 }

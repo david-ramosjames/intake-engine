@@ -89,6 +89,19 @@ export function newId(prefix = "id"): string {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Human-friendly label for a dotted industry key, e.g.
+ *  "legal.personal_injury" -> "Legal · Personal injury". */
+export function industryLabel(industry?: string): string {
+  if (!industry) return "—";
+  return industry
+    .split(".")
+    .map((part) => {
+      const words = part.replace(/_/g, " ");
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    })
+    .join(" · ");
+}
+
 export function slugify(input: string): string {
   return input
     .toLowerCase()

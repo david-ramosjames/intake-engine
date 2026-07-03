@@ -10,7 +10,7 @@ export default async function NewJourney() {
 
   return (
     <div className="mx-auto max-w-2xl px-8 py-10">
-      <Link href="/admin" className="text-sm text-white/50 hover:text-white">
+      <Link href="/admin/journeys" className="text-sm text-white/50 hover:text-white">
         ← Journeys
       </Link>
       <h1 className="mt-3 text-2xl font-semibold">New Journey</h1>
@@ -76,7 +76,7 @@ export default async function NewJourney() {
             Create Journey
           </button>
           <Link
-            href="/admin"
+            href="/admin/journeys"
             className="rounded-full border border-white/15 px-6 py-3 text-sm transition hover:bg-white/5"
           >
             Cancel
