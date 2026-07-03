@@ -1,0 +1,99 @@
+// Storage-facing record shapes. Intentionally decoupled from Prisma's generated
+// types so the same interface has two interchangeable backends: a file-backed
+// DEMO store (no infrastructure) and a Prisma/Postgres store (production).
+
+import type { JourneyDefinition } from "@/modules/journeys/domain/schema";
+
+export interface StoredOrg {
+  id: string;
+  slug: string;
+  name: string;
+  industry?: string;
+  createdAt: string;
+}
+
+export interface StoredJourney {
+  id: string;
+  orgId: string;
+  slug: string;
+  name: string;
+  description?: string;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  definition: JourneyDefinition;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoredLead {
+  id: string;
+  orgId: string;
+  journeyId: string;
+  journeySlug: string;
+  status: "QUALIFIED" | "DISQUALIFIED";
+  displayName?: string;
+  email?: string;
+  phone?: string;
+  score: number;
+  qualified: boolean;
+  answers: Record<string, unknown>;
+  source?: string;
+  campaign?: string;
+  medium?: string;
+  createdAt: string;
+}
+
+export interface CreateOrgInput {
+  name: string;
+  slug: string;
+  industry?: string;
+}
+
+export interface CreateJourneyInput {
+  name: string;
+  slug: string;
+  description?: string;
+  definition: JourneyDefinition;
+}
+
+export interface CreateLeadInput {
+  orgId: string;
+  journeyId: string;
+  journeySlug: string;
+  qualified: boolean;
+  score: number;
+  answers: Record<string, unknown>;
+  displayName?: string;
+  email?: string;
+  phone?: string;
+  source?: string;
+  campaign?: string;
+  medium?: string;
+}
+
+export interface PlatformStore {
+  listOrganizations(): Promise<StoredOrg[]>;
+  getOrganization(id: string): Promise<StoredOrg | null>;
+  getOrganizationBySlug(slug: string): Promise<StoredOrg | null>;
+  createOrganization(input: CreateOrgInput): Promise<StoredOrg>;
+
+  listJourneys(orgId: string): Promise<StoredJourney[]>;
+  getJourney(orgId: string, slug: string): Promise<StoredJourney | null>;
+  createJourney(orgId: string, input: CreateJourneyInput): Promise<StoredJourney>;
+
+  listLeads(orgId: string): Promise<StoredLead[]>;
+  createLead(input: CreateLeadInput): Promise<StoredLead>;
+}
+
+/** Small URL-safe id (not a cuid, but fine for the DEMO store). */
+export function newId(prefix = "id"): string {
+  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}

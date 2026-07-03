@@ -4,9 +4,9 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { loadPublishedJourney } from "@/modules/journeys/repository";
 import { submitLead } from "@/modules/leads/service";
-import { getCurrentTenant } from "@/server/tenant";
+import { store } from "@/server/store";
+import { resolvePublicOrg } from "@/server/tenant";
 
 const bodySchema = z.object({
   slug: z.string(),
@@ -27,17 +27,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
   }
 
-  const tenant = await getCurrentTenant();
-  if (!tenant) return NextResponse.json({ ok: false, error: "Unknown tenant." }, { status: 404 });
+  const { slug, answers, attribution = {} } = parsed.data;
+  const org = await resolvePublicOrg(attribution.org);
+  if (!org) return NextResponse.json({ ok: false, error: "Unknown tenant." }, { status: 404 });
 
-  const journey = await loadPublishedJourney(tenant.organizationId, parsed.data.slug);
+  const journey = await store.getJourney(org.id, slug);
   if (!journey) return NextResponse.json({ ok: false, error: "Journey not found." }, { status: 404 });
 
-  const result = await submitLead(journey, parsed.data.answers, parsed.data.attribution ?? {});
+  const result = await submitLead(journey, answers, attribution);
 
-  return NextResponse.json({
-    ok: true,
-    leadId: result.leadId,
-    outcome: result.outcome,
-  });
+  return NextResponse.json({ ok: true, leadId: result.leadId, outcome: result.outcome });
 }

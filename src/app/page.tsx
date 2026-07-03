@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { listJourneysForOrg } from "@/modules/journeys/repository";
-import { getAdminTenant } from "@/server/tenant";
+import { getAdminOrg } from "@/server/currentOrg";
+import { store } from "@/server/store";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const tenant = await getAdminTenant();
-  const journeys = await listJourneysForOrg(tenant.organizationId);
+  const org = await getAdminOrg();
+  const journeys = org ? await store.listJourneys(org.id) : [];
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-24">
@@ -28,9 +28,9 @@ export default async function Home() {
         >
           Open Admin
         </Link>
-        {journeys[0] && (
+        {journeys[0] && org && (
           <Link
-            href={`/j/${journeys[0].slug}?utm_source=demo`}
+            href={`/j/${journeys[0].slug}?org=${org.slug}&utm_source=demo`}
             className="rounded-full border border-white/20 px-6 py-3 font-medium text-white transition hover:bg-white/5 focus-ring"
           >
             Try the live intake →
