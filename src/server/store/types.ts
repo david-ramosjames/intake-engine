@@ -55,6 +55,12 @@ export interface CreateJourneyInput {
   definition: JourneyDefinition;
 }
 
+export interface UpdateJourneyInput {
+  name?: string;
+  description?: string;
+  definition: JourneyDefinition;
+}
+
 export interface CreateLeadInput {
   orgId: string;
   journeyId: string;
@@ -79,6 +85,7 @@ export interface PlatformStore {
   listJourneys(orgId: string): Promise<StoredJourney[]>;
   getJourney(orgId: string, slug: string): Promise<StoredJourney | null>;
   createJourney(orgId: string, input: CreateJourneyInput): Promise<StoredJourney>;
+  updateJourney(orgId: string, slug: string, input: UpdateJourneyInput): Promise<StoredJourney>;
 
   listLeads(orgId: string): Promise<StoredLead[]>;
   createLead(input: CreateLeadInput): Promise<StoredLead>;

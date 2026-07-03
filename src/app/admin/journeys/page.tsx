@@ -72,6 +72,12 @@ export default async function AdminJourneys() {
               >
                 Preview
               </Link>
+              <Link
+                href={`/admin/journeys/${j.slug}/edit`}
+                className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+              >
+                Edit
+              </Link>
             </div>
           </div>
         ))}

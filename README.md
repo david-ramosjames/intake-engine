@@ -46,7 +46,11 @@ be extended, not a finished product. It includes:
   re-qualifies on the server; never trusts the client.
 - **A working Personal Injury intake** (Ramos James Law) expressed entirely as
   configuration (`src/modules/journeys/content/pi-car-accident.ts`).
-- **A minimal admin** listing journeys.
+- **A multi-tenant admin console** — a business switcher (create/switch
+  organizations), Overview, Journeys, Leads, Analytics, Automations, Settings.
+- **A journey editor** (`src/components/admin/JourneyEditor.tsx`) — edit a
+  journey's name, theme, questions, options & scores; each save is validated
+  against the schema and stored as a new published version.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design and
 [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes next.
@@ -61,23 +65,44 @@ CSS v4 · PostgreSQL + Prisma · Auth.js · S3-compatible storage · Railway.
 ```bash
 npm install
 
-# 1) DEMO mode — no database required. The app serves the seeded PI journey
-#    from in-memory content so you can explore the runtime immediately.
+# 1) DEMO mode — no database required. The data layer persists to a local file
+#    (./.data/store.json), so creating businesses, journeys, editing them, and
+#    capturing leads all work immediately with zero infrastructure.
 npm run dev
 #   → http://localhost:3000            (platform landing)
-#   → http://localhost:3000/admin      (admin — journeys list)
-#   → http://localhost:3000/j/car-accident   (the live intake)
+#   → http://localhost:3000/admin      (admin console)
+#   → http://localhost:3000/j/car-accident?org=ramos-james   (the live intake)
+```
 
-# 2) With Postgres — set DATABASE_URL in .env, then:
-npm run db:push     # create tables
-npm run db:seed     # seed Ramos James + the Car Accident journey
+### Run with Postgres
+
+```bash
+# 1) Start Postgres (local Docker) — or point at any Postgres (Railway, Neon…)
+docker compose up -d
+
+# 2) Configure the connection
+cp .env.example .env
+#   set DATABASE_URL="postgresql://postgres:postgres@localhost:5432/intake_engine?schema=public"
+
+# 3) Create the schema and seed the first business + journey
+npm run db:migrate      # applies prisma/migrations (dev)   — or: npm run db:deploy (prod)
+npm run db:seed
+
+# 4) Run
 npm run dev
 ```
 
-> **DEMO mode** is the app's zero-infrastructure default: when `DATABASE_URL` is
-> unset, the data layer serves seed content and lead submissions are scored but
-> not persisted. This is why you can `npm run dev` with nothing installed but the
-> npm packages.
+When `DATABASE_URL` is set the app automatically switches from the file-backed
+DEMO store to Postgres (via Prisma) — same features, real persistence, with each
+journey edit stored as a new immutable `JourneyVersion`.
+
+**Deploying to Railway:** add a Postgres plugin (provides `DATABASE_URL`), set
+`AUTH_SECRET`, and use build `npm run build` (runs `prisma generate`) with a
+release/predeploy step of `npm run db:deploy`.
+
+> **DEMO vs Postgres** is decided solely by whether `DATABASE_URL` is set — the
+> app code and features are identical. DEMO mode is for zero-setup local
+> exploration; Postgres is the production path.
 
 ## Multi-tenancy & white-label
 

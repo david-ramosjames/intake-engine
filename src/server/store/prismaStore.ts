@@ -107,6 +107,38 @@ export const prismaStore: PlatformStore = {
     return journeyRow(updated, input.definition);
   },
 
+  async updateJourney(orgId, slug, input) {
+    const prisma = await getPrisma();
+    const journey = await prisma.journey.findFirst({ where: { organizationId: orgId, slug } });
+    if (!journey) throw new Error("Journey not found.");
+
+    // Editing never mutates a published version — create the next version and
+    // pin it as published.
+    const latest = await prisma.journeyVersion.findFirst({
+      where: { journeyId: journey.id },
+      orderBy: { version: "desc" },
+    });
+    const nextVersion = (latest?.version ?? 0) + 1;
+    const version = await prisma.journeyVersion.create({
+      data: {
+        journeyId: journey.id,
+        version: nextVersion,
+        label: "Edit",
+        definition: input.definition as object,
+      },
+    });
+    const updated = await prisma.journey.update({
+      where: { id: journey.id },
+      data: {
+        name: input.name ?? journey.name,
+        description: input.description ?? journey.description,
+        publishedVersionId: version.id,
+        status: "PUBLISHED",
+      },
+    });
+    return journeyRow(updated, input.definition);
+  },
+
   async listLeads(orgId) {
     const prisma = await getPrisma();
     const rows = await prisma.lead.findMany({

@@ -13,6 +13,7 @@ import {
   type CreateLeadInput,
   type CreateOrgInput,
   type PlatformStore,
+  type UpdateJourneyInput,
   type StoredJourney,
   type StoredLead,
   type StoredOrg,
@@ -133,6 +134,18 @@ export const demoStore: PlatformStore = {
       updatedAt: now,
     };
     db.journeys.push(journey);
+    await persist();
+    return journey;
+  },
+
+  async updateJourney(orgId, slug, input: UpdateJourneyInput) {
+    const db = await load();
+    const journey = db.journeys.find((j) => j.orgId === orgId && j.slug === slug);
+    if (!journey) throw new Error("Journey not found.");
+    if (input.name !== undefined) journey.name = input.name;
+    if (input.description !== undefined) journey.description = input.description;
+    journey.definition = input.definition;
+    journey.updatedAt = new Date().toISOString();
     await persist();
     return journey;
   },
