@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { auth, authEnabled, signOut } from "@/auth";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 import { industryLabel } from "@/server/store/types";
@@ -8,7 +10,11 @@ import { selectOrganization } from "./actions";
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = authEnabled ? await auth() : null;
+  if (authEnabled && !session?.user) redirect("/login");
+
   const [orgs, current] = await Promise.all([store.listOrganizations(), getAdminOrg()]);
+  const signedInAs = session?.user?.email ?? (authEnabled ? "Signed in" : "Local dev (no auth)");
 
   return (
     <div className="admin-light flex min-h-dvh bg-gray-50 text-gray-900">
@@ -73,12 +79,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
         {/* Signed-in footer */}
         <div className="border-t border-gray-200 px-5 py-4 text-xs">
-          <div className="text-gray-400">
-            Signed in as <span className="font-semibold text-gray-700">demo@intakeengine.com</span>
+          <div className="truncate text-gray-400">
+            Signed in as <span className="font-semibold text-gray-700">{signedInAs}</span>
           </div>
-          <Link href="/" className="mt-1 inline-block text-gray-500 transition hover:text-gray-800">
-            Sign out
-          </Link>
+          {session?.user ? (
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/login" });
+              }}
+            >
+              <button
+                type="submit"
+                className="mt-1 text-gray-500 transition hover:text-gray-800"
+              >
+                Sign out
+              </button>
+            </form>
+          ) : (
+            <Link href="/" className="mt-1 inline-block text-gray-500 transition hover:text-gray-800">
+              Home
+            </Link>
+          )}
         </div>
       </aside>
 

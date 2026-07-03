@@ -6,12 +6,20 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { auth, authEnabled } from "@/auth";
 import { getTemplate } from "@/modules/journeys/content/templates";
 import { ADMIN_ORG_COOKIE, getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 import { slugify } from "@/server/store/types";
 
+async function requireUser() {
+  if (!authEnabled) return;
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized.");
+}
+
 export async function createOrganization(formData: FormData) {
+  await requireUser();
   const name = String(formData.get("name") ?? "").trim();
   const industry = String(formData.get("industry") ?? "").trim() || undefined;
   const slug = slugify(String(formData.get("slug") ?? "") || name);
@@ -37,6 +45,7 @@ export async function selectOrganization(formData: FormData) {
 }
 
 export async function createJourney(formData: FormData) {
+  await requireUser();
   const org = await getAdminOrg();
   if (!org) throw new Error("No organization selected.");
 

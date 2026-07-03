@@ -4,6 +4,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { auth, authEnabled } from "@/auth";
 import { journeyDefinitionSchema } from "@/modules/journeys/domain/schema";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
@@ -16,6 +17,11 @@ const bodySchema = z.object({
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+
+  if (authEnabled) {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
+  }
 
   const org = await getAdminOrg();
   if (!org) return NextResponse.json({ ok: false, error: "No business selected." }, { status: 400 });
