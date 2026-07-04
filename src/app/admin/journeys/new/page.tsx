@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { journeyTemplates } from "@/modules/journeys/content/templates";
+import { templatesForIndustry } from "@/modules/journeys/content/templates";
 import { getAdminOrg } from "@/server/currentOrg";
+import { industryLabel } from "@/server/store/types";
 import { createJourney } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewJourney() {
   const org = await getAdminOrg();
+  const templates = templatesForIndustry(org?.industry);
 
   return (
     <div className="mx-auto max-w-2xl px-8 py-10">
@@ -15,8 +17,8 @@ export default async function NewJourney() {
       </Link>
       <h1 className="mt-3 text-2xl font-semibold text-gray-900">New Journey</h1>
       <p className="mt-1 text-sm text-gray-500">
-        Pick a starter template — each is just configuration, so any industry works.
-        {org ? ` Creating in ${org.name}.` : ""}
+        Pick a starter template
+        {org ? ` for ${org.name} (${industryLabel(org.industry)})` : ""}.
       </p>
 
       <form action={createJourney} className="mt-8 space-y-6">
@@ -42,7 +44,7 @@ export default async function NewJourney() {
         <fieldset>
           <legend className="mb-2 text-sm font-medium text-gray-700">Template</legend>
           <div className="grid gap-3">
-            {journeyTemplates.map((t, i) => (
+            {templates.map((t, i) => (
               <label
                 key={t.key}
                 className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 transition hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50 has-[:checked]:ring-1 has-[:checked]:ring-blue-500"
