@@ -8,7 +8,7 @@
 // =============================================================================
 
 import type { JourneyDefinition } from "../domain/schema";
-import { carAccidentJourney } from "./pi-car-accident";
+import { piTemplates } from "./pi-templates";
 
 export interface JourneyTemplate {
   key: string;
@@ -189,7 +189,9 @@ const roofingEstimate: JourneyDefinition = {
 
 export const journeyTemplates: JourneyTemplate[] = [
   { key: "blank", name: "Blank", industry: "any", description: "Start from scratch — name, email, done.", definition: blank },
-  { key: "pi-car-accident", name: "Personal Injury — Car Accident", industry: "legal.personal_injury", description: "Qualifying intake for accident leads with scoring & decline logic.", definition: carAccidentJourney },
+  // Personal Injury — one per case type (see pi-templates.ts).
+  ...piTemplates,
+  // Other industries — proof the same engine serves any vertical.
   { key: "dental-new-patient", name: "Dental — New Patient", industry: "medical.dental", description: "New patient intake: reason for visit, insurance, contact.", definition: dentalNewPatient },
   { key: "roofing-estimate", name: "Roofing — Free Inspection", industry: "contractor.roofing", description: "Homeowner qualification for roof inspection requests.", definition: roofingEstimate },
 ];

@@ -56,6 +56,7 @@ export const optionSchema = z.object({
   // Points added to the lead score when this option is selected.
   score: z.number().optional(),
 });
+export type Option = z.infer<typeof optionSchema>;
 
 export const validationSchema = z
   .object({
