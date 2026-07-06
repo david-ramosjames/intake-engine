@@ -309,6 +309,7 @@ model Lead {
 
   score          Int?     // computed by the rules engine at submission
   qualified      Boolean?
+  referral       Boolean  @default(false) // reached a "refer out" ending
   // Full answer snapshot keyed by component key: { "accident_type": "car", ... }
   answers        Json     @default("{}")
 
@@ -339,6 +340,7 @@ enum LeadStatus {
   NEW
   IN_PROGRESS   // started but not completed
   QUALIFIED
+  REFERRED      // referred out to another attorney
   DISQUALIFIED
   CONVERTED
   ARCHIVED

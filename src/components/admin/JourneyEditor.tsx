@@ -9,9 +9,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Component, JourneyDefinition, Page } from "@/modules/journeys/domain/schema";
+import { tk } from "@/modules/journeys/domain/i18n";
 
 const OPTION_TYPES = new Set(["singleSelect", "radio", "dropdown", "multiSelect", "checkbox"]);
 const CONTENT_TYPES = new Set(["heading", "paragraph"]);
+
+type EsHelpers = { esEnabled: boolean; getEs: (key: string) => string; setEs: (key: string, val: string) => void };
 
 const input =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
@@ -43,6 +46,26 @@ export function JourneyEditor({
     setStatus(null);
   }
 
+  const esEnabled = (def.languages ?? ["en"]).includes("es");
+  const es: EsHelpers = {
+    esEnabled,
+    getEs: (key) => def.i18n?.es?.[key] ?? "",
+    setEs: (key, val) =>
+      mutate((d) => {
+        d.i18n ??= {};
+        d.i18n.es ??= {};
+        if (val) d.i18n.es[key] = val;
+        else delete d.i18n.es[key];
+      }),
+  };
+
+  function toggleSpanish(on: boolean) {
+    mutate((d) => {
+      d.languages = on ? ["en", "es"] : ["en"];
+      if (!on) delete d.i18n;
+    });
+  }
+
   async function save() {
     setSaving(true);
     setStatus(null);
@@ -63,7 +86,7 @@ export function JourneyEditor({
     }
   }
 
-  const terminalTypes = new Set(["review", "success", "decline", "end"]);
+  const terminalTypes = new Set(["review", "success", "referral", "decline", "end"]);
   const pageList = def.pages.map((p) => ({ id: p.id, name: p.name, type: p.type }));
 
   function addQuestion() {
@@ -100,7 +123,7 @@ export function JourneyEditor({
         id: `page_${id}`,
         name: "Ending",
         type: "end",
-        cta: [{ label: "Call now", href: "tel:+15125550100", style: "primary" }],
+        cta: [{ label: "Call Us Now", type: "call", value: "+15125550100", style: "primary" }],
         components: [
           { id: `${id}-h`, type: "heading", content: "Your case has been submitted!" },
           { id: `${id}-p`, type: "paragraph", content: "We'll review your case and be in touch soon." },
@@ -196,6 +219,15 @@ export function JourneyEditor({
               }
             />
           </div>
+          <label className="flex items-center gap-2 pt-1 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              className="accent-blue-600"
+              checked={esEnabled}
+              onChange={(e) => toggleSpanish(e.target.checked)}
+            />
+            Enable Spanish (adds an EN/ES toggle for visitors and a Spanish box under each text)
+          </label>
         </div>
       </section>
 
@@ -238,6 +270,7 @@ export function JourneyEditor({
                   component={c}
                   pages={pageList}
                   currentPageId={page.id}
+                  es={es}
                   onField={(field, value) =>
                     mutate((d) => {
                       const comp = d.pages[pi]!.components[ci]! as Record<string, unknown>;
@@ -278,6 +311,8 @@ export function JourneyEditor({
             {terminalTypes.has(page.type) && page.type !== "review" && (
               <CtaEditor
                 cta={page.cta ?? []}
+                pageId={page.id}
+                es={es}
                 onChange={(cta) => mutate((d) => void (d.pages[pi]!.cta = cta))}
               />
             )}
@@ -309,10 +344,23 @@ interface PageRef {
   type: string;
 }
 
+function EsBox({ es, k, placeholder }: { es: EsHelpers; k: string; placeholder: string }) {
+  if (!es.esEnabled) return null;
+  return (
+    <input
+      className={`${input} mt-1.5 border-dashed`}
+      placeholder={`🇪🇸 ${placeholder}`}
+      value={es.getEs(k)}
+      onChange={(e) => es.setEs(k, e.target.value)}
+    />
+  );
+}
+
 function ComponentEditor({
   component,
   pages,
   currentPageId,
+  es,
   onField,
   onRequired,
   onOptionLabel,
@@ -323,6 +371,7 @@ function ComponentEditor({
   component: Component;
   pages: PageRef[];
   currentPageId: string;
+  es: EsHelpers;
   onField: (field: string, value: string) => void;
   onRequired: (req: boolean) => void;
   onOptionLabel: (oi: number, value: string) => void;
@@ -342,6 +391,7 @@ function ComponentEditor({
           value={component.content ?? ""}
           onChange={(e) => onField("content", e.target.value)}
         />
+        <EsBox es={es} k={tk.content(component.id)} placeholder="Spanish" />
       </div>
     );
   }
@@ -360,6 +410,7 @@ function ComponentEditor({
           {component.type}
         </span>
       </div>
+      <EsBox es={es} k={tk.label(component.id)} placeholder="Question — Spanish" />
       <input
         className={`${input} mt-2`}
         placeholder="Help text (optional)"
@@ -380,37 +431,34 @@ function ComponentEditor({
         <div className="mt-3 space-y-2">
           <div className="text-xs font-medium text-gray-500">Options — pick where each one leads</div>
           {component.options?.map((o, oi) => (
-            <div key={oi} className="flex items-center gap-2">
-              <input
-                className={input}
-                value={o.label}
-                onChange={(e) => onOptionLabel(oi, e.target.value)}
-              />
-              <span className="shrink-0 text-xs text-gray-400">→</span>
-              <select
-                className={`${input} w-44 shrink-0`}
-                value={o.goTo ?? ""}
-                onChange={(e) => onOptionGoTo(oi, e.target.value)}
-                title="Where this answer leads"
-              >
-                <option value="">Next screen</option>
-                {pages
-                  .filter((p) => p.id !== currentPageId)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.type === "end" || p.type === "success" || p.type === "decline"
-                        ? `⚑ ${p.name}`
-                        : p.name}
-                    </option>
-                  ))}
-              </select>
-              <button
-                onClick={() => onRemoveOption(oi)}
-                className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                aria-label="Remove option"
-              >
-                ✕
-              </button>
+            <div key={oi} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <input className={input} value={o.label} onChange={(e) => onOptionLabel(oi, e.target.value)} />
+                <span className="shrink-0 text-xs text-gray-400">→</span>
+                <select
+                  className={`${input} w-44 shrink-0`}
+                  value={o.goTo ?? ""}
+                  onChange={(e) => onOptionGoTo(oi, e.target.value)}
+                  title="Where this answer leads"
+                >
+                  <option value="">Next screen</option>
+                  {pages
+                    .filter((p) => p.id !== currentPageId)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {["end", "success", "referral", "decline"].includes(p.type) ? `⚑ ${p.name}` : p.name}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  onClick={() => onRemoveOption(oi)}
+                  className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  aria-label="Remove option"
+                >
+                  ✕
+                </button>
+              </div>
+              <EsBox es={es} k={tk.option(component.id, o.value)} placeholder="Option — Spanish" />
             </div>
           ))}
           <button onClick={onAddOption} className="text-sm text-blue-600 hover:text-blue-700">
@@ -422,57 +470,89 @@ function ComponentEditor({
   );
 }
 
+type CtaRow = {
+  label: string;
+  type: "call" | "text" | "schedule" | "link" | "custom";
+  value: string;
+  href?: string;
+  style: "primary" | "secondary";
+};
+
 function CtaEditor({
   cta,
+  pageId,
+  es,
   onChange,
 }: {
-  cta: Array<{ label: string; href: string; style?: "primary" | "secondary" }>;
-  onChange: (cta: Array<{ label: string; href: string; style: "primary" | "secondary" }>) => void;
+  cta: Array<Partial<CtaRow>>;
+  pageId: string;
+  es: EsHelpers;
+  onChange: (cta: CtaRow[]) => void;
 }) {
-  const rows = cta.map((c) => ({ label: c.label, href: c.href, style: c.style ?? "primary" }));
-  const set = (i: number, patch: Partial<(typeof rows)[number]>) =>
-    onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const rows: CtaRow[] = cta.map((c) => ({
+    label: c.label ?? "",
+    type: c.type ?? (c.href?.startsWith("tel:") ? "call" : "link"),
+    value: c.value ?? (c.href ? c.href.replace(/^tel:|^sms:/, "") : ""),
+    style: c.style ?? "primary",
+  }));
+  const set = (i: number, patch: Partial<CtaRow>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   return (
     <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50/50 p-4">
-      <div className="text-xs font-medium text-gray-500">Buttons (call, website, …)</div>
-      <div className="mt-2 space-y-2">
+      <div className="text-xs font-medium text-gray-500">Buttons — up to 5 (call, text, schedule, link)</div>
+      <div className="mt-2 space-y-3">
         {rows.map((c, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              className={input}
-              placeholder="Button label (e.g. Call now)"
-              value={c.label}
-              onChange={(e) => set(i, { label: e.target.value })}
-            />
-            <input
-              className={input}
-              placeholder="tel:+15125550100 or https://…"
-              value={c.href}
-              onChange={(e) => set(i, { href: e.target.value })}
-            />
-            <select
-              className={`${input} w-32 shrink-0`}
-              value={c.style}
-              onChange={(e) => set(i, { style: e.target.value as "primary" | "secondary" })}
-            >
-              <option value="primary">Primary</option>
-              <option value="secondary">Secondary</option>
-            </select>
-            <button
-              onClick={() => onChange(rows.filter((_, j) => j !== i))}
-              className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-              aria-label="Remove button"
-            >
-              ✕
-            </button>
+          <div key={i} className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <select
+                className={`${input} w-28 shrink-0`}
+                value={c.type}
+                onChange={(e) => set(i, { type: e.target.value as CtaRow["type"] })}
+              >
+                <option value="call">Call</option>
+                <option value="text">Text</option>
+                <option value="schedule">Schedule</option>
+                <option value="link">Link</option>
+                <option value="custom">Custom</option>
+              </select>
+              <input
+                className={input}
+                placeholder="Button label (e.g. Call Us Now)"
+                value={c.label}
+                onChange={(e) => set(i, { label: e.target.value })}
+              />
+              <input
+                className={input}
+                placeholder={c.type === "call" || c.type === "text" ? "+15125550100" : "https://…"}
+                value={c.value}
+                onChange={(e) => set(i, { value: e.target.value })}
+              />
+              <select
+                className={`${input} w-28 shrink-0`}
+                value={c.style}
+                onChange={(e) => set(i, { style: e.target.value as CtaRow["style"] })}
+              >
+                <option value="primary">Primary</option>
+                <option value="secondary">Secondary</option>
+              </select>
+              <button
+                onClick={() => onChange(rows.filter((_, j) => j !== i))}
+                className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Remove button"
+              >
+                ✕
+              </button>
+            </div>
+            <EsBox es={es} k={tk.cta(pageId, i)} placeholder="Button label — Spanish" />
           </div>
         ))}
-        <button
-          onClick={() => onChange([...rows, { label: "Call now", href: "tel:+1", style: "primary" }])}
-          className="text-sm text-blue-600 hover:text-blue-700"
-        >
-          + Add button
-        </button>
+        {rows.length < 5 && (
+          <button
+            onClick={() => onChange([...rows, { label: "Call Us Now", type: "call", value: "+1", style: "primary" }])}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            + Add CTA
+          </button>
+        )}
       </div>
     </div>
   );

@@ -12,6 +12,8 @@ const bodySchema = z.object({
   slug: z.string(),
   answers: z.record(z.unknown()),
   attribution: z.record(z.string()).optional(),
+  // The type of ending screen the flow reached (success/referral/decline/end).
+  endingType: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -27,14 +29,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
   }
 
-  const { slug, answers, attribution = {} } = parsed.data;
+  const { slug, answers, attribution = {}, endingType } = parsed.data;
   const org = await resolvePublicOrg(attribution.org);
   if (!org) return NextResponse.json({ ok: false, error: "Unknown tenant." }, { status: 404 });
 
   const journey = await store.getJourney(org.id, slug);
   if (!journey) return NextResponse.json({ ok: false, error: "Journey not found." }, { status: 404 });
 
-  const result = await submitLead(journey, answers, attribution);
+  const result = await submitLead(journey, answers, attribution, endingType);
 
   return NextResponse.json({ ok: true, leadId: result.leadId, outcome: result.outcome });
 }

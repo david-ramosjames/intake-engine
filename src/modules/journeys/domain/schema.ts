@@ -60,14 +60,26 @@ export const optionSchema = z.object({
 });
 export type Option = z.infer<typeof optionSchema>;
 
-// A call-to-action on an ending screen: a phone number, website, etc.
+// A call-to-action on an ending screen: call, text, schedule, or a link.
 export const ctaSchema = z.object({
   label: z.string(),
-  // "tel:+15125550100", "mailto:...", or a URL.
-  href: z.string(),
+  // How to interpret `value`: phone for call/text; URL for schedule/link/custom.
+  type: z.enum(["call", "text", "schedule", "link", "custom"]).optional(),
+  value: z.string().optional(),
+  // Explicit href overrides type+value when present (legacy/back-compat).
+  href: z.string().optional(),
   style: z.enum(["primary", "secondary"]).default("primary"),
 });
 export type Cta = z.infer<typeof ctaSchema>;
+
+/** Resolve the actual href for a CTA from its type/value (or explicit href). */
+export function ctaHref(cta: Cta): string {
+  if (cta.href) return cta.href;
+  const v = (cta.value ?? "").trim();
+  if (cta.type === "call") return `tel:${v.replace(/[^\d+]/g, "")}`;
+  if (cta.type === "text") return `sms:${v.replace(/[^\d+]/g, "")}`;
+  return v;
+}
 
 export const validationSchema = z
   .object({
@@ -102,10 +114,28 @@ export type Component = z.infer<typeof componentSchema>;
 
 // --- Pages ------------------------------------------------------------------
 
-// "end" is a generic terminal screen (a flow can have many, reached by
-// branching). success/decline remain for score/qualification-driven journeys.
-export const pageType = z.enum(["question", "statement", "review", "success", "decline", "end"]);
+// Terminal screens. A flow branches to one of these to finish:
+//   success  = it's a lead      referral = refer out      decline = can't help
+// "end" is a generic terminal (kept for existing flows). success/decline also
+// serve score/qualification-driven journeys.
+export const pageType = z.enum([
+  "question",
+  "statement",
+  "review",
+  "success",
+  "referral",
+  "decline",
+  "end",
+]);
 export type PageType = z.infer<typeof pageType>;
+
+/** The lead outcome recorded when a flow reaches a given ending type. */
+export function outcomeForPageType(type: PageType): "lead" | "referral" | "declined" | null {
+  if (type === "success" || type === "end") return "lead";
+  if (type === "referral") return "referral";
+  if (type === "decline") return "declined";
+  return null;
+}
 
 export const navigationRuleSchema = z.object({
   when: expressionSchema, // if true, jump to `goTo`
@@ -178,6 +208,12 @@ export const journeyDefinitionSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   name: z.string(),
   locale: z.string().default("en"),
+  // Languages the visitor can switch between. The first is the default. When
+  // more than one, the runtime shows a language toggle.
+  languages: z.array(z.string()).optional(),
+  // Translations, keyed by locale then by a stable text key (see i18n.ts).
+  // e.g. { es: { "c:case:label": "¿Qué tipo de caso?" } }
+  i18n: z.record(z.record(z.string())).optional(),
   theme: themeTokensSchema.optional(),
   variables: z.array(variableSchema).default([]),
   pages: z.array(pageSchema).min(1),

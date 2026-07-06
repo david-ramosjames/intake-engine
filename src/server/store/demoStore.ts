@@ -159,17 +159,21 @@ export const demoStore: PlatformStore = {
 
   async createLead(input: CreateLeadInput) {
     const db = await load();
+    const status =
+      input.outcome === "referral" ? "REFERRED" : input.outcome === "declined" ? "DISQUALIFIED" : "QUALIFIED";
     const lead: StoredLead = {
       id: newId("lead"),
       orgId: input.orgId,
       journeyId: input.journeyId,
       journeySlug: input.journeySlug,
-      status: input.qualified ? "QUALIFIED" : "DISQUALIFIED",
+      status,
+      outcome: input.outcome,
       displayName: input.displayName,
       email: input.email,
       phone: input.phone,
       score: input.score,
       qualified: input.qualified,
+      referral: input.referral,
       answers: input.answers,
       source: input.source,
       campaign: input.campaign,

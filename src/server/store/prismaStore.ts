@@ -146,39 +146,47 @@ export const prismaStore: PlatformStore = {
       include: { journey: true },
       orderBy: { createdAt: "desc" },
     });
-    return rows.map(
-      (l: any): StoredLead => ({
+    return rows.map((l: any): StoredLead => {
+      const status: StoredLead["status"] =
+        l.status === "REFERRED" ? "REFERRED" : l.status === "QUALIFIED" ? "QUALIFIED" : "DISQUALIFIED";
+      const outcome = status === "REFERRED" ? "referral" : status === "QUALIFIED" ? "lead" : "declined";
+      return {
         id: l.id,
         orgId: l.organizationId,
         journeyId: l.journeyId,
         journeySlug: l.journey?.slug ?? "",
-        status: l.qualified ? "QUALIFIED" : "DISQUALIFIED",
+        status,
+        outcome,
         displayName: l.displayName ?? undefined,
         email: l.email ?? undefined,
         phone: l.phone ?? undefined,
         score: l.score ?? 0,
         qualified: Boolean(l.qualified),
+        referral: Boolean(l.referral),
         answers: (l.answers as Record<string, unknown>) ?? {},
         source: l.source ?? undefined,
         campaign: l.campaign ?? undefined,
         medium: l.medium ?? undefined,
         createdAt: l.createdAt?.toISOString?.() ?? String(l.createdAt),
-      }),
-    );
+      };
+    });
   },
 
   async createLead(input: CreateLeadInput) {
     const prisma = await getPrisma();
+    const status =
+      input.outcome === "referral" ? "REFERRED" : input.outcome === "declined" ? "DISQUALIFIED" : "QUALIFIED";
     const lead = await prisma.lead.create({
       data: {
         organizationId: input.orgId,
         journeyId: input.journeyId,
-        status: input.qualified ? "QUALIFIED" : "DISQUALIFIED",
+        status,
         displayName: input.displayName,
         email: input.email,
         phone: input.phone,
         score: input.score,
         qualified: input.qualified,
+        referral: input.referral,
         answers: input.answers as object,
         source: input.source,
         campaign: input.campaign,
@@ -188,7 +196,7 @@ export const prismaStore: PlatformStore = {
           create: [
             { type: "COMPLETED", payload: {} },
             { type: "SCORED", payload: { score: input.score } },
-            { type: input.qualified ? "QUALIFIED" : "DISQUALIFIED", payload: { score: input.score } },
+            { type: status === "REFERRED" ? "STATUS_CHANGED" : input.qualified ? "QUALIFIED" : "DISQUALIFIED", payload: { status } },
           ],
         },
       },
@@ -198,12 +206,14 @@ export const prismaStore: PlatformStore = {
       orgId: input.orgId,
       journeyId: input.journeyId,
       journeySlug: input.journeySlug,
-      status: input.qualified ? "QUALIFIED" : "DISQUALIFIED",
+      status,
+      outcome: input.outcome,
       displayName: input.displayName,
       email: input.email,
       phone: input.phone,
       score: input.score,
       qualified: input.qualified,
+      referral: input.referral,
       answers: input.answers,
       source: input.source,
       campaign: input.campaign,

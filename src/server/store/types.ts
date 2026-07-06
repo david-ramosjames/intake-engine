@@ -24,17 +24,21 @@ export interface StoredJourney {
   updatedAt: string;
 }
 
+export type LeadOutcome = "lead" | "referral" | "declined";
+
 export interface StoredLead {
   id: string;
   orgId: string;
   journeyId: string;
   journeySlug: string;
-  status: "QUALIFIED" | "DISQUALIFIED";
+  status: "QUALIFIED" | "REFERRED" | "DISQUALIFIED";
+  outcome: LeadOutcome;
   displayName?: string;
   email?: string;
   phone?: string;
   score: number;
   qualified: boolean;
+  referral: boolean;
   answers: Record<string, unknown>;
   source?: string;
   campaign?: string;
@@ -65,7 +69,9 @@ export interface CreateLeadInput {
   orgId: string;
   journeyId: string;
   journeySlug: string;
+  outcome: LeadOutcome;
   qualified: boolean;
+  referral: boolean;
   score: number;
   answers: Record<string, unknown>;
   displayName?: string;

@@ -256,30 +256,216 @@ function buildPiTemplate(spec: PiSpec): JourneyTemplate {
 
 // --- Templates --------------------------------------------------------------
 
-const general = buildPiTemplate({
+// General PI as a branching flow with THREE endings — lead / referral / can't
+// help — and full English + Spanish. This is the reference for how a general PI
+// flow works: no scoring, the outcome is decided by which ending a branch
+// reaches. Edit any text/branch/CTA in the Journey editor.
+const general: JourneyTemplate = {
   key: "pi-general",
   name: "General Personal Injury",
-  description: "Catch-all intake that routes by incident type, with fault, injury & representation checks.",
-  intro:
-    "Your Austin personal injury lawyers. Answer a few questions and we'll tell you if we can help — it takes about 2 minutes.",
-  incidentPages: [
-    choice("incident", "incident_type", "What type of incident were you involved in?", [
-      { label: "Car accident", value: "car", score: 10 },
-      { label: "Truck accident", value: "truck", score: 20 },
-      { label: "Motorcycle accident", value: "motorcycle", score: 15 },
-      { label: "Pedestrian accident", value: "pedestrian", score: 15 },
-      { label: "Rideshare (Uber/Lyft)", value: "rideshare", score: 12 },
-      { label: "Slip & fall", value: "slip_fall", score: 8 },
-      { label: "Dog bite", value: "dog_bite", score: 8 },
-      { label: "Workplace injury", value: "workplace", score: 10 },
-      { label: "Brain injury", value: "brain_injury", score: 25 },
-      { label: "Other", value: "other", score: 5 },
-    ]),
-    faultPage(),
-  ],
-  qualificationRule: { "!=": [{ var: "at_fault" }, "self"] },
-  minScore: 20,
-});
+  industry: "legal.personal_injury",
+  description:
+    "Branching flow with three endings — it's a lead, refer out, or can't help. Bilingual (EN/ES), no scoring.",
+  definition: {
+    schemaVersion: 1,
+    name: "General Personal Injury",
+    locale: "en",
+    languages: ["en", "es"],
+    theme: {
+      colorBackground: "#ffffff",
+      colorSurface: "#ffffff",
+      colorText: "#1e3a5f",
+      colorAccent: "#1e3a5f",
+      radius: "9999px",
+    },
+    variables: [],
+    pages: [
+      {
+        id: "welcome",
+        name: "Welcome",
+        type: "question",
+        components: [
+          { id: "gw-h", type: "heading", content: "We're here to help" },
+          { id: "gw-p", type: "paragraph", content: "Answer a few quick questions and we'll tell you how we can help." },
+          {
+            id: "case_type",
+            type: "singleSelect",
+            key: "case_type",
+            validation: { required: true },
+            options: [
+              { label: "Car Accident", value: "car", goTo: "injured" },
+              { label: "Truck Accident", value: "truck", goTo: "injured" },
+              { label: "Motorcycle Accident", value: "motorcycle", goTo: "injured" },
+              { label: "Pedestrian Accident", value: "pedestrian", goTo: "injured" },
+              { label: "Slip & Fall", value: "slip_fall", goTo: "injured" },
+              { label: "Dog Bite", value: "dog_bite", goTo: "injured" },
+              { label: "Brain Injury", value: "brain_injury", goTo: "injured" },
+              { label: "Other", value: "other", goTo: "injured" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "injured",
+        name: "Injured",
+        type: "question",
+        components: [
+          {
+            id: "g-injured",
+            type: "singleSelect",
+            key: "injured",
+            label: "Were you injured?",
+            options: [
+              { label: "Yes", value: "yes", goTo: "fault" },
+              { label: "No", value: "no", goTo: "cant_help" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "fault",
+        name: "Fault",
+        type: "question",
+        components: [
+          {
+            id: "g-fault",
+            type: "singleSelect",
+            key: "at_fault",
+            label: "Were you at fault for what happened?",
+            options: [
+              { label: "No, someone else was", value: "other", goTo: "represented" },
+              { label: "I'm not sure", value: "unsure", goTo: "represented" },
+              { label: "Yes, I was at fault", value: "self", goTo: "refer_offer" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "represented",
+        name: "Representation",
+        type: "question",
+        components: [
+          {
+            id: "g-rep",
+            type: "singleSelect",
+            key: "has_attorney",
+            label: "Do you already have an attorney for this case?",
+            options: [
+              { label: "No", value: "no", goTo: "contact" },
+              { label: "Yes", value: "yes", goTo: "refer_offer" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "refer_offer",
+        name: "Referral offer",
+        type: "question",
+        components: [
+          {
+            id: "g-refer",
+            type: "singleSelect",
+            key: "want_referral",
+            label: "We can't take this case, but we can refer you to a trusted attorney. Want a referral?",
+            options: [
+              { label: "Yes, please", value: "yes", goTo: "referral" },
+              { label: "No, thanks", value: "no", goTo: "cant_help" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "contact",
+        name: "Contact",
+        type: "question",
+        components: [
+          { id: "gc-h", type: "heading", content: "Almost done — how can we reach you?" },
+          { id: "gc-name", type: "shortText", key: "full_name", label: "Full name", validation: { required: true } },
+          { id: "gc-phone", type: "phone", key: "phone", label: "Phone number", validation: { required: true } },
+          { id: "gc-email", type: "email", key: "email", label: "Email address", validation: { required: true } },
+          { id: "gc-desc", type: "longText", key: "description", label: "Briefly, what happened? (optional)" },
+        ],
+      },
+      {
+        id: "success",
+        name: "It's a lead",
+        type: "success",
+        cta: [
+          { label: "Call Us Now", type: "call", value: "+15128838904", style: "primary" },
+          { label: "Explore our firm", type: "link", value: "https://ramosjames.com", style: "secondary" },
+        ],
+        components: [
+          { id: "gs-h", type: "heading", content: "Your case has been submitted!" },
+          { id: "gs-p", type: "paragraph", content: "A Ramos James Law team member will reach out shortly." },
+        ],
+      },
+      {
+        id: "referral",
+        name: "Refer out",
+        type: "referral",
+        cta: [{ label: "Call Us Now", type: "call", value: "+15128838904", style: "primary" }],
+        components: [
+          { id: "gr-h", type: "heading", content: "We'll connect you with a trusted attorney." },
+          { id: "gr-p", type: "paragraph", content: "Our team will reach out shortly with next steps." },
+        ],
+      },
+      {
+        id: "cant_help",
+        name: "Can't help",
+        type: "decline",
+        cta: [{ label: "Call Us Now", type: "call", value: "+15128838904", style: "primary" }],
+        components: [
+          { id: "gd-h", type: "heading", content: "Thank you for reaching out." },
+          { id: "gd-p", type: "paragraph", content: "Please call us if you have any questions." },
+        ],
+      },
+    ],
+    scoring: [],
+    i18n: {
+      es: {
+        "c:gw-h:content": "Estamos aquí para ayudar",
+        "c:gw-p:content": "Responde unas preguntas rápidas y te diremos cómo podemos ayudar.",
+        "o:case_type:car": "Accidente de auto",
+        "o:case_type:truck": "Accidente de camión",
+        "o:case_type:motorcycle": "Accidente de motocicleta",
+        "o:case_type:pedestrian": "Accidente peatonal",
+        "o:case_type:slip_fall": "Resbalón y caída",
+        "o:case_type:dog_bite": "Mordedura de perro",
+        "o:case_type:brain_injury": "Lesión cerebral",
+        "o:case_type:other": "Otro",
+        "c:g-injured:label": "¿Resultó herido?",
+        "o:g-injured:yes": "Sí",
+        "o:g-injured:no": "No",
+        "c:g-fault:label": "¿Tuvo usted la culpa de lo ocurrido?",
+        "o:g-fault:other": "No, la culpa fue de otra persona",
+        "o:g-fault:unsure": "No estoy seguro",
+        "o:g-fault:self": "Sí, yo tuve la culpa",
+        "c:g-rep:label": "¿Ya tiene un abogado para este caso?",
+        "o:g-rep:no": "No",
+        "o:g-rep:yes": "Sí",
+        "c:g-refer:label":
+          "No podemos tomar este caso, pero podemos referirte a un abogado de confianza. ¿Quieres una referencia?",
+        "o:g-refer:yes": "Sí, por favor",
+        "o:g-refer:no": "No, gracias",
+        "c:gc-h:content": "Ya casi terminamos, ¿cómo podemos comunicarnos contigo?",
+        "c:gc-name:label": "Nombre completo",
+        "c:gc-phone:label": "Número de teléfono",
+        "c:gc-email:label": "Correo electrónico",
+        "c:gc-desc:label": "Cuéntanos brevemente qué pasó (opcional)",
+        "c:gs-h:content": "¡Tu caso ha sido enviado!",
+        "c:gs-p:content": "Un miembro del equipo de Ramos James Law se pondrá en contacto contigo en breve.",
+        "cta:success:0": "Llámanos ahora",
+        "cta:success:1": "Conoce nuestra firma",
+        "c:gr-h:content": "Te conectaremos con un abogado de confianza.",
+        "c:gr-p:content": "Nuestro equipo se comunicará contigo pronto con los siguientes pasos.",
+        "cta:referral:0": "Llámanos ahora",
+        "c:gd-h:content": "Gracias por comunicarte.",
+        "c:gd-p:content": "Llámanos si tienes alguna pregunta.",
+        "cta:cant_help:0": "Llámanos ahora",
+      },
+    },
+  },
+};
 
 const car: JourneyTemplate = {
   key: "pi-car-accident",

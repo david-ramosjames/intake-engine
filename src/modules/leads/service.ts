@@ -4,13 +4,14 @@
 // to the Automation Engine.
 
 import { extractContact, scoreLead, type Answers } from "@/modules/journeys/runtime/engine";
-import { store, type StoredJourney } from "@/server/store";
+import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/schema";
+import { store, type LeadOutcome, type StoredJourney } from "@/server/store";
 
 export interface SubmitResult {
   leadId: string;
   score: number;
   qualified: boolean;
-  outcome: "qualified" | "declined";
+  outcome: LeadOutcome;
 }
 
 export interface Attribution {
@@ -23,16 +24,24 @@ export async function submitLead(
   journey: StoredJourney,
   answers: Answers,
   attribution: Attribution = {},
+  endingType?: string,
 ): Promise<SubmitResult> {
   const def = journey.definition;
   const { score, qualified } = scoreLead(def, answers);
   const contact = extractContact(def, answers);
 
+  // Outcome precedence: the ending the flow reached wins; otherwise fall back to
+  // score/qualification (lead vs declined).
+  const byEnding = endingType ? outcomeForPageType(endingType as PageType) : null;
+  const outcome: LeadOutcome = byEnding ?? (qualified ? "lead" : "declined");
+
   const lead = await store.createLead({
     orgId: journey.orgId,
     journeyId: journey.id,
     journeySlug: journey.slug,
-    qualified,
+    outcome,
+    qualified: outcome === "lead",
+    referral: outcome === "referral",
     score,
     answers,
     displayName: contact.displayName,
@@ -45,5 +54,5 @@ export async function submitLead(
 
   // TODO(automation-engine): enqueue AutomationRun for trigger LEAD_COMPLETED.
 
-  return { leadId: lead.id, score, qualified, outcome: qualified ? "qualified" : "declined" };
+  return { leadId: lead.id, score, qualified: outcome === "lead", outcome };
 }

@@ -14,7 +14,7 @@ export type Answers = Record<string, unknown>;
 
 /** Terminal/ending screens: the flow stops here and the lead is submitted. */
 export function isTerminalType(type: PageType): boolean {
-  return type === "success" || type === "decline" || type === "end";
+  return type === "success" || type === "referral" || type === "decline" || type === "end";
 }
 
 /**
