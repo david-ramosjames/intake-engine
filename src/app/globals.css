@@ -33,6 +33,43 @@ body {
   outline-offset: 2px;
 }
 
+/* Runtime option pill — inverts to full contrast on hover (fills with the text
+   color, flips the label to the background color). Reads correctly in any theme
+   because it derives from the journey's CSS variables. */
+.j-option {
+  background: var(--surface, #fff);
+  color: var(--text, #0b1f3a);
+  border: 1px solid color-mix(in srgb, var(--text, #0b1f3a) 14%, transparent);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.j-option:hover:not(:disabled) {
+  background: var(--text, #0b1f3a);
+  color: var(--bg, #fff);
+  border-color: var(--text, #0b1f3a);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--text, #0b1f3a) 22%, transparent);
+}
+
+/* Secondary CTA — outline that fills (inverse) on hover. */
+.j-outline {
+  border: 1px solid color-mix(in srgb, var(--text, #0b1f3a) 30%, transparent);
+  color: var(--text, #0b1f3a);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.j-outline:hover {
+  background: var(--text, #0b1f3a);
+  color: var(--bg, #fff);
+  border-color: var(--text, #0b1f3a);
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

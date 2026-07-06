@@ -134,6 +134,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
   const styleVars = {
     ["--acc" as string]: theme.colorAccent ?? "#e63946",
+    ["--bg" as string]: theme.colorBackground ?? "#ffffff",
     ["--surface" as string]: theme.colorSurface ?? theme.colorBackground ?? "#ffffff",
     ["--text" as string]: theme.colorText ?? "#0b1f3a",
     ["--radius" as string]: theme.radius ?? "9999px",
@@ -243,11 +244,7 @@ function ChoiceGrid({
             type="button"
             disabled={disabled}
             onClick={() => onSelect(opt)}
-            style={{
-              background: "var(--surface)",
-              borderColor: "color-mix(in srgb, var(--text) 14%, transparent)",
-            }}
-            className="rounded-[var(--radius)] border px-5 py-4 text-center font-medium shadow-sm transition hover:-translate-y-0.5 hover:border-[color:var(--acc)] hover:shadow-md focus-ring disabled:opacity-50"
+            className="j-option rounded-[var(--radius)] px-5 py-4 text-center font-medium shadow-sm focus-ring disabled:opacity-50"
           >
             {opt.label}
           </button>
@@ -352,8 +349,7 @@ function EndingView({ page }: { page: Page }) {
               <a
                 key={i}
                 href={cta.href}
-                style={{ borderColor: "color-mix(in srgb, var(--text) 20%, transparent)" }}
-                className="rounded-[var(--radius)] border px-6 py-3 font-medium transition hover:opacity-80 focus-ring"
+                className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring"
               >
                 {cta.label}
               </a>
