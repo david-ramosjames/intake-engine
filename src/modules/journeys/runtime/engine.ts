@@ -8,9 +8,41 @@
 // =============================================================================
 
 import { evaluate, evaluateBoolean, type EvalContext } from "../domain/expression";
-import type { Component, JourneyDefinition, Page } from "../domain/schema";
+import type { Component, JourneyDefinition, Page, PageType } from "../domain/schema";
 
 export type Answers = Record<string, unknown>;
+
+/** Terminal/ending screens: the flow stops here and the lead is submitted. */
+export function isTerminalType(type: PageType): boolean {
+  return type === "success" || type === "decline" || type === "end";
+}
+
+/**
+ * Resolve the next page id from the current page. Precedence:
+ *   1. an option's explicit `goTo` (flow-builder branching)
+ *   2. the page's conditional `next` rules
+ *   3. the next visible page in document order
+ * Returns null when there is nothing after this page.
+ */
+export function resolveNext(
+  def: JourneyDefinition,
+  currentPageId: string,
+  answers: Answers,
+  optionGoTo?: string,
+): string | null {
+  if (optionGoTo) return optionGoTo;
+  const ctx = buildContext(def, answers);
+  const current = def.pages.find((p) => p.id === currentPageId);
+  if (current?.next) {
+    for (const rule of current.next) {
+      if (evaluateBoolean(rule.when, ctx)) return rule.goTo;
+    }
+  }
+  const pages = visiblePages(def, answers);
+  const idx = pages.findIndex((p) => p.id === currentPageId);
+  if (idx === -1) return pages[0]?.id ?? null;
+  return pages[idx + 1]?.id ?? null;
+}
 
 /** Build the evaluation context: variable defaults overlaid with answers. */
 export function buildContext(def: JourneyDefinition, answers: Answers): EvalContext {

@@ -53,10 +53,21 @@ export const optionSchema = z.object({
   value: z.string(),
   description: z.string().optional(),
   icon: z.string().optional(),
-  // Points added to the lead score when this option is selected.
+  // Points added to the lead score when this option is selected (optional).
   score: z.number().optional(),
+  // Flow-builder branching: jump to this page id when this option is chosen.
+  goTo: z.string().optional(),
 });
 export type Option = z.infer<typeof optionSchema>;
+
+// A call-to-action on an ending screen: a phone number, website, etc.
+export const ctaSchema = z.object({
+  label: z.string(),
+  // "tel:+15125550100", "mailto:...", or a URL.
+  href: z.string(),
+  style: z.enum(["primary", "secondary"]).default("primary"),
+});
+export type Cta = z.infer<typeof ctaSchema>;
 
 export const validationSchema = z
   .object({
@@ -91,7 +102,9 @@ export type Component = z.infer<typeof componentSchema>;
 
 // --- Pages ------------------------------------------------------------------
 
-export const pageType = z.enum(["question", "statement", "review", "success", "decline"]);
+// "end" is a generic terminal screen (a flow can have many, reached by
+// branching). success/decline remain for score/qualification-driven journeys.
+export const pageType = z.enum(["question", "statement", "review", "success", "decline", "end"]);
 export type PageType = z.infer<typeof pageType>;
 
 export const navigationRuleSchema = z.object({
@@ -108,6 +121,8 @@ export const pageSchema = z.object({
   // Conditional branching evaluated in order; first match wins. When none
   // match, advance to the next visible page.
   next: z.array(navigationRuleSchema).optional(),
+  // Call-to-action buttons, shown on terminal/ending screens (call, website…).
+  cta: z.array(ctaSchema).optional(),
   components: z.array(componentSchema),
 });
 export type Page = z.infer<typeof pageSchema>;
@@ -143,7 +158,10 @@ export const themeTokensSchema = z
     colorAccent: z.string().optional(),
     fontFamily: z.string().optional(),
     radius: z.string().optional(),
+    // Branding: a logo shown at the top, and an optional side/hero image shown
+    // on the left on desktop.
     logoUrl: z.string().optional(),
+    sideImageUrl: z.string().optional(),
   })
   .partial();
 export type ThemeTokens = z.infer<typeof themeTokensSchema>;

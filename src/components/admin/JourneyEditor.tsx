@@ -63,7 +63,8 @@ export function JourneyEditor({
     }
   }
 
-  const terminalTypes = new Set(["review", "success", "decline"]);
+  const terminalTypes = new Set(["review", "success", "decline", "end"]);
+  const pageList = def.pages.map((p) => ({ id: p.id, name: p.name, type: p.type }));
 
   function addQuestion() {
     mutate((d) => {
@@ -89,6 +90,22 @@ export function JourneyEditor({
       const firstTerminal = d.pages.findIndex((p) => terminalTypes.has(p.type));
       if (firstTerminal === -1) d.pages.push(page);
       else d.pages.splice(firstTerminal, 0, page);
+    });
+  }
+
+  function addEnding() {
+    mutate((d) => {
+      const id = `end_${Math.random().toString(36).slice(2, 8)}`;
+      d.pages.push({
+        id: `page_${id}`,
+        name: "Ending",
+        type: "end",
+        cta: [{ label: "Call now", href: "tel:+15125550100", style: "primary" }],
+        components: [
+          { id: `${id}-h`, type: "heading", content: "Your case has been submitted!" },
+          { id: `${id}-p`, type: "paragraph", content: "We'll review your case and be in touch soon." },
+        ],
+      });
     });
   }
 
@@ -147,9 +164,36 @@ export function JourneyEditor({
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).colorBackground = v))}
             />
             <ColorField
+              label="Text"
+              value={def.theme?.colorText ?? "#ffffff"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).colorText = v))}
+            />
+            <ColorField
               label="Accent"
               value={def.theme?.colorAccent ?? "#e63946"}
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).colorAccent = v))}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">Logo URL</label>
+            <input
+              className={input}
+              placeholder="https://…/logo.png"
+              value={def.theme?.logoUrl ?? ""}
+              onChange={(e) => mutate((d) => void ((d.theme ??= {}).logoUrl = e.target.value || undefined))}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">
+              Side image URL <span className="text-gray-400">(shown on the left on desktop)</span>
+            </label>
+            <input
+              className={input}
+              placeholder="https://…/photo.jpg"
+              value={def.theme?.sideImageUrl ?? ""}
+              onChange={(e) =>
+                mutate((d) => void ((d.theme ??= {}).sideImageUrl = e.target.value || undefined))
+              }
             />
           </div>
         </div>
@@ -192,6 +236,8 @@ export function JourneyEditor({
                 <ComponentEditor
                   key={c.id}
                   component={c}
+                  pages={pageList}
+                  currentPageId={page.id}
                   onField={(field, value) =>
                     mutate((d) => {
                       const comp = d.pages[pi]!.components[ci]! as Record<string, unknown>;
@@ -204,11 +250,16 @@ export function JourneyEditor({
                       comp.validation = { ...(comp.validation ?? {}), required: req };
                     })
                   }
-                  onOption={(oi, field, value) =>
+                  onOptionLabel={(oi, value) =>
                     mutate((d) => {
-                      const opt = d.pages[pi]!.components[ci]!.options![oi]! as Record<string, unknown>;
-                      opt[field] = field === "score" ? Number(value) || 0 : value;
-                      if (field === "label") opt.value = slugValue(String(value));
+                      const opt = d.pages[pi]!.components[ci]!.options![oi]!;
+                      opt.label = value;
+                      opt.value = slugValue(value);
+                    })
+                  }
+                  onOptionGoTo={(oi, goTo) =>
+                    mutate((d) => {
+                      d.pages[pi]!.components[ci]!.options![oi]!.goTo = goTo || undefined;
                     })
                   }
                   onAddOption={() =>
@@ -223,32 +274,59 @@ export function JourneyEditor({
                 />
               ))}
             </div>
+
+            {terminalTypes.has(page.type) && page.type !== "review" && (
+              <CtaEditor
+                cta={page.cta ?? []}
+                onChange={(cta) => mutate((d) => void (d.pages[pi]!.cta = cta))}
+              />
+            )}
           </section>
         ))}
       </div>
 
-      <button
-        onClick={addQuestion}
-        className="mt-4 rounded-full border border-dashed border-gray-300 px-5 py-2.5 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600"
-      >
-        + Add question
-      </button>
+      <div className="mt-4 flex gap-3">
+        <button
+          onClick={addQuestion}
+          className="rounded-full border border-dashed border-gray-300 px-5 py-2.5 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600"
+        >
+          + Add question
+        </button>
+        <button
+          onClick={addEnding}
+          className="rounded-full border border-dashed border-gray-300 px-5 py-2.5 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600"
+        >
+          + Add ending
+        </button>
+      </div>
     </div>
   );
 }
 
+interface PageRef {
+  id: string;
+  name: string;
+  type: string;
+}
+
 function ComponentEditor({
   component,
+  pages,
+  currentPageId,
   onField,
   onRequired,
-  onOption,
+  onOptionLabel,
+  onOptionGoTo,
   onAddOption,
   onRemoveOption,
 }: {
   component: Component;
+  pages: PageRef[];
+  currentPageId: string;
   onField: (field: string, value: string) => void;
   onRequired: (req: boolean) => void;
-  onOption: (oi: number, field: "label" | "score", value: string) => void;
+  onOptionLabel: (oi: number, value: string) => void;
+  onOptionGoTo: (oi: number, goTo: string) => void;
   onAddOption: () => void;
   onRemoveOption: (oi: number) => void;
 }) {
@@ -300,20 +378,32 @@ function ComponentEditor({
 
       {hasOptions && (
         <div className="mt-3 space-y-2">
-          <div className="text-xs font-medium text-gray-500">Options (label · score)</div>
+          <div className="text-xs font-medium text-gray-500">Options — pick where each one leads</div>
           {component.options?.map((o, oi) => (
             <div key={oi} className="flex items-center gap-2">
               <input
                 className={input}
                 value={o.label}
-                onChange={(e) => onOption(oi, "label", e.target.value)}
+                onChange={(e) => onOptionLabel(oi, e.target.value)}
               />
-              <input
-                type="number"
-                className={`${input} w-24`}
-                value={o.score ?? 0}
-                onChange={(e) => onOption(oi, "score", e.target.value)}
-              />
+              <span className="shrink-0 text-xs text-gray-400">→</span>
+              <select
+                className={`${input} w-44 shrink-0`}
+                value={o.goTo ?? ""}
+                onChange={(e) => onOptionGoTo(oi, e.target.value)}
+                title="Where this answer leads"
+              >
+                <option value="">Next screen</option>
+                {pages
+                  .filter((p) => p.id !== currentPageId)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.type === "end" || p.type === "success" || p.type === "decline"
+                        ? `⚑ ${p.name}`
+                        : p.name}
+                    </option>
+                  ))}
+              </select>
               <button
                 onClick={() => onRemoveOption(oi)}
                 className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
@@ -323,14 +413,67 @@ function ComponentEditor({
               </button>
             </div>
           ))}
-          <button
-            onClick={onAddOption}
-            className="text-sm text-blue-600 hover:text-blue-700"
-          >
+          <button onClick={onAddOption} className="text-sm text-blue-600 hover:text-blue-700">
             + Add option
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function CtaEditor({
+  cta,
+  onChange,
+}: {
+  cta: Array<{ label: string; href: string; style?: "primary" | "secondary" }>;
+  onChange: (cta: Array<{ label: string; href: string; style: "primary" | "secondary" }>) => void;
+}) {
+  const rows = cta.map((c) => ({ label: c.label, href: c.href, style: c.style ?? "primary" }));
+  const set = (i: number, patch: Partial<(typeof rows)[number]>) =>
+    onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  return (
+    <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+      <div className="text-xs font-medium text-gray-500">Buttons (call, website, …)</div>
+      <div className="mt-2 space-y-2">
+        {rows.map((c, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              className={input}
+              placeholder="Button label (e.g. Call now)"
+              value={c.label}
+              onChange={(e) => set(i, { label: e.target.value })}
+            />
+            <input
+              className={input}
+              placeholder="tel:+15125550100 or https://…"
+              value={c.href}
+              onChange={(e) => set(i, { href: e.target.value })}
+            />
+            <select
+              className={`${input} w-32 shrink-0`}
+              value={c.style}
+              onChange={(e) => set(i, { style: e.target.value as "primary" | "secondary" })}
+            >
+              <option value="primary">Primary</option>
+              <option value="secondary">Secondary</option>
+            </select>
+            <button
+              onClick={() => onChange(rows.filter((_, j) => j !== i))}
+              className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Remove button"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => onChange([...rows, { label: "Call now", href: "tel:+1", style: "primary" }])}
+          className="text-sm text-blue-600 hover:text-blue-700"
+        >
+          + Add button
+        </button>
+      </div>
     </div>
   );
 }

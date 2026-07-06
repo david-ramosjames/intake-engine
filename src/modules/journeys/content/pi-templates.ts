@@ -552,8 +552,127 @@ const wrongfulDeath = buildPiTemplate({
     "Thank you for reaching out during such a difficult time. It looks like you may already have representation. We're grateful you contacted us and we're so sorry for your loss.",
 });
 
+// A branching, no-scoring flow (Landbot-style). Click a case type → auto-advance
+// → reach a call-to-action ending. Demonstrates per-option branching, endings
+// with a "Call now" button, and light-theme branding (add your logo & side
+// image in the editor).
+const guidedFlow: JourneyTemplate = {
+  key: "pi-guided-flow",
+  name: "Guided Intake (branching)",
+  industry: "legal.personal_injury",
+  description:
+    "Click a case type, answer a couple questions, land on a call-to-action ending. Pure branching — no scoring.",
+  definition: {
+    schemaVersion: 1,
+    name: "Guided Intake",
+    locale: "en",
+    theme: {
+      colorBackground: "#ffffff",
+      colorSurface: "#ffffff",
+      colorText: "#1e3a5f",
+      colorAccent: "#1e3a5f",
+      radius: "9999px",
+    },
+    variables: [],
+    pages: [
+      {
+        id: "welcome",
+        name: "Welcome",
+        type: "question",
+        components: [
+          { id: "w-h", type: "heading", content: "We're here to help" },
+          {
+            id: "w-p",
+            type: "paragraph",
+            content: "Let us fight for your legal rights while you focus on recovery. Please choose an option below.",
+          },
+          {
+            id: "case",
+            type: "singleSelect",
+            key: "case_type",
+            validation: { required: true },
+            options: [
+              { label: "Bicycle Accidents", value: "bicycle", goTo: "contact" },
+              { label: "Brain Injury", value: "brain", goTo: "contact" },
+              { label: "Burn Injuries", value: "burn", goTo: "contact" },
+              { label: "Car Accidents", value: "car", goTo: "car_fault" },
+              { label: "Catastrophic Injuries", value: "catastrophic", goTo: "contact" },
+              { label: "Dog Bites", value: "dog_bite", goTo: "contact" },
+              { label: "Motorcycle Accidents", value: "motorcycle", goTo: "contact" },
+              { label: "Pedestrian Accidents", value: "pedestrian", goTo: "contact" },
+              { label: "Premises Liability", value: "premises", goTo: "contact" },
+              { label: "Slip & Fall", value: "slip_fall", goTo: "contact" },
+              { label: "Spinal Cord Injuries", value: "spinal", goTo: "contact" },
+              { label: "Trucking Accidents", value: "trucking", goTo: "contact" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "car_fault",
+        name: "Fault",
+        type: "question",
+        components: [
+          {
+            id: "cf",
+            type: "singleSelect",
+            key: "at_fault",
+            label: "Were you at fault for the accident?",
+            options: [
+              { label: "No, someone else was", value: "other", goTo: "contact" },
+              { label: "I'm not sure", value: "unsure", goTo: "contact" },
+              { label: "Yes, I was at fault", value: "self", goTo: "not_fit" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "contact",
+        name: "Contact",
+        type: "question",
+        components: [
+          { id: "c-h", type: "heading", content: "Almost done — how can we reach you?" },
+          { id: "c-name", type: "shortText", key: "full_name", label: "Full name", validation: { required: true } },
+          { id: "c-phone", type: "phone", key: "phone", label: "Phone number", validation: { required: true } },
+          { id: "c-email", type: "email", key: "email", label: "Email address", validation: { required: true } },
+          { id: "c-desc", type: "longText", key: "description", label: "Briefly, what happened? (optional)" },
+        ],
+      },
+      {
+        id: "submitted",
+        name: "Submitted",
+        type: "end",
+        cta: [
+          { label: "Call now", href: "tel:+15125550100", style: "primary" },
+          { label: "Explore our firm", href: "https://ramosjames.com", style: "secondary" },
+        ],
+        components: [
+          { id: "s-h", type: "heading", content: "Your case has been submitted!" },
+          { id: "s-p", type: "paragraph", content: "We will review your case and be in touch soon!" },
+        ],
+      },
+      {
+        id: "not_fit",
+        name: "Not a fit",
+        type: "end",
+        cta: [{ label: "Explore our firm", href: "https://ramosjames.com", style: "secondary" }],
+        components: [
+          { id: "n-h", type: "heading", content: "Thank you for reaching out." },
+          {
+            id: "n-p",
+            type: "paragraph",
+            content: "Based on your answer, this may not be a case we're able to take on. We wish you the best.",
+          },
+        ],
+      },
+    ],
+    scoring: [],
+  },
+};
+
 // Ordered for the New Journey picker.
 export const piTemplates: JourneyTemplate[] = [
+  guidedFlow,
   general,
   car,
   truck,

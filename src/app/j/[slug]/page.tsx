@@ -34,6 +34,7 @@ export default async function JourneyRuntimePage({
   if (campaign) attribution.campaign = campaign;
   if (medium) attribution.medium = medium;
   attribution.org = org.slug; // so the submit endpoint resolves the same tenant
+  attribution.firm = org.name; // logo fallback text
 
   return <JourneyPlayer slug={journey.slug} definition={journey.definition} attribution={attribution} />;
 }
