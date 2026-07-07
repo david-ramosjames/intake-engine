@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { OutcomeBadge } from "@/components/admin/OutcomeBadge";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -7,58 +9,103 @@ function fmt(d: string) {
   return new Date(d).toLocaleString();
 }
 
-export default async function Leads() {
+export default async function Leads({ searchParams }: { searchParams: Promise<{ outcome?: string }> }) {
   const org = await getAdminOrg();
   if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
 
-  const leads = await store.listLeads(org.id);
+  const { outcome } = await searchParams;
+  const all = await store.listLeads(org.id);
+  const leads = outcome ? all.filter((l) => l.outcome === outcome) : all;
+
+  const counts = {
+    all: all.length,
+    lead: all.filter((l) => l.outcome === "lead").length,
+    referral: all.filter((l) => l.outcome === "referral").length,
+    declined: all.filter((l) => l.outcome === "declined").length,
+  };
+  const tabs: Array<[string, string, number]> = [
+    ["All", "", counts.all],
+    ["Leads", "lead", counts.lead],
+    ["Referrals", "referral", counts.referral],
+    ["Not a fit", "declined", counts.declined],
+  ];
 
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
       <h1 className="text-2xl font-semibold text-gray-900">Leads</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        {leads.length} lead{leads.length === 1 ? "" : "s"} for {org.name}.
-      </p>
+      <p className="mt-1 text-sm text-gray-500">{all.length} total for {org.name}.</p>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {tabs.map(([label, value, n]) => {
+          const active = (outcome ?? "") === value;
+          return (
+            <Link
+              key={label}
+              href={value ? `/admin/leads?outcome=${value}` : "/admin/leads"}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                active ? "bg-blue-600 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {label} <span className={active ? "opacity-80" : "text-gray-400"}>{n}</span>
+            </Link>
+          );
+        })}
+      </div>
 
       {leads.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center text-gray-400">
-          No leads yet. Submit a journey (Preview → complete it) and it will appear here.
+          No leads here yet.
         </div>
       ) : (
-        <div className="mt-8 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Contact</th>
-                <th className="px-4 py-3 font-medium">Journey</th>
-                <th className="px-4 py-3 font-medium">Score</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Outcome</th>
                 <th className="px-4 py-3 font-medium">Source</th>
+                <th className="px-4 py-3 font-medium">Journey</th>
                 <th className="px-4 py-3 font-medium">Received</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {leads.map((l) => (
-                <tr key={l.id} className="transition hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{l.displayName ?? "—"}</td>
+                <tr key={l.id} className="cursor-pointer transition hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    <Link href={`/admin/leads/${l.id}`} className="block">
+                      {l.displayName ?? "—"}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-gray-600">
-                    <div>{l.email ?? "—"}</div>
-                    <div className="text-gray-400">{l.phone ?? ""}</div>
+                    <Link href={`/admin/leads/${l.id}`} className="block">
+                      <div>{l.email ?? "—"}</div>
+                      <div className="text-gray-400">{l.phone ?? ""}</div>
+                    </Link>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{l.journeySlug}</td>
-                  <td className="px-4 py-3 text-gray-900">{l.score}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        l.qualified ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {l.qualified ? "Qualified" : "Disqualified"}
-                    </span>
+                    <Link href={`/admin/leads/${l.id}`}>
+                      <OutcomeBadge outcome={l.outcome} />
+                    </Link>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{l.source ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-400">{fmt(l.createdAt)}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    <Link href={`/admin/leads/${l.id}`} className="block">
+                      {l.source ?? l.context?.utm_source ?? "direct"}
+                      {l.medium || l.context?.utm_medium ? (
+                        <div className="text-gray-400">{l.medium ?? l.context?.utm_medium}</div>
+                      ) : null}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    <Link href={`/admin/leads/${l.id}`} className="block">
+                      {l.journeySlug}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-gray-400">
+                    <Link href={`/admin/leads/${l.id}`} className="block">
+                      {fmt(l.createdAt)}
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

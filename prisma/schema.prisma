@@ -318,6 +318,8 @@ model Lead {
   campaign       String?
   medium         String?
   referrer       String?
+  // Full capture context: page URL, landing page, referrer, user agent, utm_*.
+  context        Json     @default("{}")
 
   assigneeId     String?
   assignee       User?    @relation("LeadAssignee", fields: [assigneeId], references: [id])

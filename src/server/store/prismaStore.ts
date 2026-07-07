@@ -19,6 +19,32 @@ function orgRow(o: any): StoredOrg {
   return { id: o.id, slug: o.slug, name: o.name, industry: o.industry ?? undefined, createdAt: o.createdAt?.toISOString?.() ?? String(o.createdAt) };
 }
 
+function leadRow(l: any): StoredLead {
+  const status: StoredLead["status"] =
+    l.status === "REFERRED" ? "REFERRED" : l.status === "QUALIFIED" ? "QUALIFIED" : "DISQUALIFIED";
+  const outcome = status === "REFERRED" ? "referral" : status === "QUALIFIED" ? "lead" : "declined";
+  return {
+    id: l.id,
+    orgId: l.organizationId,
+    journeyId: l.journeyId,
+    journeySlug: l.journey?.slug ?? "",
+    status,
+    outcome,
+    displayName: l.displayName ?? undefined,
+    email: l.email ?? undefined,
+    phone: l.phone ?? undefined,
+    score: l.score ?? 0,
+    qualified: Boolean(l.qualified),
+    referral: Boolean(l.referral),
+    answers: (l.answers as Record<string, unknown>) ?? {},
+    context: (l.context as Record<string, string>) ?? {},
+    source: l.source ?? undefined,
+    campaign: l.campaign ?? undefined,
+    medium: l.medium ?? undefined,
+    createdAt: l.createdAt?.toISOString?.() ?? String(l.createdAt),
+  };
+}
+
 function journeyRow(j: any, def: JourneyDefinition): StoredJourney {
   return {
     id: j.id,
@@ -146,30 +172,19 @@ export const prismaStore: PlatformStore = {
       include: { journey: true },
       orderBy: { createdAt: "desc" },
     });
-    return rows.map((l: any): StoredLead => {
-      const status: StoredLead["status"] =
-        l.status === "REFERRED" ? "REFERRED" : l.status === "QUALIFIED" ? "QUALIFIED" : "DISQUALIFIED";
-      const outcome = status === "REFERRED" ? "referral" : status === "QUALIFIED" ? "lead" : "declined";
-      return {
-        id: l.id,
-        orgId: l.organizationId,
-        journeyId: l.journeyId,
-        journeySlug: l.journey?.slug ?? "",
-        status,
-        outcome,
-        displayName: l.displayName ?? undefined,
-        email: l.email ?? undefined,
-        phone: l.phone ?? undefined,
-        score: l.score ?? 0,
-        qualified: Boolean(l.qualified),
-        referral: Boolean(l.referral),
-        answers: (l.answers as Record<string, unknown>) ?? {},
-        source: l.source ?? undefined,
-        campaign: l.campaign ?? undefined,
-        medium: l.medium ?? undefined,
-        createdAt: l.createdAt?.toISOString?.() ?? String(l.createdAt),
-      };
-    });
+    return rows.map(leadRow);
+  },
+
+  async getLead(orgId, id) {
+    const prisma = await getPrisma();
+    const l = await prisma.lead.findFirst({ where: { id, organizationId: orgId }, include: { journey: true } });
+    return l ? leadRow(l) : null;
+  },
+
+  async deleteLead(orgId, id) {
+    const prisma = await getPrisma();
+    // Scope the delete to the org (deleteMany avoids throwing when not found).
+    await (prisma.lead as any).deleteMany({ where: { id, organizationId: orgId } });
   },
 
   async createLead(input: CreateLeadInput) {
@@ -188,6 +203,7 @@ export const prismaStore: PlatformStore = {
         qualified: input.qualified,
         referral: input.referral,
         answers: input.answers as object,
+        context: (input.context ?? {}) as object,
         source: input.source,
         campaign: input.campaign,
         medium: input.medium,
@@ -215,6 +231,7 @@ export const prismaStore: PlatformStore = {
       qualified: input.qualified,
       referral: input.referral,
       answers: input.answers,
+      context: input.context ?? {},
       source: input.source,
       campaign: input.campaign,
       medium: input.medium,

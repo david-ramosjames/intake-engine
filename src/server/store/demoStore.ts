@@ -157,6 +157,20 @@ export const demoStore: PlatformStore = {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
+  async getLead(orgId, id) {
+    const db = await load();
+    return db.leads.find((l) => l.orgId === orgId && l.id === id) ?? null;
+  },
+
+  async deleteLead(orgId, id) {
+    const db = await load();
+    const idx = db.leads.findIndex((l) => l.orgId === orgId && l.id === id);
+    if (idx !== -1) {
+      db.leads.splice(idx, 1);
+      await persist();
+    }
+  },
+
   async createLead(input: CreateLeadInput) {
     const db = await load();
     const status =
@@ -175,6 +189,7 @@ export const demoStore: PlatformStore = {
       qualified: input.qualified,
       referral: input.referral,
       answers: input.answers,
+      context: input.context ?? {},
       source: input.source,
       campaign: input.campaign,
       medium: input.medium,

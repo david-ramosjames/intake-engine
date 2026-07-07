@@ -40,6 +40,7 @@ export interface StoredLead {
   qualified: boolean;
   referral: boolean;
   answers: Record<string, unknown>;
+  context: Record<string, string>;
   source?: string;
   campaign?: string;
   medium?: string;
@@ -74,6 +75,7 @@ export interface CreateLeadInput {
   referral: boolean;
   score: number;
   answers: Record<string, unknown>;
+  context?: Record<string, string>;
   displayName?: string;
   email?: string;
   phone?: string;
@@ -94,7 +96,9 @@ export interface PlatformStore {
   updateJourney(orgId: string, slug: string, input: UpdateJourneyInput): Promise<StoredJourney>;
 
   listLeads(orgId: string): Promise<StoredLead[]>;
+  getLead(orgId: string, id: string): Promise<StoredLead | null>;
   createLead(input: CreateLeadInput): Promise<StoredLead>;
+  deleteLead(orgId: string, id: string): Promise<void>;
 }
 
 /** Small URL-safe id (not a cuid, but fine for the DEMO store). */

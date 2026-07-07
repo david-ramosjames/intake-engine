@@ -25,6 +25,7 @@ export async function submitLead(
   answers: Answers,
   attribution: Attribution = {},
   endingType?: string,
+  context: Record<string, string> = {},
 ): Promise<SubmitResult> {
   const def = journey.definition;
   const { score, qualified } = scoreLead(def, answers);
@@ -44,12 +45,13 @@ export async function submitLead(
     referral: outcome === "referral",
     score,
     answers,
+    context,
     displayName: contact.displayName,
     email: contact.email,
     phone: contact.phone,
-    source: attribution.source,
-    campaign: attribution.campaign,
-    medium: attribution.medium,
+    source: attribution.source ?? context.utm_source,
+    campaign: attribution.campaign ?? context.utm_campaign,
+    medium: attribution.medium ?? context.utm_medium,
   });
 
   // TODO(automation-engine): enqueue AutomationRun for trigger LEAD_COMPLETED.

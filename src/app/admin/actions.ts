@@ -44,6 +44,16 @@ export async function selectOrganization(formData: FormData) {
   redirect("/admin");
 }
 
+export async function deleteLead(formData: FormData) {
+  await requireUser();
+  const org = await getAdminOrg();
+  if (!org) throw new Error("No organization selected.");
+  const id = String(formData.get("id") ?? "");
+  if (id) await store.deleteLead(org.id, id);
+  revalidatePath("/admin/leads");
+  redirect("/admin/leads");
+}
+
 export async function createJourney(formData: FormData) {
   await requireUser();
   const org = await getAdminOrg();

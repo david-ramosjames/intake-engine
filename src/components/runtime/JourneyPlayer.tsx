@@ -27,6 +27,23 @@ interface Props {
 
 type Outcome = "lead" | "referral" | "declined";
 
+// Capture attribution/source context from the browser at submit time.
+function collectContext(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const ctx: Record<string, string> = {
+    pageUrl: window.location.href,
+    landingPage: window.location.href,
+    referrer: document.referrer || "",
+    userAgent: navigator.userAgent,
+  };
+  const params = new URL(window.location.href).searchParams;
+  for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) {
+    const v = params.get(k);
+    if (v) ctx[k] = v;
+  }
+  return ctx;
+}
+
 export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const pages = definition.pages;
   const theme = definition.theme ?? {};
@@ -62,7 +79,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         const res = await fetch(`/api/leads`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ slug, answers: ans, attribution, endingType }),
+          body: JSON.stringify({ slug, answers: ans, attribution, endingType, context: collectContext() }),
         });
         const data = (await res.json()) as { ok: boolean; outcome?: Outcome; error?: string };
         if (!res.ok || !data.ok) throw new Error(data.error ?? "Something went wrong.");
@@ -275,10 +292,12 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 function Flag({ code }: { code: string }) {
   const cls = "h-3.5 w-5 shrink-0 rounded-[2px] shadow-sm ring-1 ring-black/10";
   if (code === "es") {
+    // Mexico (green / white / red vertical tricolor).
     return (
       <svg viewBox="0 0 24 16" className={cls} aria-hidden>
-        <rect width="24" height="16" fill="#c60b1e" />
-        <rect y="4" width="24" height="8" fill="#ffc400" />
+        <rect width="8" height="16" fill="#006847" />
+        <rect x="8" width="8" height="16" fill="#ffffff" />
+        <rect x="16" width="8" height="16" fill="#ce1126" />
       </svg>
     );
   }
@@ -297,9 +316,9 @@ function Flag({ code }: { code: string }) {
 function LogoOrName({ logoUrl, logoLink, firm }: { logoUrl?: string; logoLink?: string; firm: string }) {
   const inner = logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={logoUrl} alt={firm || "logo"} className="max-h-16 w-auto object-contain md:max-h-20" />
+    <img src={logoUrl} alt={firm || "logo"} className="max-h-20 w-auto object-contain md:max-h-28" />
   ) : firm ? (
-    <span className="text-xl font-semibold md:text-2xl">{firm}</span>
+    <span className="text-2xl font-semibold md:text-3xl">{firm}</span>
   ) : null;
   if (!inner) return null;
   return logoLink ? (
@@ -431,7 +450,17 @@ function ReviewView({
   );
 }
 
+function formatPhone(raw: string): string {
+  const d = raw.replace(/[^\d]/g, "").replace(/^1/, "");
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  return raw;
+}
+
 function EndingView({ page, L }: { page: Page; L: Localize }) {
+  // Surface the first phone number as prominent, clickable text (in addition to
+  // the CTA button) on ending screens.
+  const phoneCta = page.cta?.find((c) => c.type === "call" || c.type === "text" || c.href?.startsWith("tel:"));
+  const phoneValue = phoneCta ? (phoneCta.value ?? phoneCta.href?.replace(/^tel:|^sms:/, "") ?? "") : "";
   return (
     <div className="animate-fade-up space-y-6">
       {page.components.map((c) =>
@@ -444,6 +473,14 @@ function EndingView({ page, L }: { page: Page; L: Localize }) {
             {L(tk.content(c.id), c.content)}
           </p>
         ),
+      )}
+      {phoneValue && (
+        <a
+          href={`tel:${phoneValue.replace(/[^\d+]/g, "")}`}
+          className="inline-block text-2xl font-semibold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:text-3xl"
+        >
+          {formatPhone(phoneValue)}
+        </a>
       )}
       {page.cta && page.cta.length > 0 && (
         <div className="flex flex-wrap gap-3 pt-2">
