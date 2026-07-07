@@ -15,7 +15,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page } from "@/modules/journeys/domain/schema";
 import { ctaHref } from "@/modules/journeys/domain/schema";
-import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
+import { LANGUAGE_FLAGS, LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
 import { isComponentVisible, isTerminalType, resolveNext, type Answers } from "@/modules/journeys/runtime/engine";
 import { Field } from "./fields";
 
@@ -141,17 +141,23 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
     void advance(page, answers);
   }
 
-  const styleVars = useMemo(
-    () =>
-      ({
-        ["--acc"]: theme.colorAccent ?? "#e63946",
-        ["--bg"]: theme.colorBackground ?? "#ffffff",
-        ["--surface"]: theme.colorSurface ?? theme.colorBackground ?? "#ffffff",
-        ["--text"]: theme.colorText ?? "#0b1f3a",
-        ["--radius"]: theme.radius ?? "9999px",
-      }) as React.CSSProperties,
-    [theme],
-  );
+  const styleVars = useMemo(() => {
+    const bg = theme.colorBackground ?? "#ffffff";
+    const text = theme.colorText ?? "#0b1f3a";
+    const surface = theme.colorSurface ?? bg;
+    return {
+      ["--acc"]: theme.colorAccent ?? "#e63946",
+      ["--bg"]: bg,
+      ["--surface"]: surface,
+      ["--text"]: text,
+      ["--radius"]: theme.radius ?? "9999px",
+      // Answer buttons — explicit tokens, else inverse-contrast defaults.
+      ["--btn-bg"]: theme.buttonBg ?? surface,
+      ["--btn-text"]: theme.buttonText ?? text,
+      ["--btn-hover-bg"]: theme.buttonHoverBg ?? text,
+      ["--btn-hover-text"]: theme.buttonHoverText ?? bg,
+    } as React.CSSProperties;
+  }, [theme]);
 
   const firm = attribution?.firm ?? "";
 
@@ -174,32 +180,32 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       )}
 
       <section className="relative flex flex-1 flex-col px-6 py-8 md:px-14">
-        <header className="flex h-12 items-center justify-between">
+        <header className="flex h-16 items-center justify-between">
           {languages.length > 1 ? (
-            <div className="flex items-center gap-1 text-sm">
+            <div className="flex items-center gap-1.5 text-sm font-medium">
               {languages.map((lng) => (
                 <button
                   key={lng}
                   type="button"
                   onClick={() => setLocale(lng)}
                   aria-pressed={locale === lng}
-                  className={`rounded-full px-3 py-1 transition ${
-                    locale === lng ? "bg-[color:var(--text)] text-[color:var(--bg)]" : "opacity-60 hover:opacity-100"
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition ${
+                    locale === lng
+                      ? "border-transparent bg-[color:var(--text)] text-[color:var(--bg)]"
+                      : "border-[color:color-mix(in_srgb,var(--text)_20%,transparent)] opacity-70 hover:opacity-100"
                   }`}
                 >
-                  {(LANGUAGE_LABELS[lng] ?? lng).slice(0, 3)}
+                  <span aria-hidden className="text-base leading-none">
+                    {LANGUAGE_FLAGS[lng] ?? "🏳️"}
+                  </span>
+                  {(LANGUAGE_LABELS[lng] ?? lng).slice(0, 3).toUpperCase()}
                 </button>
               ))}
             </div>
           ) : (
             <span />
           )}
-          {theme.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={theme.logoUrl} alt="" className="max-h-11 w-auto object-contain" />
-          ) : firm ? (
-            <span className="text-lg font-semibold">{firm}</span>
-          ) : null}
+          <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} />
         </header>
 
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8">
@@ -267,6 +273,23 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   );
 }
 
+function LogoOrName({ logoUrl, logoLink, firm }: { logoUrl?: string; logoLink?: string; firm: string }) {
+  const inner = logoUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={logoUrl} alt={firm || "logo"} className="max-h-16 w-auto object-contain md:max-h-20" />
+  ) : firm ? (
+    <span className="text-xl font-semibold md:text-2xl">{firm}</span>
+  ) : null;
+  if (!inner) return null;
+  return logoLink ? (
+    <a href={logoLink} target="_blank" rel="noopener noreferrer" className="transition hover:opacity-80">
+      {inner}
+    </a>
+  ) : (
+    inner
+  );
+}
+
 type Localize = (key: string, fallback: string | undefined) => string;
 
 function ChoiceGrid({
@@ -293,7 +316,7 @@ function ChoiceGrid({
             type="button"
             disabled={disabled}
             onClick={() => onSelect(opt)}
-            className="j-option rounded-[var(--radius)] px-5 py-4 text-center font-medium shadow-sm focus-ring disabled:opacity-50"
+            className="j-option rounded-[var(--radius)] px-6 py-4 text-center text-lg font-medium shadow-sm focus-ring disabled:opacity-50"
           >
             {L(tk.option(component.id, opt.value), opt.label)}
           </button>

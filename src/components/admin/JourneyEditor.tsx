@@ -116,6 +116,21 @@ export function JourneyEditor({
     });
   }
 
+  function addWelcome() {
+    mutate((d) => {
+      const id = `welcome_${Math.random().toString(36).slice(2, 8)}`;
+      d.pages.unshift({
+        id: `page_${id}`,
+        name: "Welcome",
+        type: "statement",
+        components: [
+          { id: `${id}-h`, type: "heading", content: "Welcome" },
+          { id: `${id}-p`, type: "paragraph", content: "Answer a few quick questions to get started." },
+        ],
+      });
+    });
+  }
+
   function addEnding() {
     mutate((d) => {
       const id = `end_${Math.random().toString(36).slice(2, 8)}`;
@@ -197,14 +212,49 @@ export function JourneyEditor({
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).colorAccent = v))}
             />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">Logo URL</label>
-            <input
-              className={input}
-              placeholder="https://…/logo.png"
-              value={def.theme?.logoUrl ?? ""}
-              onChange={(e) => mutate((d) => void ((d.theme ??= {}).logoUrl = e.target.value || undefined))}
+          <div className="flex flex-wrap gap-6">
+            <ColorField
+              label="Button"
+              value={def.theme?.buttonBg ?? def.theme?.colorSurface ?? "#ffffff"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).buttonBg = v))}
             />
+            <ColorField
+              label="Button text"
+              value={def.theme?.buttonText ?? def.theme?.colorText ?? "#0b1f3a"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).buttonText = v))}
+            />
+            <ColorField
+              label="Button hover"
+              value={def.theme?.buttonHoverBg ?? def.theme?.colorText ?? "#0b1f3a"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).buttonHoverBg = v))}
+            />
+            <ColorField
+              label="Button hover text"
+              value={def.theme?.buttonHoverText ?? def.theme?.colorBackground ?? "#ffffff"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).buttonHoverText = v))}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500">Logo URL</label>
+              <input
+                className={input}
+                placeholder="https://…/logo.png"
+                value={def.theme?.logoUrl ?? ""}
+                onChange={(e) => mutate((d) => void ((d.theme ??= {}).logoUrl = e.target.value || undefined))}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500">
+                Logo link <span className="text-gray-400">(clickable)</span>
+              </label>
+              <input
+                className={input}
+                placeholder="https://yourfirm.com"
+                value={def.theme?.logoLink ?? ""}
+                onChange={(e) => mutate((d) => void ((d.theme ??= {}).logoLink = e.target.value || undefined))}
+              />
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-500">
@@ -320,7 +370,13 @@ export function JourneyEditor({
         ))}
       </div>
 
-      <div className="mt-4 flex gap-3">
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          onClick={addWelcome}
+          className="rounded-full border border-dashed border-gray-300 px-5 py-2.5 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600"
+        >
+          + Add welcome screen
+        </button>
         <button
           onClick={addQuestion}
           className="rounded-full border border-dashed border-gray-300 px-5 py-2.5 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600"
@@ -417,6 +473,7 @@ function ComponentEditor({
         value={component.helpText ?? ""}
         onChange={(e) => onField("helpText", e.target.value)}
       />
+      <EsBox es={es} k={tk.help(component.id)} placeholder="Help text — Spanish" />
       <label className="mt-2 flex items-center gap-2 text-sm text-gray-600">
         <input
           type="checkbox"

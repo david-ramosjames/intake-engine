@@ -33,13 +33,14 @@ body {
   outline-offset: 2px;
 }
 
-/* Runtime option pill — inverts to full contrast on hover (fills with the text
-   color, flips the label to the background color). Reads correctly in any theme
-   because it derives from the journey's CSS variables. */
+/* Runtime answer button. Colors come from the journey's button variables
+   (--btn-bg / --btn-text / --btn-hover-bg / --btn-hover-text), which the player
+   sets from theme tokens — defaulting to an inverse-contrast hover. Also used
+   for its selected state (.j-option[aria-pressed="true"]). */
 .j-option {
-  background: var(--surface, #fff);
-  color: var(--text, #0b1f3a);
-  border: 1px solid color-mix(in srgb, var(--text, #0b1f3a) 14%, transparent);
+  background: var(--btn-bg, #fff);
+  color: var(--btn-text, #0b1f3a);
+  border: 1px solid color-mix(in srgb, var(--btn-text, #0b1f3a) 16%, transparent);
   transition:
     background 0.15s ease,
     color 0.15s ease,
@@ -47,12 +48,30 @@ body {
     transform 0.15s ease,
     box-shadow 0.15s ease;
 }
+.j-option:hover:not(:disabled),
+.j-option[aria-pressed="true"] {
+  background: var(--btn-hover-bg, #0b1f3a);
+  color: var(--btn-hover-text, #fff);
+  border-color: var(--btn-hover-bg, #0b1f3a);
+}
 .j-option:hover:not(:disabled) {
-  background: var(--text, #0b1f3a);
-  color: var(--bg, #fff);
-  border-color: var(--text, #0b1f3a);
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--text, #0b1f3a) 22%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--btn-hover-bg, #0b1f3a) 30%, transparent);
+}
+
+/* Runtime text inputs — adapt to the journey theme (light or dark). */
+.j-input {
+  background: color-mix(in srgb, var(--text, #0b1f3a) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text, #0b1f3a) 20%, transparent);
+  color: var(--text, #0b1f3a);
+}
+.j-input::placeholder {
+  color: var(--text, #0b1f3a);
+  opacity: 0.4;
+}
+.j-input:focus {
+  outline: none;
+  border-color: var(--acc, #e63946);
 }
 
 /* Secondary CTA — outline that fills (inverse) on hover. */

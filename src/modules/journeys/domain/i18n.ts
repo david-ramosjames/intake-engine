@@ -10,6 +10,11 @@ export const LANGUAGE_LABELS: Record<string, string> = {
   es: "Español",
 };
 
+export const LANGUAGE_FLAGS: Record<string, string> = {
+  en: "🇺🇸",
+  es: "🇪🇸",
+};
+
 /** Stable text keys — must be identical in the editor and the runtime. */
 export const tk = {
   label: (componentId: string) => `c:${componentId}:label`,

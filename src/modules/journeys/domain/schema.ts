@@ -188,9 +188,16 @@ export const themeTokensSchema = z
     colorAccent: z.string().optional(),
     fontFamily: z.string().optional(),
     radius: z.string().optional(),
+    // Answer-button colors (resting + hover). Fall back to an inverse-contrast
+    // hover derived from background/text when unset.
+    buttonBg: z.string().optional(),
+    buttonText: z.string().optional(),
+    buttonHoverBg: z.string().optional(),
+    buttonHoverText: z.string().optional(),
     // Branding: a logo shown at the top, and an optional side/hero image shown
-    // on the left on desktop.
+    // on the left on desktop. `logoLink` makes the logo clickable.
     logoUrl: z.string().optional(),
+    logoLink: z.string().optional(),
     sideImageUrl: z.string().optional(),
   })
   .partial();

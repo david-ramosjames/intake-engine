@@ -12,8 +12,8 @@ interface FieldProps {
   onChange: (value: unknown) => void;
 }
 
-const inputBase =
-  "w-full rounded-xl bg-white/10 border border-white/15 px-4 py-3 text-white placeholder-white/40 focus-ring transition";
+// Theme-aware; see .j-input in globals.css.
+const inputBase = "j-input w-full rounded-xl px-4 py-3 text-lg transition focus-ring";
 
 export function OptionList({ component, value, onChange, multi }: FieldProps & { multi?: boolean }) {
   const selected = multi ? (Array.isArray(value) ? value : []) : value;
@@ -30,15 +30,12 @@ export function OptionList({ component, value, onChange, multi }: FieldProps & {
         <button
           key={opt.value}
           type="button"
+          aria-pressed={isOn(opt.value)}
           onClick={() => toggle(opt.value)}
-          className={`group flex items-center justify-between rounded-2xl border px-5 py-4 text-left transition focus-ring ${
-            isOn(opt.value)
-              ? "border-white bg-white text-[var(--j-bg,#0b1f3a)]"
-              : "border-white/25 bg-white/5 text-white hover:border-white/60 hover:bg-white/10"
-          }`}
+          className="j-option flex items-center justify-between rounded-[var(--radius)] px-6 py-4 text-left text-lg font-medium shadow-sm transition focus-ring"
         >
           <span>
-            <span className="block font-medium">{opt.label}</span>
+            <span className="block">{opt.label}</span>
             {opt.description && <span className="mt-0.5 block text-sm opacity-70">{opt.description}</span>}
           </span>
         </button>
