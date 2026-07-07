@@ -13,6 +13,8 @@ import {
   type CreateLeadInput,
   type CreateOrgInput,
   type PlatformStore,
+  type RecordEventInput,
+  type StoredEvent,
   type UpdateJourneyInput,
   type StoredJourney,
   type StoredLead,
@@ -23,6 +25,7 @@ interface Db {
   organizations: StoredOrg[];
   journeys: StoredJourney[];
   leads: StoredLead[];
+  events: StoredEvent[];
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -50,7 +53,7 @@ function seed(): Db {
     createdAt: now,
     updatedAt: now,
   };
-  return { organizations: [org], journeys: [journey], leads: [] };
+  return { organizations: [org], journeys: [journey], leads: [], events: [] };
 }
 
 async function load(): Promise<Db> {
@@ -58,6 +61,7 @@ async function load(): Promise<Db> {
   try {
     const raw = await fs.readFile(DATA_FILE, "utf8");
     cache = JSON.parse(raw) as Db;
+    cache.events ??= []; // back-compat for stores created before events
   } catch {
     cache = seed();
     await persist();
@@ -169,6 +173,17 @@ export const demoStore: PlatformStore = {
       db.leads.splice(idx, 1);
       await persist();
     }
+  },
+
+  async recordEvent(input: RecordEventInput) {
+    const db = await load();
+    db.events.push({ id: newId("evt"), createdAt: new Date().toISOString(), ...input });
+    await persist();
+  },
+
+  async listEvents(orgId, sinceISO) {
+    const db = await load();
+    return db.events.filter((e) => e.orgId === orgId && (!sinceISO || e.createdAt >= sinceISO));
   },
 
   async createLead(input: CreateLeadInput) {

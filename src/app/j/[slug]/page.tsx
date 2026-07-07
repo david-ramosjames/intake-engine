@@ -4,7 +4,7 @@
 
 import { notFound } from "next/navigation";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
-import { store } from "@/server/store";
+import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { resolvePublicOrg } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export default async function JourneyRuntimePage({
   const org = await resolvePublicOrg(pick("org"));
   if (!org) notFound();
 
-  const journey = await store.getJourney(org.id, slug);
+  const journey = await getPublishedJourneyCached(org.id, slug);
   if (!journey || journey.status !== "PUBLISHED") notFound();
 
   const attribution: Record<string, string> = {};

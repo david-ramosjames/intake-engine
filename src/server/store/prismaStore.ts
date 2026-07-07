@@ -10,6 +10,7 @@ import type {
   CreateLeadInput,
   CreateOrgInput,
   PlatformStore,
+  StoredEvent,
   StoredJourney,
   StoredLead,
   StoredOrg,
@@ -185,6 +186,42 @@ export const prismaStore: PlatformStore = {
     const prisma = await getPrisma();
     // Scope the delete to the org (deleteMany avoids throwing when not found).
     await (prisma.lead as any).deleteMany({ where: { id, organizationId: orgId } });
+  },
+
+  async recordEvent(input) {
+    const prisma = await getPrisma();
+    await (prisma as any).journeyEvent.create({
+      data: {
+        organizationId: input.orgId,
+        journeySlug: input.journeySlug,
+        sessionId: input.sessionId,
+        type: input.type.toUpperCase(),
+        outcome: input.outcome,
+        source: input.source,
+        pageUrl: input.pageUrl,
+      },
+    });
+  },
+
+  async listEvents(orgId, sinceISO) {
+    const prisma = await getPrisma();
+    const rows = await (prisma as any).journeyEvent.findMany({
+      where: { organizationId: orgId, ...(sinceISO ? { createdAt: { gte: new Date(sinceISO) } } : {}) },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map(
+      (e: any): StoredEvent => ({
+        id: e.id,
+        orgId: e.organizationId,
+        journeySlug: e.journeySlug ?? undefined,
+        sessionId: e.sessionId,
+        type: String(e.type).toLowerCase() as StoredEvent["type"],
+        outcome: (e.outcome ?? undefined) as StoredEvent["outcome"],
+        source: e.source ?? undefined,
+        pageUrl: e.pageUrl ?? undefined,
+        createdAt: e.createdAt?.toISOString?.() ?? String(e.createdAt),
+      }),
+    );
   },
 
   async createLead(input: CreateLeadInput) {

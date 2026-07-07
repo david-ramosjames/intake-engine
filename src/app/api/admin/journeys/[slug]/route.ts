@@ -7,6 +7,7 @@ import { z } from "zod";
 import { auth, authEnabled } from "@/auth";
 import { journeyDefinitionSchema } from "@/modules/journeys/domain/schema";
 import { getAdminOrg } from "@/server/currentOrg";
+import { revalidateJourney } from "@/server/journeyCache";
 import { store } from "@/server/store";
 
 const bodySchema = z.object({
@@ -50,5 +51,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
     definition: parsed.data.definition,
   });
 
+  revalidateJourney(org.id, slug);
   return NextResponse.json({ ok: true });
 }

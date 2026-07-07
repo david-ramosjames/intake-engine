@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { auth, authEnabled } from "@/auth";
 import { getTemplate } from "@/modules/journeys/content/templates";
 import { ADMIN_ORG_COOKIE, getAdminOrg } from "@/server/currentOrg";
+import { revalidateJourney } from "@/server/journeyCache";
 import { store } from "@/server/store";
 import { slugify } from "@/server/store/types";
 
@@ -72,6 +73,7 @@ export async function createJourney(formData: FormData) {
 
   await store.createJourney(org.id, { name, slug, description: template.description, definition });
 
+  revalidateJourney(org.id, slug);
   revalidatePath("/admin/journeys");
   redirect("/admin/journeys");
 }

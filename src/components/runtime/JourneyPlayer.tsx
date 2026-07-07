@@ -12,7 +12,7 @@
 //  • Bilingual: when the journey has >1 language, a toggle switches all text
 //    instantly (translations resolved from definition.i18n).
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page } from "@/modules/journeys/domain/schema";
 import { ctaHref } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
@@ -56,6 +56,59 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const submittedRef = useRef(false);
+  const sessionRef = useRef<string>("");
+  const startedRef = useRef(false);
+
+  // Fire-and-forget funnel event.
+  const emit = useCallback(
+    (type: "opened" | "started" | "completed" | "cta_click", extra?: Record<string, string>) => {
+      if (typeof window === "undefined" || !sessionRef.current) return;
+      try {
+        void fetch("/api/events", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          keepalive: true,
+          body: JSON.stringify({
+            org: attribution?.org,
+            slug,
+            sessionId: sessionRef.current,
+            type,
+            source: attribution?.source,
+            pageUrl: window.location.href,
+            ...extra,
+          }),
+        }).catch(() => {});
+      } catch {
+        /* best-effort */
+      }
+    },
+    [slug, attribution],
+  );
+
+  // One session id per visitor+journey; record "opened" once on mount.
+  useEffect(() => {
+    let sid = "";
+    try {
+      const key = `ie_sid_${slug}`;
+      sid = sessionStorage.getItem(key) ?? "";
+      if (!sid) {
+        sid = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)) as string;
+        sessionStorage.setItem(key, sid);
+      }
+    } catch {
+      sid = Math.random().toString(36).slice(2);
+    }
+    sessionRef.current = sid;
+    emit("opened");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function markStarted() {
+    if (!startedRef.current) {
+      startedRef.current = true;
+      emit("started");
+    }
+  }
 
   const currentId = history[history.length - 1] ?? firstId;
   const page = pages.find((p) => p.id === currentId) ?? pages[0];
@@ -83,7 +136,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         });
         const data = (await res.json()) as { ok: boolean; outcome?: Outcome; error?: string };
         if (!res.ok || !data.ok) throw new Error(data.error ?? "Something went wrong.");
-        return data.outcome ?? "lead";
+        const outcome = data.outcome ?? "lead";
+        emit("completed", { outcome });
+        return outcome;
       } catch (e) {
         submittedRef.current = false;
         setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -92,7 +147,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         setBusy(false);
       }
     },
-    [slug, attribution],
+    [slug, attribution, emit],
   );
 
   const goTo = useCallback(
@@ -134,12 +189,14 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
     inputs.length === 1 && (inputs[0]!.type === "singleSelect" || inputs[0]!.type === "radio") ? inputs[0]! : null;
 
   function selectOption(component: Component, opt: Option) {
+    markStarted();
     const next = { ...answers, [component.key!]: opt.value };
     setAnswers(next);
     void advance(page!, next, opt.goTo);
   }
 
   function set(key: string, value: unknown) {
+    markStarted();
     setAnswers((a) => ({ ...a, [key]: value }));
     setError(null);
   }
@@ -225,7 +282,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8">
           {terminal ? (
-            <EndingView page={page!} L={L} />
+            <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-8">
               <div className="space-y-6">
@@ -456,7 +513,7 @@ function formatPhone(raw: string): string {
   return raw;
 }
 
-function EndingView({ page, L }: { page: Page; L: Localize }) {
+function EndingView({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
   // Surface the first phone number as prominent, clickable text (in addition to
   // the CTA button) on ending screens.
   const phoneCta = page.cta?.find((c) => c.type === "call" || c.type === "text" || c.href?.startsWith("tel:"));
@@ -477,6 +534,7 @@ function EndingView({ page, L }: { page: Page; L: Localize }) {
       {phoneValue && (
         <a
           href={`tel:${phoneValue.replace(/[^\d+]/g, "")}`}
+          onClick={onCtaClick}
           className="inline-block text-2xl font-semibold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:text-3xl"
         >
           {formatPhone(phoneValue)}
@@ -486,13 +544,19 @@ function EndingView({ page, L }: { page: Page; L: Localize }) {
         <div className="flex flex-wrap gap-3 pt-2">
           {page.cta.map((cta, i) =>
             cta.style === "secondary" ? (
-              <a key={i} href={ctaHref(cta)} className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring">
+              <a
+                key={i}
+                href={ctaHref(cta)}
+                onClick={onCtaClick}
+                className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring"
+              >
                 {L(tk.cta(page.id, i), cta.label)}
               </a>
             ) : (
               <a
                 key={i}
                 href={ctaHref(cta)}
+                onClick={onCtaClick}
                 className="rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring"
               >
                 {L(tk.cta(page.id, i), cta.label)}

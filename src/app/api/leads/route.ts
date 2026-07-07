@@ -5,7 +5,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { submitLead } from "@/modules/leads/service";
-import { store } from "@/server/store";
+import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { resolvePublicOrg } from "@/server/tenant";
 
 const bodySchema = z.object({
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const org = await resolvePublicOrg(attribution.org);
   if (!org) return NextResponse.json({ ok: false, error: "Unknown tenant." }, { status: 404 });
 
-  const journey = await store.getJourney(org.id, slug);
+  const journey = await getPublishedJourneyCached(org.id, slug);
   if (!journey) return NextResponse.json({ ok: false, error: "Journey not found." }, { status: 404 });
 
   const result = await submitLead(journey, answers, attribution, endingType, context);

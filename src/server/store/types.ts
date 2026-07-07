@@ -84,6 +84,30 @@ export interface CreateLeadInput {
   medium?: string;
 }
 
+export type EventType = "opened" | "started" | "completed" | "cta_click";
+
+export interface StoredEvent {
+  id: string;
+  orgId: string;
+  journeySlug?: string;
+  sessionId: string;
+  type: EventType;
+  outcome?: LeadOutcome;
+  source?: string;
+  pageUrl?: string;
+  createdAt: string;
+}
+
+export interface RecordEventInput {
+  orgId: string;
+  journeySlug?: string;
+  sessionId: string;
+  type: EventType;
+  outcome?: LeadOutcome;
+  source?: string;
+  pageUrl?: string;
+}
+
 export interface PlatformStore {
   listOrganizations(): Promise<StoredOrg[]>;
   getOrganization(id: string): Promise<StoredOrg | null>;
@@ -99,6 +123,9 @@ export interface PlatformStore {
   getLead(orgId: string, id: string): Promise<StoredLead | null>;
   createLead(input: CreateLeadInput): Promise<StoredLead>;
   deleteLead(orgId: string, id: string): Promise<void>;
+
+  recordEvent(input: RecordEventInput): Promise<void>;
+  listEvents(orgId: string, sinceISO?: string): Promise<StoredEvent[]>;
 }
 
 /** Small URL-safe id (not a cuid, but fine for the DEMO store). */
