@@ -15,7 +15,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page } from "@/modules/journeys/domain/schema";
 import { ctaHref } from "@/modules/journeys/domain/schema";
-import { LANGUAGE_FLAGS, LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
+import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
 import { isComponentVisible, isTerminalType, resolveNext, type Answers } from "@/modules/journeys/runtime/engine";
 import { Field } from "./fields";
 
@@ -189,15 +189,13 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   type="button"
                   onClick={() => setLocale(lng)}
                   aria-pressed={locale === lng}
-                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition ${
+                  className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 transition ${
                     locale === lng
                       ? "border-transparent bg-[color:var(--text)] text-[color:var(--bg)]"
-                      : "border-[color:color-mix(in_srgb,var(--text)_20%,transparent)] opacity-70 hover:opacity-100"
+                      : "border-[color:color-mix(in_srgb,var(--text)_25%,transparent)] opacity-70 hover:opacity-100"
                   }`}
                 >
-                  <span aria-hidden className="text-base leading-none">
-                    {LANGUAGE_FLAGS[lng] ?? "🏳️"}
-                  </span>
+                  <Flag code={lng} />
                   {(LANGUAGE_LABELS[lng] ?? lng).slice(0, 3).toUpperCase()}
                 </button>
               ))}
@@ -270,6 +268,29 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         </div>
       </section>
     </main>
+  );
+}
+
+// Inline SVG flags — reliable everywhere (emoji flags don't render on Windows).
+function Flag({ code }: { code: string }) {
+  const cls = "h-3.5 w-5 shrink-0 rounded-[2px] shadow-sm ring-1 ring-black/10";
+  if (code === "es") {
+    return (
+      <svg viewBox="0 0 24 16" className={cls} aria-hidden>
+        <rect width="24" height="16" fill="#c60b1e" />
+        <rect y="4" width="24" height="8" fill="#ffc400" />
+      </svg>
+    );
+  }
+  // default: United States
+  return (
+    <svg viewBox="0 0 24 16" className={cls} aria-hidden>
+      <rect width="24" height="16" fill="#fff" />
+      {Array.from({ length: 7 }).map((_, i) => (
+        <rect key={i} y={(i * 16) / 6.5} width="24" height={16 / 13} fill="#b22234" />
+      ))}
+      <rect width="10" height={(16 / 13) * 7} fill="#3c3b6e" />
+    </svg>
   );
 }
 

@@ -16,8 +16,9 @@ const CONTENT_TYPES = new Set(["heading", "paragraph"]);
 
 type EsHelpers = { esEnabled: boolean; getEs: (key: string) => string; setEs: (key: string, val: string) => void };
 
-const input =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+const controlBase =
+  "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+const input = `${controlBase} w-full`;
 
 function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;
@@ -128,6 +129,23 @@ export function JourneyEditor({
           { id: `${id}-p`, type: "paragraph", content: "Answer a few quick questions to get started." },
         ],
       });
+    });
+  }
+
+  function addField(pi: number) {
+    mutate((d) => {
+      const id = `q_${Math.random().toString(36).slice(2, 8)}`;
+      d.pages[pi]!.components.push({
+        id,
+        type: "singleSelect",
+        key: id,
+        label: "New question",
+        validation: { required: true },
+        options: [
+          { label: "Option 1", value: "option_1" },
+          { label: "Option 2", value: "option_2" },
+        ],
+      } as Component);
     });
   }
 
@@ -285,18 +303,19 @@ export function JourneyEditor({
       <div className="mt-6 space-y-4">
         {def.pages.map((page, pi) => (
           <section key={page.id} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <input
-                  className="rounded-md border border-transparent bg-transparent px-1 text-sm font-semibold text-gray-900 hover:border-gray-200 focus:border-gray-300 focus:outline-none"
+                  className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-sm font-semibold text-gray-900 hover:border-gray-200 focus:border-gray-300 focus:outline-none"
                   value={page.name}
+                  placeholder="Screen name"
                   onChange={(e) => mutate((d) => void (d.pages[pi]!.name = e.target.value))}
                 />
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
+                <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
                   {page.type}
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-gray-400">
+              <div className="flex shrink-0 items-center gap-1 text-gray-400">
                 <IconBtn label="Move up" disabled={pi === 0} onClick={() => mutate((d) => swap(d.pages, pi, pi - 1))}>
                   ↑
                 </IconBtn>
@@ -354,9 +373,23 @@ export function JourneyEditor({
                   onRemoveOption={(oi) =>
                     mutate((d) => void d.pages[pi]!.components[ci]!.options!.splice(oi, 1))
                   }
+                  onRemove={
+                    page.components.length > 1
+                      ? () => mutate((d) => void d.pages[pi]!.components.splice(ci, 1))
+                      : undefined
+                  }
                 />
               ))}
             </div>
+
+            {!terminalTypes.has(page.type) && (
+              <button
+                onClick={() => addField(pi)}
+                className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                + Add question to this screen
+              </button>
+            )}
 
             {terminalTypes.has(page.type) && page.type !== "review" && (
               <CtaEditor
@@ -412,6 +445,20 @@ function EsBox({ es, k, placeholder }: { es: EsHelpers; k: string; placeholder: 
   );
 }
 
+function RemoveField({ onRemove }: { onRemove?: () => void }) {
+  if (!onRemove) return null;
+  return (
+    <button
+      onClick={onRemove}
+      className="shrink-0 rounded-md px-2 py-1 text-gray-300 transition hover:bg-gray-100 hover:text-gray-600"
+      aria-label="Remove this field"
+      title="Remove this field"
+    >
+      ✕
+    </button>
+  );
+}
+
 function ComponentEditor({
   component,
   pages,
@@ -423,6 +470,7 @@ function ComponentEditor({
   onOptionGoTo,
   onAddOption,
   onRemoveOption,
+  onRemove,
 }: {
   component: Component;
   pages: PageRef[];
@@ -434,13 +482,17 @@ function ComponentEditor({
   onOptionGoTo: (oi: number, goTo: string) => void;
   onAddOption: () => void;
   onRemoveOption: (oi: number) => void;
+  onRemove?: () => void;
 }) {
   if (CONTENT_TYPES.has(component.type)) {
     return (
       <div>
-        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-400">
-          {component.type}
-        </label>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
+            {component.type}
+          </label>
+          <RemoveField onRemove={onRemove} />
+        </div>
         <textarea
           className={input}
           rows={component.type === "paragraph" ? 3 : 1}
@@ -457,7 +509,7 @@ function ComponentEditor({
     <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
       <div className="flex items-center gap-2">
         <input
-          className={input}
+          className={`${controlBase} min-w-0 flex-1`}
           placeholder="Question"
           value={component.label ?? ""}
           onChange={(e) => onField("label", e.target.value)}
@@ -465,6 +517,7 @@ function ComponentEditor({
         <span className="shrink-0 rounded-md bg-gray-100 px-2 py-1 text-[10px] uppercase text-gray-500">
           {component.type}
         </span>
+        <RemoveField onRemove={onRemove} />
       </div>
       <EsBox es={es} k={tk.label(component.id)} placeholder="Question — Spanish" />
       <input
@@ -490,10 +543,15 @@ function ComponentEditor({
           {component.options?.map((o, oi) => (
             <div key={oi} className="space-y-1">
               <div className="flex items-center gap-2">
-                <input className={input} value={o.label} onChange={(e) => onOptionLabel(oi, e.target.value)} />
+                <input
+                  className={`${controlBase} min-w-0 flex-1`}
+                  placeholder="Answer label"
+                  value={o.label}
+                  onChange={(e) => onOptionLabel(oi, e.target.value)}
+                />
                 <span className="shrink-0 text-xs text-gray-400">→</span>
                 <select
-                  className={`${input} w-44 shrink-0`}
+                  className={`${controlBase} w-40 shrink-0`}
                   value={o.goTo ?? ""}
                   onChange={(e) => onOptionGoTo(oi, e.target.value)}
                   title="Where this answer leads"
@@ -561,7 +619,7 @@ function CtaEditor({
           <div key={i} className="space-y-1.5">
             <div className="flex items-center gap-2">
               <select
-                className={`${input} w-28 shrink-0`}
+                className={`${controlBase} w-24 shrink-0`}
                 value={c.type}
                 onChange={(e) => set(i, { type: e.target.value as CtaRow["type"] })}
               >
@@ -572,19 +630,19 @@ function CtaEditor({
                 <option value="custom">Custom</option>
               </select>
               <input
-                className={input}
+                className={`${controlBase} min-w-0 flex-1`}
                 placeholder="Button label (e.g. Call Us Now)"
                 value={c.label}
                 onChange={(e) => set(i, { label: e.target.value })}
               />
               <input
-                className={input}
+                className={`${controlBase} min-w-0 flex-1`}
                 placeholder={c.type === "call" || c.type === "text" ? "+15125550100" : "https://…"}
                 value={c.value}
                 onChange={(e) => set(i, { value: e.target.value })}
               />
               <select
-                className={`${input} w-28 shrink-0`}
+                className={`${controlBase} w-24 shrink-0`}
                 value={c.style}
                 onChange={(e) => set(i, { style: e.target.value as CtaRow["style"] })}
               >
