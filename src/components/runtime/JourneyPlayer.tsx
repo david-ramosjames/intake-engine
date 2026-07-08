@@ -13,7 +13,7 @@
 //    instantly (translations resolved from definition.i18n).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Component, JourneyDefinition, Option, Page } from "@/modules/journeys/domain/schema";
+import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
 import { ctaHref } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
 import { isComponentVisible, isTerminalType, resolveNext, type Answers } from "@/modules/journeys/runtime/engine";
@@ -247,10 +247,33 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
     >
       {theme.sideImageUrl && (
         <aside
-          className="hidden bg-cover bg-center md:block md:w-[38%] lg:w-[40%]"
+          className="relative hidden bg-cover bg-center md:block md:w-[38%] lg:w-[40%]"
           style={{ backgroundImage: `url("${theme.sideImageUrl}")` }}
-          aria-hidden
-        />
+        >
+          {theme.sideOverlay &&
+            (theme.sideOverlay.title || theme.sideOverlay.subtitle || theme.sideOverlay.bullets?.length) && (
+              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/40 to-transparent p-8 text-white lg:p-10">
+                {theme.sideOverlay.title && (
+                  <div className="text-2xl font-semibold lg:text-3xl">{theme.sideOverlay.title}</div>
+                )}
+                {theme.sideOverlay.subtitle && (
+                  <div className="mt-1 text-white/80">{theme.sideOverlay.subtitle}</div>
+                )}
+                {theme.sideOverlay.bullets && theme.sideOverlay.bullets.length > 0 && (
+                  <ul className="mt-4 space-y-2">
+                    {theme.sideOverlay.bullets.map((b, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-white/90">
+                        <span className="mt-0.5 text-amber-400" aria-hidden>
+                          ★
+                        </span>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+        </aside>
       )}
 
       <section className="relative flex flex-1 flex-col px-6 py-8 md:px-14">
@@ -303,6 +326,10 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                     ),
                   )}
               </div>
+
+              {page?.cta && page.cta.length > 0 && (
+                <CtaBlock page={page} L={L} onCtaClick={() => emit("cta_click")} />
+              )}
 
               {error && <p className="text-sm text-[color:var(--acc)]">{error}</p>}
 
@@ -446,6 +473,8 @@ function ContentOrField({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={component.src} alt="" className="max-h-72 w-full rounded-2xl object-cover" />
       ) : null;
+    case "stats":
+      return component.stats && component.stats.length > 0 ? <StatsBar stats={component.stats} /> : null;
     case "review":
       return <ReviewView answers={answers} definition={definition} label={L(tk.label(component.id), component.label)} />;
     default: {
@@ -513,11 +542,103 @@ function formatPhone(raw: string): string {
   return raw;
 }
 
-function EndingView({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
-  // Surface the first phone number as prominent, clickable text (in addition to
-  // the CTA button) on ending screens.
-  const phoneCta = page.cta?.find((c) => c.type === "call" || c.type === "text" || c.href?.startsWith("tel:"));
+// Animated count-up for a trust figure like "$50M+", "200+", "4.9", "$1,273,000".
+function CountUp({ raw }: { raw: string }) {
+  const m = raw.match(/^([^\d]*)([\d.,]+)(.*)$/);
+  const target = m ? parseFloat(m[2]!.replace(/,/g, "")) : 0;
+  const decimals = m ? (m[2]!.split(".")[1]?.length ?? 0) : 0;
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!m) return;
+    let raf = 0;
+    const start = performance.now();
+    const dur = 900;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / dur);
+      setVal(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [raw]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!m) return <>{raw}</>;
+  const shown = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString();
+  return (
+    <>
+      {m[1]}
+      {shown}
+      {m[3]}
+    </>
+  );
+}
+
+function StatsBar({ stats }: { stats: StatItem[] }) {
+  return (
+    <div className="flex flex-wrap gap-x-8 gap-y-5">
+      {stats.map((s, i) => (
+        <div
+          key={i}
+          className={i > 0 ? "sm:border-l sm:pl-8" : ""}
+          style={i > 0 ? { borderColor: "color-mix(in srgb, currentColor 18%, transparent)" } : undefined}
+        >
+          <div className="flex items-baseline gap-2">
+            {s.icon && <span className="text-2xl leading-none">{s.icon}</span>}
+            <span className="text-2xl font-semibold sm:text-3xl">
+              <CountUp raw={s.value} />
+            </span>
+          </div>
+          <div className="mt-1 text-sm opacity-70">{s.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Phone number (prominent, clickable) + call-to-action buttons. Used on ending
+// screens and any welcome/statement page that defines page.cta.
+function CtaBlock({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
+  if (!page.cta || page.cta.length === 0) return null;
+  const phoneCta = page.cta.find((c) => c.type === "call" || c.type === "text" || c.href?.startsWith("tel:"));
   const phoneValue = phoneCta ? (phoneCta.value ?? phoneCta.href?.replace(/^tel:|^sms:/, "") ?? "") : "";
+  return (
+    <div className="space-y-4 pt-1">
+      {phoneValue && (
+        <a
+          href={`tel:${phoneValue.replace(/[^\d+]/g, "")}`}
+          onClick={onCtaClick}
+          className="inline-block text-3xl font-bold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:text-4xl"
+        >
+          {formatPhone(phoneValue)}
+        </a>
+      )}
+      <div className="flex flex-wrap gap-3">
+        {page.cta.map((cta, i) =>
+          cta.style === "secondary" ? (
+            <a
+              key={i}
+              href={ctaHref(cta)}
+              onClick={onCtaClick}
+              className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring"
+            >
+              {L(tk.cta(page.id, i), cta.label)}
+            </a>
+          ) : (
+            <a
+              key={i}
+              href={ctaHref(cta)}
+              onClick={onCtaClick}
+              className="rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring"
+            >
+              {L(tk.cta(page.id, i), cta.label)}
+            </a>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EndingView({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
   return (
     <div className="animate-fade-up space-y-6">
       {page.components.map((c) =>
@@ -525,46 +646,15 @@ function EndingView({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
           <h1 key={c.id} className="text-3xl font-semibold sm:text-4xl">
             {L(tk.content(c.id), c.content)}
           </h1>
+        ) : c.type === "stats" && c.stats ? (
+          <StatsBar key={c.id} stats={c.stats} />
         ) : (
           <p key={c.id} className="text-lg leading-relaxed opacity-70">
             {L(tk.content(c.id), c.content)}
           </p>
         ),
       )}
-      {phoneValue && (
-        <a
-          href={`tel:${phoneValue.replace(/[^\d+]/g, "")}`}
-          onClick={onCtaClick}
-          className="inline-block text-2xl font-semibold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:text-3xl"
-        >
-          {formatPhone(phoneValue)}
-        </a>
-      )}
-      {page.cta && page.cta.length > 0 && (
-        <div className="flex flex-wrap gap-3 pt-2">
-          {page.cta.map((cta, i) =>
-            cta.style === "secondary" ? (
-              <a
-                key={i}
-                href={ctaHref(cta)}
-                onClick={onCtaClick}
-                className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring"
-              >
-                {L(tk.cta(page.id, i), cta.label)}
-              </a>
-            ) : (
-              <a
-                key={i}
-                href={ctaHref(cta)}
-                onClick={onCtaClick}
-                className="rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring"
-              >
-                {L(tk.cta(page.id, i), cta.label)}
-              </a>
-            ),
-          )}
-        </div>
-      )}
+      <CtaBlock page={page} L={L} onCtaClick={onCtaClick} />
     </div>
   );
 }

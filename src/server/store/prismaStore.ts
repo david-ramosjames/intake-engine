@@ -166,6 +166,23 @@ export const prismaStore: PlatformStore = {
     return journeyRow(updated, input.definition);
   },
 
+  async duplicateJourney(orgId, slug) {
+    const src = await this.getJourney(orgId, slug);
+    if (!src) throw new Error("Journey not found.");
+    const prisma = await getPrisma();
+    let newSlug = `${slug}-copy`;
+    let n = 2;
+    while (await prisma.journey.findFirst({ where: { organizationId: orgId, slug: newSlug } })) {
+      newSlug = `${slug}-copy-${n++}`;
+    }
+    return this.createJourney(orgId, {
+      name: `${src.name} (copy)`,
+      slug: newSlug,
+      description: src.description,
+      definition: src.definition,
+    });
+  },
+
   async listLeads(orgId) {
     const prisma = await getPrisma();
     const rows = await prisma.lead.findMany({

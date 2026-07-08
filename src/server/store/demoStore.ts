@@ -154,6 +154,30 @@ export const demoStore: PlatformStore = {
     return journey;
   },
 
+  async duplicateJourney(orgId, slug) {
+    const db = await load();
+    const src = db.journeys.find((j) => j.orgId === orgId && j.slug === slug);
+    if (!src) throw new Error("Journey not found.");
+    let newSlug = `${src.slug}-copy`;
+    let n = 2;
+    while (db.journeys.some((j) => j.orgId === orgId && j.slug === newSlug)) newSlug = `${src.slug}-copy-${n++}`;
+    const now = new Date().toISOString();
+    const copy: StoredJourney = {
+      id: newId("jny"),
+      orgId,
+      slug: newSlug,
+      name: `${src.name} (copy)`,
+      description: src.description,
+      status: "PUBLISHED",
+      definition: JSON.parse(JSON.stringify(src.definition)),
+      createdAt: now,
+      updatedAt: now,
+    };
+    db.journeys.push(copy);
+    await persist();
+    return copy;
+  },
+
   async listLeads(orgId) {
     const db = await load();
     return db.leads

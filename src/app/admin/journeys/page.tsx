@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { duplicateJourney } from "@/app/admin/actions";
 import { getAdminOrg } from "@/server/currentOrg";
 import { hasDatabase } from "@/server/db";
 import { store } from "@/server/store";
@@ -72,6 +73,15 @@ export default async function AdminJourneys() {
               >
                 Preview
               </Link>
+              <form action={duplicateJourney}>
+                <input type="hidden" name="slug" value={j.slug} />
+                <button
+                  type="submit"
+                  className="rounded-full border border-gray-300 px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50"
+                >
+                  Duplicate
+                </button>
+              </form>
               <Link
                 href={`/admin/journeys/${j.slug}/edit`}
                 className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"

@@ -149,6 +149,21 @@ export function JourneyEditor({
     });
   }
 
+  function addStats(pi: number) {
+    mutate((d) => {
+      const id = `stats_${Math.random().toString(36).slice(2, 8)}`;
+      d.pages[pi]!.components.push({
+        id,
+        type: "stats",
+        stats: [
+          { value: "200+", label: "Google Reviews", icon: "⭐" },
+          { value: "$50M+", label: "Won for our Clients" },
+          { value: "33+", label: "Years of Experience" },
+        ],
+      } as Component);
+    });
+  }
+
   function addEnding() {
     mutate((d) => {
       const id = `end_${Math.random().toString(36).slice(2, 8)}`;
@@ -287,6 +302,71 @@ export function JourneyEditor({
               }
             />
           </div>
+
+          {/* Side image overlay (trust signals over the photo) */}
+          <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+            <div className="text-xs font-medium text-gray-500">Side image overlay (trust signals)</div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <input
+                className={input}
+                placeholder="Title (e.g. Injured in an accident?)"
+                value={def.theme?.sideOverlay?.title ?? ""}
+                onChange={(e) =>
+                  mutate((d) => void (((d.theme ??= {}).sideOverlay ??= {}).title = e.target.value || undefined))
+                }
+              />
+              <input
+                className={input}
+                placeholder="Subtitle (e.g. No Win, No Fee.)"
+                value={def.theme?.sideOverlay?.subtitle ?? ""}
+                onChange={(e) =>
+                  mutate((d) => void (((d.theme ??= {}).sideOverlay ??= {}).subtitle = e.target.value || undefined))
+                }
+              />
+            </div>
+            <div className="mt-2 space-y-2">
+              {(def.theme?.sideOverlay?.bullets ?? []).map((b, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-amber-500">★</span>
+                  <input
+                    className={`${controlBase} min-w-0 flex-1`}
+                    placeholder="No Fee Unless We Win Your Case"
+                    value={b}
+                    onChange={(e) =>
+                      mutate((d) => {
+                        const ov = ((d.theme ??= {}).sideOverlay ??= {});
+                        ov.bullets = (ov.bullets ?? []).map((x, j) => (j === i ? e.target.value : x));
+                      })
+                    }
+                  />
+                  <button
+                    onClick={() =>
+                      mutate((d) => {
+                        const ov = ((d.theme ??= {}).sideOverlay ??= {});
+                        ov.bullets = (ov.bullets ?? []).filter((_, j) => j !== i);
+                      })
+                    }
+                    className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                    aria-label="Remove bullet"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() =>
+                  mutate((d) => {
+                    const ov = ((d.theme ??= {}).sideOverlay ??= {});
+                    ov.bullets = [...(ov.bullets ?? []), "New trust signal"];
+                  })
+                }
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                + Add trust signal
+              </button>
+            </div>
+          </div>
+
           <label className="flex items-center gap-2 pt-1 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -373,6 +453,7 @@ export function JourneyEditor({
                   onRemoveOption={(oi) =>
                     mutate((d) => void d.pages[pi]!.components[ci]!.options!.splice(oi, 1))
                   }
+                  onStats={(stats) => mutate((d) => void (d.pages[pi]!.components[ci]!.stats = stats))}
                   onRemove={
                     page.components.length > 1
                       ? () => mutate((d) => void d.pages[pi]!.components.splice(ci, 1))
@@ -383,15 +464,17 @@ export function JourneyEditor({
             </div>
 
             {!terminalTypes.has(page.type) && (
-              <button
-                onClick={() => addField(pi)}
-                className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-700"
-              >
-                + Add question to this screen
-              </button>
+              <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium text-blue-600">
+                <button onClick={() => addField(pi)} className="hover:text-blue-700">
+                  + Add question to this screen
+                </button>
+                <button onClick={() => addStats(pi)} className="hover:text-blue-700">
+                  + Add trust bar
+                </button>
+              </div>
             )}
 
-            {terminalTypes.has(page.type) && page.type !== "review" && (
+            {(terminalTypes.has(page.type) || page.type === "statement") && page.type !== "review" && (
               <CtaEditor
                 cta={page.cta ?? []}
                 pageId={page.id}
@@ -470,6 +553,7 @@ function ComponentEditor({
   onOptionGoTo,
   onAddOption,
   onRemoveOption,
+  onStats,
   onRemove,
 }: {
   component: Component;
@@ -482,8 +566,60 @@ function ComponentEditor({
   onOptionGoTo: (oi: number, goTo: string) => void;
   onAddOption: () => void;
   onRemoveOption: (oi: number) => void;
+  onStats?: (stats: Array<{ value: string; label: string; icon?: string }>) => void;
   onRemove?: () => void;
 }) {
+  if (component.type === "stats") {
+    const stats = component.stats ?? [];
+    const set = (i: number, patch: Partial<{ value: string; label: string; icon?: string }>) =>
+      onStats?.(stats.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+    return (
+      <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Trust stats (count up)</span>
+          <RemoveField onRemove={onRemove} />
+        </div>
+        <div className="space-y-2">
+          {stats.map((s, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                className={`${controlBase} w-16 shrink-0 text-center`}
+                placeholder="⭐"
+                value={s.icon ?? ""}
+                onChange={(e) => set(i, { icon: e.target.value || undefined })}
+              />
+              <input
+                className={`${controlBase} w-32 shrink-0`}
+                placeholder="$50M+"
+                value={s.value}
+                onChange={(e) => set(i, { value: e.target.value })}
+              />
+              <input
+                className={`${controlBase} min-w-0 flex-1`}
+                placeholder="Won for our Clients"
+                value={s.label}
+                onChange={(e) => set(i, { label: e.target.value })}
+              />
+              <button
+                onClick={() => onStats?.(stats.filter((_, j) => j !== i))}
+                className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Remove stat"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => onStats?.([...stats, { value: "100+", label: "New stat" }])}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            + Add stat
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (CONTENT_TYPES.has(component.type)) {
     return (
       <div>

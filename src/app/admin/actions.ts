@@ -45,6 +45,17 @@ export async function selectOrganization(formData: FormData) {
   redirect("/admin");
 }
 
+export async function duplicateJourney(formData: FormData) {
+  await requireUser();
+  const org = await getAdminOrg();
+  if (!org) throw new Error("No organization selected.");
+  const slug = String(formData.get("slug") ?? "");
+  const copy = await store.duplicateJourney(org.id, slug);
+  revalidateJourney(org.id, copy.slug);
+  revalidatePath("/admin/journeys");
+  redirect(`/admin/journeys/${copy.slug}/edit`);
+}
+
 export async function deleteLead(formData: FormData) {
   await requireUser();
   const org = await getAdminOrg();

@@ -118,6 +118,7 @@ export interface PlatformStore {
   getJourney(orgId: string, slug: string): Promise<StoredJourney | null>;
   createJourney(orgId: string, input: CreateJourneyInput): Promise<StoredJourney>;
   updateJourney(orgId: string, slug: string, input: UpdateJourneyInput): Promise<StoredJourney>;
+  duplicateJourney(orgId: string, slug: string): Promise<StoredJourney>;
 
   listLeads(orgId: string): Promise<StoredLead[]>;
   getLead(orgId: string, id: string): Promise<StoredLead | null>;

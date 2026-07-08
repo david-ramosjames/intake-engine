@@ -284,9 +284,19 @@ const general: JourneyTemplate = {
         id: "welcome",
         name: "Welcome",
         type: "question",
+        cta: [{ label: "Call Us Now", type: "call", value: "+15128838904", style: "primary" }],
         components: [
           { id: "gw-h", type: "heading", content: "We're here to help" },
           { id: "gw-p", type: "paragraph", content: "Answer a few quick questions and we'll tell you how we can help." },
+          {
+            id: "gw-stats",
+            type: "stats",
+            stats: [
+              { value: "200+", label: "Google Reviews", icon: "⭐" },
+              { value: "4.9", label: "Average Client Rating" },
+              { value: "$50M+", label: "Won for our Clients" },
+            ],
+          },
           {
             id: "case_type",
             type: "singleSelect",

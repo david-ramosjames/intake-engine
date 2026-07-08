@@ -22,6 +22,7 @@ export const componentType = z.enum([
   "image",
   "video",
   "progress",
+  "stats",
   // inputs
   "shortText",
   "longText",
@@ -92,6 +93,14 @@ export const validationSchema = z
   })
   .optional();
 
+// A single trust figure, e.g. { value: "$50M+", label: "Won for our Clients" }.
+export const statItemSchema = z.object({
+  value: z.string(),
+  label: z.string(),
+  icon: z.string().optional(), // emoji or short glyph
+});
+export type StatItem = z.infer<typeof statItemSchema>;
+
 export const componentSchema = z.object({
   id: z.string(),
   type: componentType,
@@ -104,6 +113,8 @@ export const componentSchema = z.object({
   content: z.string().optional(),
   src: z.string().optional(),
   options: z.array(optionSchema).optional(),
+  // Trust-bar figures (type "stats"). Numbers count up on load.
+  stats: z.array(statItemSchema).optional(),
   validation: validationSchema,
   // Conditional visibility for a single component.
   condition: expressionSchema.optional(),
@@ -199,6 +210,14 @@ export const themeTokensSchema = z
     logoUrl: z.string().optional(),
     logoLink: z.string().optional(),
     sideImageUrl: z.string().optional(),
+    // Optional overlay of trust signals on top of the side image.
+    sideOverlay: z
+      .object({
+        title: z.string().optional(),
+        subtitle: z.string().optional(),
+        bullets: z.array(z.string()).optional(),
+      })
+      .optional(),
   })
   .partial();
 export type ThemeTokens = z.infer<typeof themeTokensSchema>;
