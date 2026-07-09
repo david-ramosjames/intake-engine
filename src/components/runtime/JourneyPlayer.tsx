@@ -292,8 +292,8 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         </aside>
       )}
 
-      <section className="relative flex flex-1 flex-col px-6 py-8 md:px-14">
-        <header className="flex h-16 items-center justify-between">
+      <section className="relative flex flex-1 flex-col px-6 py-6 md:px-14">
+        <header className="flex h-14 items-center justify-between">
           {languages.length > 1 ? (
             <div className="flex items-center gap-1.5 text-sm font-medium">
               {languages.map((lng) => (
@@ -319,12 +319,12 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} />
         </header>
 
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-8">
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-4">
           {terminal ? (
             <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
-            <div key={page?.id} className="animate-fade-up space-y-8">
-              <div className="space-y-6">
+            <div key={page?.id} className="animate-fade-up space-y-6">
+              <div className="space-y-5">
                 {mainComps.map((c) =>
                   soleChoice && c.id === soleChoice.id ? (
                     <ChoiceGrid key={c.id} component={c} L={L} onSelect={(o) => selectOption(c, o)} disabled={busy} />
@@ -491,8 +491,8 @@ function ContentOrField({
       const label = L(tk.label(component.id), component.label);
       const help = L(tk.help(component.id), component.helpText);
       return (
-        <div className="space-y-3">
-          {label && <label className="block text-xl font-medium">{label}</label>}
+        <div className="space-y-2">
+          {label && <label className="block text-lg font-medium">{label}</label>}
           {help && <p className="text-sm opacity-60">{help}</p>}
           <Field component={component} value={component.key ? answers[component.key] : undefined} onChange={onChange} />
         </div>
