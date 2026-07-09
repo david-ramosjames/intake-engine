@@ -364,8 +364,13 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
               {error && <p className="text-sm text-[color:var(--acc)]">{error}</p>}
 
-              {/* Primary intake action first, so it's never lost. */}
-              <div className="flex items-center gap-4">
+              {/* Mobile: big tap-to-call number (desktop shows the call button
+                  inline with Start instead). */}
+              {page && <MobileCallNumber page={page} onCtaClick={() => emit("cta_click")} />}
+
+              {/* Primary intake action and the call CTA share a row, so the
+                  form stays compact. Back sits alongside them. */}
+              <div className="flex flex-wrap items-center gap-3">
                 {history.length > 1 && (
                   <button
                     type="button"
@@ -385,12 +390,8 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                     {continueText}
                   </button>
                 )}
+                {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
               </div>
-
-              {/* Call CTA below the intake button. */}
-              {page?.cta && page.cta.length > 0 && (
-                <CtaBlock page={page} L={L} onCtaClick={() => emit("cta_click")} />
-              )}
 
               {/* Trust stats under the CTAs. */}
               {statsComps.map((c) => (c.stats ? <StatsBar key={c.id} stats={c.stats} /> : null))}
@@ -656,60 +657,77 @@ function ctaNumber(c: { value?: string; href?: string }) {
 // Non-call CTAs (links) show on all sizes.
 function CtaBlock({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
   if (!page.cta || page.cta.length === 0) return null;
-  const phoneCta = page.cta.find(isCallCta);
-  const phoneValue = phoneCta ? ctaNumber(phoneCta) : "";
   return (
     <div className="space-y-4 pt-1">
-      {/* Mobile: big tap-to-call number (desktop uses the button instead). */}
-      {phoneValue && (
-        <a
-          href={`tel:${phoneValue.replace(/[^\d+]/g, "")}`}
-          onClick={onCtaClick}
-          className="inline-block text-3xl font-bold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:hidden"
-        >
-          {formatPhone(phoneValue)}
-        </a>
-      )}
+      <MobileCallNumber page={page} onCtaClick={onCtaClick} />
       <div className="flex flex-wrap gap-3">
-        {page.cta.map((cta, i) => {
-          const label = L(tk.cta(page.id, i), cta.label);
-          if (isCallCta(cta)) {
-            const num = ctaNumber(cta);
-            return (
-              <a
-                key={i}
-                href={ctaHref(cta)}
-                onClick={onCtaClick}
-                className="hidden items-center gap-2 rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring sm:inline-flex"
-              >
-                <PhoneIcon />
-                {label}
-                {num ? ` ${formatPhone(num)}` : ""}
-              </a>
-            );
-          }
-          return cta.style === "secondary" ? (
-            <a
-              key={i}
-              href={ctaHref(cta)}
-              onClick={onCtaClick}
-              className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring"
-            >
-              {label}
-            </a>
-          ) : (
-            <a
-              key={i}
-              href={ctaHref(cta)}
-              onClick={onCtaClick}
-              className="rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring"
-            >
-              {label}
-            </a>
-          );
-        })}
+        <CtaButtons page={page} L={L} onCtaClick={onCtaClick} />
       </div>
     </div>
+  );
+}
+
+// The big tap-to-call number shown only on mobile (desktop uses the button).
+function MobileCallNumber({ page, onCtaClick }: { page: Page; onCtaClick?: () => void }) {
+  const phoneCta = page.cta?.find(isCallCta);
+  const phoneValue = phoneCta ? ctaNumber(phoneCta) : "";
+  if (!phoneValue) return null;
+  return (
+    <a
+      href={`tel:${phoneValue.replace(/[^\d+]/g, "")}`}
+      onClick={onCtaClick}
+      className="inline-block text-3xl font-bold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:hidden"
+    >
+      {formatPhone(phoneValue)}
+    </a>
+  );
+}
+
+// The CTA buttons themselves (call button hidden on mobile; links on all
+// sizes). Rendered inside a flex row — reused on ending screens and inline
+// with the Continue button on form screens.
+function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
+  if (!page.cta || page.cta.length === 0) return null;
+  return (
+    <>
+      {page.cta.map((cta, i) => {
+        const label = L(tk.cta(page.id, i), cta.label);
+        if (isCallCta(cta)) {
+          const num = ctaNumber(cta);
+          return (
+            <a
+              key={i}
+              href={ctaHref(cta)}
+              onClick={onCtaClick}
+              className="hidden items-center gap-2 rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring sm:inline-flex"
+            >
+              <PhoneIcon />
+              {label}
+              {num ? ` ${formatPhone(num)}` : ""}
+            </a>
+          );
+        }
+        return cta.style === "secondary" ? (
+          <a
+            key={i}
+            href={ctaHref(cta)}
+            onClick={onCtaClick}
+            className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring"
+          >
+            {label}
+          </a>
+        ) : (
+          <a
+            key={i}
+            href={ctaHref(cta)}
+            onClick={onCtaClick}
+            className="rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring"
+          >
+            {label}
+          </a>
+        );
+      })}
+    </>
   );
 }
 

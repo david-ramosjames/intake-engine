@@ -577,10 +577,10 @@ export function JourneyEditor({
             {!terminalTypes.has(page.type) && (
               <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium text-blue-600">
                 <button onClick={() => addField(pi)} className="hover:text-blue-700">
-                  + Add question to this screen
+                  + Add question (with answer options)
                 </button>
                 <button onClick={() => addPrompt(pi)} className="hover:text-blue-700">
-                  + Add question prompt
+                  + Add prompt text
                 </button>
                 <button onClick={() => addStats(pi)} className="hover:text-blue-700">
                   + Add trust bar
