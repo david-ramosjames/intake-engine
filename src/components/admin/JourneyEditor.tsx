@@ -367,6 +367,82 @@ export function JourneyEditor({
             </div>
           </div>
 
+          {/* Top banner (slides down across the whole screen) */}
+          <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium text-gray-500">Top banner (slides down)</div>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  className="accent-blue-600"
+                  checked={def.theme?.banner?.enabled ?? true}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).banner ??= {}).enabled = e.target.checked))
+                  }
+                />
+                Show
+              </label>
+            </div>
+            <div className="mt-2 space-y-2">
+              {(def.theme?.banner?.items ?? []).map((it, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    className={`${controlBase} min-w-0 flex-1`}
+                    placeholder="NO FEES UNLESS WE WIN"
+                    value={it}
+                    onChange={(e) =>
+                      mutate((d) => {
+                        const bn = ((d.theme ??= {}).banner ??= {});
+                        bn.items = (bn.items ?? []).map((x, j) => (j === i ? e.target.value : x));
+                      })
+                    }
+                  />
+                  <button
+                    onClick={() =>
+                      mutate((d) => {
+                        const bn = ((d.theme ??= {}).banner ??= {});
+                        bn.items = (bn.items ?? []).filter((_, j) => j !== i);
+                      })
+                    }
+                    className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                    aria-label="Remove banner item"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() =>
+                  mutate((d) => {
+                    const bn = ((d.theme ??= {}).banner ??= {});
+                    bn.items = [...(bn.items ?? []), "AVAILABLE 24/7"];
+                  })
+                }
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                + Add banner item
+              </button>
+              <div className="grid gap-2 pt-1 sm:grid-cols-2">
+                <input
+                  className={input}
+                  placeholder="Call button label (Call Now)"
+                  value={def.theme?.banner?.phoneLabel ?? ""}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).banner ??= {}).phoneLabel = e.target.value || undefined))
+                  }
+                />
+                <input
+                  className={input}
+                  placeholder="Phone (+15129555457)"
+                  value={def.theme?.banner?.phone ?? ""}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).banner ??= {}).phone = e.target.value || undefined))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
           <label className="flex items-center gap-2 pt-1 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -411,6 +487,19 @@ export function JourneyEditor({
                 </IconBtn>
               </div>
             </div>
+
+            {!terminalTypes.has(page.type) && (
+              <div className="mt-4">
+                <label className="mb-1 block text-xs font-medium text-gray-500">Continue button text</label>
+                <input
+                  className={input}
+                  placeholder="Continue"
+                  value={page.continueLabel ?? ""}
+                  onChange={(e) => mutate((d) => void (d.pages[pi]!.continueLabel = e.target.value || undefined))}
+                />
+                <EsBox es={es} k={tk.continue(page.id)} placeholder="Continue — Spanish" />
+              </div>
+            )}
 
             <div className="mt-4 space-y-5">
               {page.components.map((c, ci) => (

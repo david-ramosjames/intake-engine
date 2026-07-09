@@ -277,6 +277,12 @@ const general: JourneyTemplate = {
       colorText: "#1e3a5f",
       colorAccent: "#1e3a5f",
       radius: "9999px",
+      banner: {
+        enabled: true,
+        items: ["No Fees Unless We Win", "Available 24/7"],
+        phone: "+15128838904",
+        phoneLabel: "Call Now",
+      },
     },
     variables: [],
     pages: [

@@ -235,6 +235,20 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
   const firm = attribution?.firm ?? "";
 
+  // Trust stats render at the bottom (under the CTAs); everything else on top.
+  const visibleComps = (page?.components ?? []).filter((c) => isComponentVisible(c, definition, answers));
+  const statsComps = visibleComps.filter((c) => c.type === "stats");
+  const mainComps = visibleComps.filter((c) => c.type !== "stats");
+  const continueText = busy
+    ? locale === "es"
+      ? "Enviando…"
+      : "Submitting…"
+    : page?.type === "review"
+      ? locale === "es"
+        ? "Enviar"
+        : "Submit"
+      : L(tk.continue(page?.id ?? ""), page?.continueLabel) || (locale === "es" ? "Continuar" : "Continue");
+
   return (
     <main
       style={{
@@ -243,8 +257,10 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         color: theme.colorText ?? "#0b1f3a",
         fontFamily: theme.fontFamily,
       }}
-      className="flex min-h-dvh flex-col md:flex-row"
+      className="flex min-h-dvh flex-col"
     >
+      <Banner theme={theme} L={L} onCtaClick={() => emit("cta_click")} />
+      <div className="flex flex-1 flex-col md:flex-row">
       {theme.sideImageUrl && (
         <aside
           className="relative hidden bg-cover bg-center md:block md:w-[38%] lg:w-[40%]"
@@ -309,31 +325,26 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-8">
               <div className="space-y-6">
-                {page?.components
-                  .filter((c) => isComponentVisible(c, definition, answers))
-                  .map((c) =>
-                    soleChoice && c.id === soleChoice.id ? (
-                      <ChoiceGrid key={c.id} component={c} L={L} onSelect={(o) => selectOption(c, o)} disabled={busy} />
-                    ) : (
-                      <ContentOrField
-                        key={c.id}
-                        component={c}
-                        answers={answers}
-                        definition={definition}
-                        L={L}
-                        onChange={(v) => c.key && set(c.key, v)}
-                      />
-                    ),
-                  )}
+                {mainComps.map((c) =>
+                  soleChoice && c.id === soleChoice.id ? (
+                    <ChoiceGrid key={c.id} component={c} L={L} onSelect={(o) => selectOption(c, o)} disabled={busy} />
+                  ) : (
+                    <ContentOrField
+                      key={c.id}
+                      component={c}
+                      answers={answers}
+                      definition={definition}
+                      L={L}
+                      onChange={(v) => c.key && set(c.key, v)}
+                    />
+                  ),
+                )}
               </div>
-
-              {page?.cta && page.cta.length > 0 && (
-                <CtaBlock page={page} L={L} onCtaClick={() => emit("cta_click")} />
-              )}
 
               {error && <p className="text-sm text-[color:var(--acc)]">{error}</p>}
 
-              <div className="flex items-center gap-4 pt-2">
+              {/* Primary intake action first, so it's never lost. */}
+              <div className="flex items-center gap-4">
                 {history.length > 1 && (
                   <button
                     type="button"
@@ -348,26 +359,25 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                     type="button"
                     onClick={onContinue}
                     disabled={busy}
-                    className="rounded-[var(--radius)] bg-[color:var(--acc)] px-8 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring disabled:opacity-50"
+                    className="rounded-[var(--radius)] bg-[color:var(--acc)] px-10 py-4 text-lg font-semibold text-white shadow-md transition hover:opacity-90 focus-ring disabled:opacity-50"
                   >
-                    {busy
-                      ? locale === "es"
-                        ? "Enviando…"
-                        : "Submitting…"
-                      : page?.type === "review"
-                        ? locale === "es"
-                          ? "Enviar"
-                          : "Submit"
-                        : locale === "es"
-                          ? "Continuar"
-                          : "Continue"}
+                    {continueText}
                   </button>
                 )}
               </div>
+
+              {/* Call CTA below the intake button. */}
+              {page?.cta && page.cta.length > 0 && (
+                <CtaBlock page={page} L={L} onCtaClick={() => emit("cta_click")} />
+              )}
+
+              {/* Trust stats under the CTAs. */}
+              {statsComps.map((c) => (c.stats ? <StatsBar key={c.id} stats={c.stats} /> : null))}
             </div>
           )}
         </div>
       </section>
+      </div>
     </main>
   );
 }
@@ -594,33 +604,66 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
   );
 }
 
-// Phone number (prominent, clickable) + call-to-action buttons. Used on ending
-// screens and any welcome/statement page that defines page.cta.
+function PhoneIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden className={className}>
+      <path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.3 1L6.6 10.8z" />
+    </svg>
+  );
+}
+
+function isCallCta(c: { type?: string; href?: string }) {
+  return c.type === "call" || c.type === "text" || c.href?.startsWith("tel:");
+}
+function ctaNumber(c: { value?: string; href?: string }) {
+  return c.value ?? c.href?.replace(/^tel:|^sms:/, "") ?? "";
+}
+
+// Call-to-action buttons. Call buttons show the number inside the button on
+// desktop and are hidden on mobile (the big tappable number covers mobile).
+// Non-call CTAs (links) show on all sizes.
 function CtaBlock({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
   if (!page.cta || page.cta.length === 0) return null;
-  const phoneCta = page.cta.find((c) => c.type === "call" || c.type === "text" || c.href?.startsWith("tel:"));
-  const phoneValue = phoneCta ? (phoneCta.value ?? phoneCta.href?.replace(/^tel:|^sms:/, "") ?? "") : "";
+  const phoneCta = page.cta.find(isCallCta);
+  const phoneValue = phoneCta ? ctaNumber(phoneCta) : "";
   return (
     <div className="space-y-4 pt-1">
+      {/* Mobile: big tap-to-call number (desktop uses the button instead). */}
       {phoneValue && (
         <a
           href={`tel:${phoneValue.replace(/[^\d+]/g, "")}`}
           onClick={onCtaClick}
-          className="inline-block text-3xl font-bold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:text-4xl"
+          className="inline-block text-3xl font-bold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:hidden"
         >
           {formatPhone(phoneValue)}
         </a>
       )}
       <div className="flex flex-wrap gap-3">
-        {page.cta.map((cta, i) =>
-          cta.style === "secondary" ? (
+        {page.cta.map((cta, i) => {
+          const label = L(tk.cta(page.id, i), cta.label);
+          if (isCallCta(cta)) {
+            const num = ctaNumber(cta);
+            return (
+              <a
+                key={i}
+                href={ctaHref(cta)}
+                onClick={onCtaClick}
+                className="hidden items-center gap-2 rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring sm:inline-flex"
+              >
+                <PhoneIcon />
+                {label}
+                {num ? ` ${formatPhone(num)}` : ""}
+              </a>
+            );
+          }
+          return cta.style === "secondary" ? (
             <a
               key={i}
               href={ctaHref(cta)}
               onClick={onCtaClick}
               className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring"
             >
-              {L(tk.cta(page.id, i), cta.label)}
+              {label}
             </a>
           ) : (
             <a
@@ -629,9 +672,56 @@ function CtaBlock({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick
               onClick={onCtaClick}
               className="rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring"
             >
-              {L(tk.cta(page.id, i), cta.label)}
+              {label}
             </a>
-          ),
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Full-width top banner that slides down on load. Editable announcements +
+// an optional click-to-call button (desktop).
+function Banner({
+  theme,
+  L,
+  onCtaClick,
+}: {
+  theme: NonNullable<JourneyDefinition["theme"]>;
+  L: Localize;
+  onCtaClick?: () => void;
+}) {
+  const banner = theme.banner;
+  if (!banner || banner.enabled === false) return null;
+  const items = banner.items ?? [];
+  if (items.length === 0 && !banner.phone) return null;
+  return (
+    <div
+      className="animate-slide-down w-full border-b"
+      style={{
+        background: "color-mix(in srgb, var(--text) 8%, var(--bg))",
+        borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
+      }}
+    >
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-xs font-semibold uppercase tracking-wide sm:justify-between sm:text-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          {items.map((it, i) => (
+            <span key={i} className="flex items-center gap-3">
+              {i > 0 && <span className="opacity-30">|</span>}
+              <span className={i === 0 ? "text-[color:var(--acc)]" : ""}>{L(tk.bannerItem(i), it)}</span>
+            </span>
+          ))}
+        </div>
+        {banner.phone && (
+          <a
+            href={`tel:${banner.phone.replace(/[^\d+]/g, "")}`}
+            onClick={onCtaClick}
+            className="hidden items-center gap-2 rounded-full bg-[color:var(--acc)] px-4 py-1.5 normal-case text-white sm:inline-flex"
+          >
+            <PhoneIcon />
+            {banner.phoneLabel ?? "Call Now"} {formatPhone(banner.phone)}
+          </a>
         )}
       </div>
     </div>

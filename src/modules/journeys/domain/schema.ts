@@ -157,6 +157,8 @@ export const pageSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: pageType.default("question"),
+  // Custom label for the primary advance button (default "Continue").
+  continueLabel: z.string().optional(),
   // Page-level visibility: skip entirely when false.
   condition: expressionSchema.optional(),
   // Conditional branching evaluated in order; first match wins. When none
@@ -216,6 +218,16 @@ export const themeTokensSchema = z
         title: z.string().optional(),
         subtitle: z.string().optional(),
         bullets: z.array(z.string()).optional(),
+      })
+      .optional(),
+    // Full-width top banner that slides down on load (announcements / trust +
+    // a click-to-call button).
+    banner: z
+      .object({
+        enabled: z.boolean().optional(),
+        items: z.array(z.string()).optional(),
+        phone: z.string().optional(),
+        phoneLabel: z.string().optional(),
       })
       .optional(),
   })

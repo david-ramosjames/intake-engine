@@ -22,6 +22,8 @@ export const tk = {
   help: (componentId: string) => `c:${componentId}:help`,
   option: (componentId: string, value: string) => `o:${componentId}:${value}`,
   cta: (pageId: string, index: number) => `cta:${pageId}:${index}`,
+  continue: (pageId: string) => `p:${pageId}:continue`,
+  bannerItem: (index: number) => `banner:item:${index}`,
 };
 
 /** Resolve a piece of text for a locale, falling back to the base value. */
