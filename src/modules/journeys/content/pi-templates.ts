@@ -520,9 +520,10 @@ const leadForm: JourneyTemplate = {
         continueLabel: "Continue",
         cta: [{ label: "Call Us Now", type: "call", value: "+15128838904", style: "primary" }],
         components: [
-          { id: "lf-h", type: "heading", content: "We're here to help" },
+          { id: "lf-h", type: "heading", content: "Injured in an accident?\nWe're ready to help." },
           { id: "lf-p", type: "paragraph", content: "Our attorneys are available 24/7 to help you." },
-          { id: "lf-name", type: "shortText", key: "full_name", label: "Who are you?", placeholder: "Full name", validation: { required: true }, props: { full: true } },
+          { id: "lf-q", type: "heading", content: "Who are you?", props: { level: 2 } },
+          { id: "lf-name", type: "shortText", key: "full_name", label: "Full name", placeholder: "Jane Doe", validation: { required: true } },
           { id: "lf-phone", type: "phone", key: "phone", label: "Phone number", placeholder: "(512) 555-0100", validation: { required: true } },
           { id: "lf-email", type: "email", key: "email", label: "Email address", placeholder: "you@example.com", validation: { required: true } },
         ],
@@ -556,9 +557,10 @@ const leadForm: JourneyTemplate = {
     scoring: [],
     i18n: {
       es: {
-        "c:lf-h:content": "Estamos aquí para ayudar",
+        "c:lf-h:content": "¿Lesionado en un accidente?\nEstamos listos para ayudar.",
         "c:lf-p:content": "Nuestros abogados están disponibles 24/7 para ayudarte.",
-        "c:lf-name:label": "¿Quién eres?",
+        "c:lf-q:content": "¿Quién eres?",
+        "c:lf-name:label": "Nombre completo",
         "c:lf-phone:label": "Número de teléfono",
         "c:lf-email:label": "Correo electrónico",
         "p:welcome:continue": "Continuar",

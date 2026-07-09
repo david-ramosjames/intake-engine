@@ -306,7 +306,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       )}
 
       <section className="relative flex flex-1 flex-col px-6 py-6 md:px-14">
-        <header className="flex h-14 items-center justify-between">
+        <header className="flex h-16 shrink-0 items-center justify-between">
           {languages.length > 1 ? (
             <div className="flex items-center gap-1.5 text-sm font-medium">
               {languages.map((lng) => (
@@ -336,7 +336,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           {terminal ? (
             <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
-            <div key={page?.id} className="animate-fade-up space-y-6">
+            <div key={page?.id} className="animate-fade-up space-y-5">
               <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2">
                 {mainComps.map((c) => {
                   const isChoice = soleChoice && c.id === soleChoice.id;
@@ -431,7 +431,7 @@ function Flag({ code }: { code: string }) {
 function LogoOrName({ logoUrl, logoLink, firm }: { logoUrl?: string; logoLink?: string; firm: string }) {
   const inner = logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={logoUrl} alt={firm || "logo"} className="max-h-20 w-auto object-contain md:max-h-28" />
+    <img src={logoUrl} alt={firm || "logo"} className="max-h-14 w-auto object-contain md:max-h-16" />
   ) : firm ? (
     <span className="text-2xl font-semibold md:text-3xl">{firm}</span>
   ) : null;
@@ -495,8 +495,19 @@ function ContentOrField({
   onChange: (v: unknown) => void;
 }) {
   switch (component.type) {
-    case "heading":
-      return <h1 className="whitespace-pre-line text-3xl font-semibold leading-tight sm:text-4xl">{L(tk.content(component.id), component.content)}</h1>;
+    case "heading": {
+      const text = L(tk.content(component.id), component.content);
+      // A level-2 heading is a compact "question" prompt above a field group —
+      // smaller than the page headline, accented so it reads as a call to act.
+      if (component.props?.level === 2) {
+        return (
+          <h2 className="whitespace-pre-line text-xl font-semibold leading-snug text-[color:var(--acc)] sm:text-2xl">
+            {text}
+          </h2>
+        );
+      }
+      return <h1 className="whitespace-pre-line text-3xl font-semibold leading-tight sm:text-4xl">{text}</h1>;
+    }
     case "paragraph":
       return <p className="text-lg leading-relaxed opacity-70">{L(tk.content(component.id), component.content)}</p>;
     case "image":
@@ -605,20 +616,20 @@ function CountUp({ raw }: { raw: string }) {
 
 function StatsBar({ stats }: { stats: StatItem[] }) {
   return (
-    <div className="flex flex-wrap gap-x-8 gap-y-5">
+    <div className="flex flex-wrap gap-x-6 gap-y-3">
       {stats.map((s, i) => (
         <div
           key={i}
-          className={i > 0 ? "sm:border-l sm:pl-8" : ""}
+          className={i > 0 ? "sm:border-l sm:pl-6" : ""}
           style={i > 0 ? { borderColor: "color-mix(in srgb, currentColor 18%, transparent)" } : undefined}
         >
           <div className="flex items-baseline gap-2">
-            {s.icon && <span className="text-2xl leading-none">{s.icon}</span>}
-            <span className="text-2xl font-semibold sm:text-3xl">
+            {s.icon && <span className="text-xl leading-none">{s.icon}</span>}
+            <span className="text-xl font-semibold sm:text-2xl">
               <CountUp raw={s.value} />
             </span>
           </div>
-          <div className="mt-1 text-sm opacity-70">{s.label}</div>
+          <div className="text-sm opacity-70">{s.label}</div>
         </div>
       ))}
     </div>

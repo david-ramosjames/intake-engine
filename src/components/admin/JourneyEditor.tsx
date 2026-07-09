@@ -152,6 +152,19 @@ export function JourneyEditor({
     });
   }
 
+  function addPrompt(pi: number) {
+    mutate((d) => {
+      const id = `prompt_${Math.random().toString(36).slice(2, 8)}`;
+      // A compact, accented "question" line above the fields (level-2 heading).
+      d.pages[pi]!.components.push({
+        id,
+        type: "heading",
+        content: "Who are you?",
+        props: { level: 2 },
+      } as Component);
+    });
+  }
+
   function addStats(pi: number) {
     mutate((d) => {
       const id = `stats_${Math.random().toString(36).slice(2, 8)}`;
@@ -565,6 +578,9 @@ export function JourneyEditor({
               <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium text-blue-600">
                 <button onClick={() => addField(pi)} className="hover:text-blue-700">
                   + Add question to this screen
+                </button>
+                <button onClick={() => addPrompt(pi)} className="hover:text-blue-700">
+                  + Add question prompt
                 </button>
                 <button onClick={() => addStats(pi)} className="hover:text-blue-700">
                   + Add trust bar
