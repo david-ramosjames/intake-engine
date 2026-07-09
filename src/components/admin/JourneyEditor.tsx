@@ -155,8 +155,12 @@ export function JourneyEditor({
   function addPrompt(pi: number) {
     mutate((d) => {
       const id = `prompt_${Math.random().toString(36).slice(2, 8)}`;
-      // A compact, accented "question" line above the fields (level-2 heading).
-      d.pages[pi]!.components.push({
+      // A compact, accented prompt line (level-2 heading). Insert it just above
+      // the first input field so it reads as a lead-in to the form.
+      const comps = d.pages[pi]!.components;
+      const firstField = comps.findIndex((c) => Boolean(c.key));
+      const at = firstField === -1 ? comps.length : firstField;
+      comps.splice(at, 0, {
         id,
         type: "heading",
         content: "Who are you?",

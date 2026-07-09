@@ -502,15 +502,15 @@ function ContentOrField({
       // smaller than the page headline, accented so it reads as a call to act.
       if (component.props?.level === 2) {
         return (
-          <h2 className="whitespace-pre-line text-xl font-semibold leading-snug text-[color:var(--acc)] sm:text-2xl">
+          <h2 className="whitespace-pre-line text-lg font-semibold leading-snug text-[color:var(--acc)] sm:text-xl">
             {text}
           </h2>
         );
       }
-      return <h1 className="whitespace-pre-line text-3xl font-semibold leading-tight sm:text-4xl">{text}</h1>;
+      return <h1 className="whitespace-pre-line text-2xl font-semibold leading-tight sm:text-3xl">{text}</h1>;
     }
     case "paragraph":
-      return <p className="text-lg leading-relaxed opacity-70">{L(tk.content(component.id), component.content)}</p>;
+      return <p className="text-base leading-relaxed opacity-70">{L(tk.content(component.id), component.content)}</p>;
     case "image":
       return component.src ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -524,8 +524,8 @@ function ContentOrField({
       const label = L(tk.label(component.id), component.label);
       const help = L(tk.help(component.id), component.helpText);
       return (
-        <div className="space-y-2">
-          {label && <label className="block text-lg font-medium">{label}</label>}
+        <div className="space-y-1.5">
+          {label && <label className="block text-base font-medium">{label}</label>}
           {help && <p className="text-sm opacity-60">{help}</p>}
           <Field component={component} value={component.key ? answers[component.key] : undefined} onChange={onChange} />
         </div>
