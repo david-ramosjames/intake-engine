@@ -483,6 +483,109 @@ const general: JourneyTemplate = {
   },
 };
 
+// A minimal lead-capture form — no qualifying questions. It reuses the welcome
+// screen's trust styling (stats + banner) but replaces the case-type buttons
+// with contact fields, then a second "anything else" page. The click-to-call
+// CTA appears at the bottom of both form pages. Bilingual (EN/ES).
+const leadForm: JourneyTemplate = {
+  key: "pi-lead-form",
+  name: "Lead Form",
+  industry: "legal.personal_injury",
+  description:
+    "Simple two-step contact form — name & phone, then what happened. No qualifying questions. Bilingual (EN/ES).",
+  definition: {
+    schemaVersion: 1,
+    name: "Lead Form",
+    locale: "en",
+    languages: ["en", "es"],
+    theme: {
+      colorBackground: "#ffffff",
+      colorSurface: "#ffffff",
+      colorText: "#1e3a5f",
+      colorAccent: "#1e3a5f",
+      radius: "9999px",
+      banner: {
+        enabled: true,
+        items: ["No Fees Unless We Win", "Available 24/7"],
+        phone: "+15128838904",
+        phoneLabel: "Call Now",
+      },
+    },
+    variables: [],
+    pages: [
+      {
+        id: "welcome",
+        name: "Who are you?",
+        type: "question",
+        continueLabel: "Continue",
+        cta: [{ label: "Call Us Now", type: "call", value: "+15128838904", style: "primary" }],
+        components: [
+          { id: "lf-h", type: "heading", content: "Who are you?" },
+          { id: "lf-p", type: "paragraph", content: "Our attorneys are available 24/7 to help you." },
+          {
+            id: "lf-stats",
+            type: "stats",
+            stats: [
+              { value: "200+", label: "Google Reviews", icon: "⭐" },
+              { value: "4.9", label: "Average Client Rating" },
+              { value: "$50M+", label: "Won for our Clients" },
+            ],
+          },
+          { id: "lf-name", type: "shortText", key: "full_name", label: "Full name", placeholder: "Jane Doe", validation: { required: true } },
+          { id: "lf-phone", type: "phone", key: "phone", label: "Phone number", placeholder: "(512) 555-0100", validation: { required: true } },
+          { id: "lf-email", type: "email", key: "email", label: "Email address", placeholder: "you@example.com", validation: { required: true } },
+        ],
+      },
+      {
+        id: "details",
+        name: "Anything else?",
+        type: "question",
+        continueLabel: "Submit",
+        cta: [{ label: "Call Us Now", type: "call", value: "+15128838904", style: "primary" }],
+        components: [
+          { id: "lf2-h", type: "heading", content: "Anything else we need to know?" },
+          { id: "lf2-p", type: "paragraph", content: "Our attorneys are available 24/7 to help you." },
+          { id: "lf2-desc", type: "longText", key: "description", label: "Tell us what happened (optional)" },
+        ],
+      },
+      {
+        id: "success",
+        name: "Thank you",
+        type: "success",
+        cta: [
+          { label: "Call Us Now", type: "call", value: "+15128838904", style: "primary" },
+          { label: "Explore our firm", type: "link", value: "https://ramosjames.com", style: "secondary" },
+        ],
+        components: [
+          { id: "lf-s-h", type: "heading", content: "Thank you — we've got your information." },
+          { id: "lf-s-p", type: "paragraph", content: "A Ramos James Law team member will reach out shortly." },
+        ],
+      },
+    ],
+    scoring: [],
+    i18n: {
+      es: {
+        "c:lf-h:content": "¿Quién eres?",
+        "c:lf-p:content": "Nuestros abogados están disponibles 24/7 para ayudarte.",
+        "c:lf-name:label": "Nombre completo",
+        "c:lf-phone:label": "Número de teléfono",
+        "c:lf-email:label": "Correo electrónico",
+        "p:welcome:continue": "Continuar",
+        "cta:welcome:0": "Llámanos ahora",
+        "c:lf2-h:content": "¿Algo más que debamos saber?",
+        "c:lf2-p:content": "Nuestros abogados están disponibles 24/7 para ayudarte.",
+        "c:lf2-desc:label": "Cuéntanos qué pasó (opcional)",
+        "p:details:continue": "Enviar",
+        "cta:details:0": "Llámanos ahora",
+        "c:lf-s-h:content": "Gracias, hemos recibido tu información.",
+        "c:lf-s-p:content": "Un miembro del equipo de Ramos James Law se pondrá en contacto contigo en breve.",
+        "cta:success:0": "Llámanos ahora",
+        "cta:success:1": "Conoce nuestra firma",
+      },
+    },
+  },
+};
+
 const car: JourneyTemplate = {
   key: "pi-car-accident",
   name: "Car Accidents",
@@ -876,6 +979,7 @@ const guidedFlow: JourneyTemplate = {
 export const piTemplates: JourneyTemplate[] = [
   guidedFlow,
   general,
+  leadForm,
   car,
   truck,
   pedestrian,
