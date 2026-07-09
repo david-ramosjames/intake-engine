@@ -720,10 +720,13 @@ function ComponentEditor({
         </div>
         <textarea
           className={input}
-          rows={component.type === "paragraph" ? 3 : 1}
+          rows={component.type === "paragraph" ? 3 : 2}
           value={component.content ?? ""}
           onChange={(e) => onField("content", e.target.value)}
         />
+        {component.type === "heading" && (
+          <p className="mt-1 text-xs text-gray-400">Press Enter to add a line break.</p>
+        )}
         <EsBox es={es} k={tk.content(component.id)} placeholder="Spanish" />
       </div>
     );

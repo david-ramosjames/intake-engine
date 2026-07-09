@@ -475,7 +475,7 @@ function ContentOrField({
 }) {
   switch (component.type) {
     case "heading":
-      return <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">{L(tk.content(component.id), component.content)}</h1>;
+      return <h1 className="whitespace-pre-line text-3xl font-semibold leading-tight sm:text-4xl">{L(tk.content(component.id), component.content)}</h1>;
     case "paragraph":
       return <p className="text-lg leading-relaxed opacity-70">{L(tk.content(component.id), component.content)}</p>;
     case "image":
@@ -562,7 +562,7 @@ function CountUp({ raw }: { raw: string }) {
     if (!m) return;
     let raf = 0;
     const start = performance.now();
-    const dur = 900;
+    const dur = 1800;
     const tick = (t: number) => {
       const p = Math.min(1, (t - start) / dur);
       setVal(target * (1 - Math.pow(1 - p, 3)));
@@ -733,7 +733,7 @@ function EndingView({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
     <div className="animate-fade-up space-y-6">
       {page.components.map((c) =>
         c.type === "heading" ? (
-          <h1 key={c.id} className="text-3xl font-semibold sm:text-4xl">
+          <h1 key={c.id} className="whitespace-pre-line text-3xl font-semibold sm:text-4xl">
             {L(tk.content(c.id), c.content)}
           </h1>
         ) : c.type === "stats" && c.stats ? (
