@@ -522,7 +522,7 @@ const leadForm: JourneyTemplate = {
         components: [
           { id: "lf-h", type: "heading", content: "We're here to help" },
           { id: "lf-p", type: "paragraph", content: "Our attorneys are available 24/7 to help you." },
-          { id: "lf-name", type: "shortText", key: "full_name", label: "Who are you?", placeholder: "Full name", validation: { required: true } },
+          { id: "lf-name", type: "shortText", key: "full_name", label: "Who are you?", placeholder: "Full name", validation: { required: true }, props: { full: true } },
           { id: "lf-phone", type: "phone", key: "phone", label: "Phone number", placeholder: "(512) 555-0100", validation: { required: true } },
           { id: "lf-email", type: "email", key: "email", label: "Email address", placeholder: "you@example.com", validation: { required: true } },
         ],

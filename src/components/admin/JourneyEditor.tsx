@@ -13,6 +13,9 @@ import { tk } from "@/modules/journeys/domain/i18n";
 
 const OPTION_TYPES = new Set(["singleSelect", "radio", "dropdown", "multiSelect", "checkbox"]);
 const CONTENT_TYPES = new Set(["heading", "paragraph"]);
+// Compact inputs can share a row two-up on the live form; offer a "Full width"
+// toggle for them. Must mirror COMPACT_FIELDS in the runtime player.
+const COMPACT_INPUT_TYPES = new Set(["shortText", "email", "phone", "number", "currency", "date", "time"]);
 
 type EsHelpers = { esEnabled: boolean; getEs: (key: string) => string; setEs: (key: string, val: string) => void };
 
@@ -521,6 +524,12 @@ export function JourneyEditor({
                       comp.validation = { ...(comp.validation ?? {}), required: req };
                     })
                   }
+                  onFull={(full) =>
+                    mutate((d) => {
+                      const comp = d.pages[pi]!.components[ci]!;
+                      comp.props = { ...(comp.props ?? {}), full };
+                    })
+                  }
                   onOptionLabel={(oi, value) =>
                     mutate((d) => {
                       const opt = d.pages[pi]!.components[ci]!.options![oi]!;
@@ -638,6 +647,7 @@ function ComponentEditor({
   es,
   onField,
   onRequired,
+  onFull,
   onOptionLabel,
   onOptionGoTo,
   onAddOption,
@@ -651,6 +661,7 @@ function ComponentEditor({
   es: EsHelpers;
   onField: (field: string, value: string) => void;
   onRequired: (req: boolean) => void;
+  onFull: (full: boolean) => void;
   onOptionLabel: (oi: number, value: string) => void;
   onOptionGoTo: (oi: number, goTo: string) => void;
   onAddOption: () => void;
@@ -755,15 +766,28 @@ function ComponentEditor({
         onChange={(e) => onField("helpText", e.target.value)}
       />
       <EsBox es={es} k={tk.help(component.id)} placeholder="Help text — Spanish" />
-      <label className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-        <input
-          type="checkbox"
-          className="accent-blue-600"
-          checked={Boolean(component.validation?.required)}
-          onChange={(e) => onRequired(e.target.checked)}
-        />
-        Required
-      </label>
+      <div className="mt-2 flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            className="accent-blue-600"
+            checked={Boolean(component.validation?.required)}
+            onChange={(e) => onRequired(e.target.checked)}
+          />
+          Required
+        </label>
+        {COMPACT_INPUT_TYPES.has(component.type) && (
+          <label className="flex items-center gap-2 text-sm text-gray-600" title="Take the full row instead of sharing it with the next field">
+            <input
+              type="checkbox"
+              className="accent-blue-600"
+              checked={component.props?.full === true}
+              onChange={(e) => onFull(e.target.checked)}
+            />
+            Full width
+          </label>
+        )}
+      </div>
 
       {hasOptions && (
         <div className="mt-3 space-y-2">

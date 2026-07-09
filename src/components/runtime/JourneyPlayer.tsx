@@ -27,6 +27,19 @@ interface Props {
 
 type Outcome = "lead" | "referral" | "declined";
 
+// Compact input types that can share a row two-up on wider screens. Longer
+// inputs (long text, address, uploads) and all content/choice blocks stay
+// full width. A field can opt out with props.full = true.
+const COMPACT_FIELDS = new Set<Component["type"]>([
+  "shortText",
+  "email",
+  "phone",
+  "number",
+  "currency",
+  "date",
+  "time",
+]);
+
 // Capture attribution/source context from the browser at submit time.
 function collectContext(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -324,21 +337,29 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
             <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-6">
-              <div className="space-y-5">
-                {mainComps.map((c) =>
-                  soleChoice && c.id === soleChoice.id ? (
-                    <ChoiceGrid key={c.id} component={c} L={L} onSelect={(o) => selectOption(c, o)} disabled={busy} />
-                  ) : (
-                    <ContentOrField
-                      key={c.id}
-                      component={c}
-                      answers={answers}
-                      definition={definition}
-                      L={L}
-                      onChange={(v) => c.key && set(c.key, v)}
-                    />
-                  ),
-                )}
+              <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2">
+                {mainComps.map((c) => {
+                  const isChoice = soleChoice && c.id === soleChoice.id;
+                  // Compact inputs (name, phone, email…) share a row two-up on
+                  // wider screens; everything else spans the full width. A field
+                  // can force full width with props.full.
+                  const half = !isChoice && COMPACT_FIELDS.has(c.type) && c.props?.full !== true;
+                  return (
+                    <div key={c.id} className={half ? "" : "sm:col-span-2"}>
+                      {isChoice ? (
+                        <ChoiceGrid component={c} L={L} onSelect={(o) => selectOption(c, o)} disabled={busy} />
+                      ) : (
+                        <ContentOrField
+                          component={c}
+                          answers={answers}
+                          definition={definition}
+                          L={L}
+                          onChange={(v) => c.key && set(c.key, v)}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {error && <p className="text-sm text-[color:var(--acc)]">{error}</p>}
