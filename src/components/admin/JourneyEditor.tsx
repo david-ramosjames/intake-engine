@@ -460,6 +460,19 @@ export function JourneyEditor({
                   }
                 />
               </div>
+              <div className="flex flex-wrap gap-6 pt-1">
+                <ColorField
+                  label="Bar background"
+                  value={def.theme?.banner?.background ?? def.theme?.colorBackground ?? "#ffffff"}
+                  onChange={(v) => mutate((d) => void (((d.theme ??= {}).banner ??= {}).background = v))}
+                />
+                <ColorField
+                  label="Bar text"
+                  value={def.theme?.banner?.textColor ?? def.theme?.colorText ?? "#0b1f3a"}
+                  onChange={(v) => mutate((d) => void (((d.theme ??= {}).banner ??= {}).textColor = v))}
+                />
+              </div>
+              <p className="text-xs text-gray-400">Your logo (set below) shows in this bar when it&apos;s on.</p>
             </div>
           </div>
 

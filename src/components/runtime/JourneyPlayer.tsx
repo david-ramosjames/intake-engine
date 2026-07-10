@@ -243,10 +243,18 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       ["--btn-text"]: theme.buttonText ?? text,
       ["--btn-hover-bg"]: theme.buttonHoverBg ?? text,
       ["--btn-hover-text"]: theme.buttonHoverText ?? bg,
+      // Primary action buttons (Continue / call-to-action). Use the journey's
+      // Button color when set, otherwise the accent so older journeys are
+      // unchanged.
+      ["--cta-bg"]: theme.buttonBg ?? theme.colorAccent ?? "#e63946",
+      ["--cta-text"]: theme.buttonText ?? "#ffffff",
     } as React.CSSProperties;
   }, [theme]);
 
   const firm = attribution?.firm ?? "";
+  // When the top bar is shown it hosts the logo, so the in-form header only
+  // needs the language toggle (and can be shorter).
+  const showBanner = bannerShown(theme);
 
   // Trust stats render at the bottom (under the CTAs); everything else on top.
   const visibleComps = (page?.components ?? []).filter((c) => isComponentVisible(c, definition, answers));
@@ -306,7 +314,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       )}
 
       <section className="relative flex flex-1 flex-col px-6 py-6 md:px-14">
-        <header className="flex h-16 shrink-0 items-center justify-between">
+        <header className={`flex ${showBanner ? "h-11" : "h-16"} shrink-0 items-center justify-between`}>
           {languages.length > 1 ? (
             <div className="flex items-center gap-1.5 text-sm font-medium">
               {languages.map((lng) => (
@@ -329,7 +337,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           ) : (
             <span />
           )}
-          <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} />
+          {!showBanner && <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} />}
         </header>
 
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-4">
@@ -385,7 +393,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                     type="button"
                     onClick={onContinue}
                     disabled={busy}
-                    className="rounded-[var(--radius)] bg-[color:var(--acc)] px-10 py-4 text-lg font-semibold text-white shadow-md transition hover:opacity-90 focus-ring disabled:opacity-50"
+                    className="rounded-[var(--radius)] bg-[color:var(--cta-bg)] px-10 py-4 text-lg font-semibold text-[color:var(--cta-text)] shadow-md transition hover:opacity-90 focus-ring disabled:opacity-50"
                   >
                     {continueText}
                   </button>
@@ -429,10 +437,21 @@ function Flag({ code }: { code: string }) {
   );
 }
 
-function LogoOrName({ logoUrl, logoLink, firm }: { logoUrl?: string; logoLink?: string; firm: string }) {
+function LogoOrName({
+  logoUrl,
+  logoLink,
+  firm,
+  inBar,
+}: {
+  logoUrl?: string;
+  logoLink?: string;
+  firm: string;
+  inBar?: boolean;
+}) {
+  const imgCls = inBar ? "max-h-9 w-auto object-contain" : "max-h-14 w-auto object-contain md:max-h-16";
   const inner = logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={logoUrl} alt={firm || "logo"} className="max-h-14 w-auto object-contain md:max-h-16" />
+    <img src={logoUrl} alt={firm || "logo"} className={imgCls} />
   ) : firm ? (
     <span className="text-2xl font-semibold md:text-3xl">{firm}</span>
   ) : null;
@@ -699,7 +718,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
               key={i}
               href={ctaHref(cta)}
               onClick={onCtaClick}
-              className="hidden items-center gap-2 rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring sm:inline-flex"
+              className="hidden items-center gap-2 rounded-[var(--radius)] bg-[color:var(--cta-bg)] px-6 py-3 font-medium text-[color:var(--cta-text)] shadow-sm transition hover:opacity-90 focus-ring sm:inline-flex"
             >
               <PhoneIcon />
               {label}
@@ -721,7 +740,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
             key={i}
             href={ctaHref(cta)}
             onClick={onCtaClick}
-            className="rounded-[var(--radius)] bg-[color:var(--acc)] px-6 py-3 font-medium text-white shadow-sm transition hover:opacity-90 focus-ring"
+            className="rounded-[var(--radius)] bg-[color:var(--cta-bg)] px-6 py-3 font-medium text-[color:var(--cta-text)] shadow-sm transition hover:opacity-90 focus-ring"
           >
             {label}
           </a>
@@ -733,6 +752,13 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
 
 // Full-width top banner that slides down on load. Editable announcements +
 // an optional click-to-call button (desktop).
+// Whether the top banner bar should render (enabled + has content or a logo).
+function bannerShown(theme: NonNullable<JourneyDefinition["theme"]>): boolean {
+  const b = theme.banner;
+  if (!b || b.enabled === false) return false;
+  return (b.items?.length ?? 0) > 0 || Boolean(b.phone) || Boolean(theme.logoUrl);
+}
+
 function Banner({
   theme,
   L,
@@ -742,15 +768,15 @@ function Banner({
   L: Localize;
   onCtaClick?: () => void;
 }) {
-  const banner = theme.banner;
-  if (!banner || banner.enabled === false) return null;
+  if (!bannerShown(theme)) return null;
+  const banner = theme.banner!;
   const items = banner.items ?? [];
-  if (items.length === 0 && !banner.phone) return null;
   return (
     <div
       className="animate-slide-down w-full border-b"
       style={{
-        background: "color-mix(in srgb, var(--text) 8%, var(--bg))",
+        background: banner.background ?? "color-mix(in srgb, var(--text) 8%, var(--bg))",
+        color: banner.textColor,
         borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
       }}
     >
@@ -759,20 +785,27 @@ function Banner({
           {items.map((it, i) => (
             <span key={i} className="flex items-center gap-3">
               {i > 0 && <span className="opacity-30">|</span>}
-              <span className={i === 0 ? "text-[color:var(--acc)]" : ""}>{L(tk.bannerItem(i), it)}</span>
+              <span className={i === 0 && !banner.textColor ? "text-[color:var(--acc)]" : ""}>
+                {L(tk.bannerItem(i), it)}
+              </span>
             </span>
           ))}
         </div>
-        {banner.phone && (
-          <a
-            href={`tel:${banner.phone.replace(/[^\d+]/g, "")}`}
-            onClick={onCtaClick}
-            className="hidden items-center gap-2 rounded-full bg-[color:var(--acc)] px-4 py-1.5 normal-case text-white sm:inline-flex"
-          >
-            <PhoneIcon />
-            {banner.phoneLabel ?? "Call Now"} {formatPhone(banner.phone)}
-          </a>
-        )}
+        <div className="flex items-center gap-4">
+          {banner.phone && (
+            <a
+              href={`tel:${banner.phone.replace(/[^\d+]/g, "")}`}
+              onClick={onCtaClick}
+              className="hidden items-center gap-2 rounded-full bg-[color:var(--cta-bg)] px-4 py-1.5 normal-case text-[color:var(--cta-text)] sm:inline-flex"
+            >
+              <PhoneIcon />
+              {banner.phoneLabel ?? "Call Now"} {formatPhone(banner.phone)}
+            </a>
+          )}
+          {theme.logoUrl && (
+            <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
+          )}
+        </div>
       </div>
     </div>
   );

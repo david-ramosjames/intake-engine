@@ -228,6 +228,9 @@ export const themeTokensSchema = z
         items: z.array(z.string()).optional(),
         phone: z.string().optional(),
         phoneLabel: z.string().optional(),
+        // Explicit colors for the top bar; fall back to a tint of the theme.
+        background: z.string().optional(),
+        textColor: z.string().optional(),
       })
       .optional(),
   })
