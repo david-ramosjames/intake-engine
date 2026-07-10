@@ -16,6 +16,9 @@ const CONTENT_TYPES = new Set(["heading", "paragraph"]);
 // Compact inputs can share a row two-up on the live form; offer a "Full width"
 // toggle for them. Must mirror COMPACT_FIELDS in the runtime player.
 const COMPACT_INPUT_TYPES = new Set(["shortText", "email", "phone", "number", "currency", "date", "time"]);
+// Quick-pick icons for the trust bar. Any emoji works in the icon box; these
+// are one-click shortcuts for common legal / trust signals.
+const ICON_CHOICES = ["⭐", "⚖️", "💰", "💵", "🏆", "🛡️", "✅", "📞", "🤝", "❤️", "👩‍⚖️", "📅", "🚚", "⏱️"];
 
 type EsHelpers = { esEnabled: boolean; getEs: (key: string) => string; setEs: (key: string, val: string) => void };
 
@@ -722,34 +725,60 @@ function ComponentEditor({
           <span className="text-xs font-medium uppercase tracking-wide text-gray-400">Trust stats (count up)</span>
           <RemoveField onRemove={onRemove} />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {stats.map((s, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                className={`${controlBase} w-16 shrink-0 text-center`}
-                placeholder="⭐"
-                value={s.icon ?? ""}
-                onChange={(e) => set(i, { icon: e.target.value || undefined })}
-              />
-              <input
-                className={`${controlBase} w-32 shrink-0`}
-                placeholder="$50M+"
-                value={s.value}
-                onChange={(e) => set(i, { value: e.target.value })}
-              />
-              <input
-                className={`${controlBase} min-w-0 flex-1`}
-                placeholder="Won for our Clients"
-                value={s.label}
-                onChange={(e) => set(i, { label: e.target.value })}
-              />
-              <button
-                onClick={() => onStats?.(stats.filter((_, j) => j !== i))}
-                className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                aria-label="Remove stat"
-              >
-                ✕
-              </button>
+            <div key={i} className="space-y-1.5 rounded-md border border-gray-100 bg-white p-2">
+              <div className="flex items-center gap-2">
+                <input
+                  className={`${controlBase} w-16 shrink-0 text-center`}
+                  placeholder="⭐"
+                  value={s.icon ?? ""}
+                  onChange={(e) => set(i, { icon: e.target.value || undefined })}
+                />
+                <input
+                  className={`${controlBase} w-32 shrink-0`}
+                  placeholder="$50M+"
+                  value={s.value}
+                  onChange={(e) => set(i, { value: e.target.value })}
+                />
+                <input
+                  className={`${controlBase} min-w-0 flex-1`}
+                  placeholder="Won for our Clients"
+                  value={s.label}
+                  onChange={(e) => set(i, { label: e.target.value })}
+                />
+                <button
+                  onClick={() => onStats?.(stats.filter((_, j) => j !== i))}
+                  className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  aria-label="Remove stat"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-1 pl-1">
+                <span className="mr-1 text-[11px] text-gray-400">Icon:</span>
+                {ICON_CHOICES.map((emo) => (
+                  <button
+                    key={emo}
+                    type="button"
+                    onClick={() => set(i, { icon: emo })}
+                    className={`rounded px-1.5 py-0.5 text-base leading-none hover:bg-gray-100 ${
+                      s.icon === emo ? "bg-blue-50 ring-1 ring-blue-300" : ""
+                    }`}
+                    title={`Use ${emo}`}
+                  >
+                    {emo}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => set(i, { icon: undefined })}
+                  className="rounded px-1.5 py-0.5 text-[11px] text-gray-400 hover:bg-gray-100"
+                  title="No icon"
+                >
+                  none
+                </button>
+              </div>
             </div>
           ))}
           <button
@@ -758,6 +787,9 @@ function ComponentEditor({
           >
             + Add stat
           </button>
+          <p className="text-xs text-gray-400">
+            Click an icon above, or type any emoji in the icon box (Windows: Win + . / Mac: Ctrl + Cmd + Space).
+          </p>
         </div>
       </div>
     );

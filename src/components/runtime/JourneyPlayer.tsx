@@ -520,10 +520,11 @@ function ContentOrField({
     case "heading": {
       const text = L(tk.content(component.id), component.content);
       // A level-2 heading is a compact "question" prompt above a field group —
-      // smaller than the page headline, accented so it reads as a call to act.
+      // smaller than the page headline. It inherits the theme text color (so it
+      // matches the rest of the copy); its weight/size set it apart.
       if (component.props?.level === 2) {
         return (
-          <h2 className="whitespace-pre-line text-lg font-semibold leading-snug text-[color:var(--acc)] sm:text-xl">
+          <h2 className="whitespace-pre-line text-lg font-semibold leading-snug sm:text-xl">
             {text}
           </h2>
         );
