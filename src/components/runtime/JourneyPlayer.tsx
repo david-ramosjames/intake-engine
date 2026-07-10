@@ -450,7 +450,7 @@ function LogoOrName({
   firm: string;
   inBar?: boolean;
 }) {
-  const imgCls = inBar ? "max-h-12 w-auto object-contain md:max-h-14" : "max-h-14 w-auto object-contain md:max-h-16";
+  const imgCls = inBar ? "max-h-[3.6rem] w-auto object-contain md:max-h-[4.2rem]" : "max-h-14 w-auto object-contain md:max-h-16";
   const inner = logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={logoUrl} alt={firm || "logo"} className={imgCls} />
