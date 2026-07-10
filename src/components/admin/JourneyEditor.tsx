@@ -472,7 +472,17 @@ export function JourneyEditor({
                   onChange={(v) => mutate((d) => void (((d.theme ??= {}).banner ??= {}).textColor = v))}
                 />
               </div>
-              <p className="text-xs text-gray-400">Your logo (set below) shows in this bar when it&apos;s on.</p>
+              <label className="flex items-center gap-2 pt-1 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  className="accent-blue-600"
+                  checked={def.theme?.banner?.logoInBar === true}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).banner ??= {}).logoInBar = e.target.checked))
+                  }
+                />
+                Show logo in this bar (larger). Off: logo sits above the form.
+              </label>
             </div>
           </div>
 

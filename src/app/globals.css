@@ -59,6 +59,25 @@ body {
   box-shadow: 0 6px 18px color-mix(in srgb, var(--btn-hover-bg, #0b1f3a) 30%, transparent);
 }
 
+/* Primary call-to-action button (Continue / CTAs). Same hover behavior as the
+   answer buttons — lift + inverse-contrast color shift — so hover feels
+   consistent across the whole journey. Colors come from --cta-* tokens. */
+.j-cta {
+  background: var(--cta-bg, #e63946);
+  color: var(--cta-text, #fff);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.j-cta:hover:not(:disabled) {
+  background: var(--cta-hover-bg, #0b1f3a);
+  color: var(--cta-hover-text, #fff);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--cta-hover-bg, #0b1f3a) 30%, transparent);
+}
+
 /* Runtime text inputs — adapt to the journey theme (light or dark). */
 .j-input {
   background: color-mix(in srgb, var(--text, #0b1f3a) 4%, transparent);

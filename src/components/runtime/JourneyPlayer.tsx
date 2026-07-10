@@ -248,13 +248,15 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       // unchanged.
       ["--cta-bg"]: theme.buttonBg ?? theme.colorAccent ?? "#e63946",
       ["--cta-text"]: theme.buttonText ?? "#ffffff",
+      ["--cta-hover-bg"]: theme.buttonHoverBg ?? text,
+      ["--cta-hover-text"]: theme.buttonHoverText ?? bg,
     } as React.CSSProperties;
   }, [theme]);
 
   const firm = attribution?.firm ?? "";
-  // When the top bar is shown it hosts the logo, so the in-form header only
-  // needs the language toggle (and can be shorter).
-  const showBanner = bannerShown(theme);
+  // When the logo lives in the top bar, the in-form header only needs the
+  // language toggle (and can be shorter).
+  const logoInBar = bannerLogoShown(theme);
 
   // Trust stats render at the bottom (under the CTAs); everything else on top.
   const visibleComps = (page?.components ?? []).filter((c) => isComponentVisible(c, definition, answers));
@@ -314,7 +316,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       )}
 
       <section className="relative flex flex-1 flex-col px-6 py-6 md:px-14">
-        <header className={`flex ${showBanner ? "h-11" : "h-16"} shrink-0 items-center justify-between`}>
+        <header className={`flex ${logoInBar ? "h-11" : "h-16"} shrink-0 items-center justify-between`}>
           {languages.length > 1 ? (
             <div className="flex items-center gap-1.5 text-sm font-medium">
               {languages.map((lng) => (
@@ -337,7 +339,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           ) : (
             <span />
           )}
-          {!showBanner && <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} />}
+          {!logoInBar && <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} />}
         </header>
 
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-4">
@@ -393,7 +395,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                     type="button"
                     onClick={onContinue}
                     disabled={busy}
-                    className="rounded-[var(--radius)] bg-[color:var(--cta-bg)] px-10 py-4 text-lg font-semibold text-[color:var(--cta-text)] shadow-md transition hover:opacity-90 focus-ring disabled:opacity-50"
+                    className="j-cta rounded-[var(--radius)] px-10 py-4 text-lg font-semibold shadow-md focus-ring disabled:opacity-50"
                   >
                     {continueText}
                   </button>
@@ -448,7 +450,7 @@ function LogoOrName({
   firm: string;
   inBar?: boolean;
 }) {
-  const imgCls = inBar ? "max-h-9 w-auto object-contain" : "max-h-14 w-auto object-contain md:max-h-16";
+  const imgCls = inBar ? "max-h-12 w-auto object-contain md:max-h-14" : "max-h-14 w-auto object-contain md:max-h-16";
   const inner = logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={logoUrl} alt={firm || "logo"} className={imgCls} />
@@ -718,7 +720,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
               key={i}
               href={ctaHref(cta)}
               onClick={onCtaClick}
-              className="hidden items-center gap-2 rounded-[var(--radius)] bg-[color:var(--cta-bg)] px-6 py-3 font-medium text-[color:var(--cta-text)] shadow-sm transition hover:opacity-90 focus-ring sm:inline-flex"
+              className="j-cta hidden items-center gap-2 rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring sm:inline-flex"
             >
               <PhoneIcon />
               {label}
@@ -740,7 +742,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
             key={i}
             href={ctaHref(cta)}
             onClick={onCtaClick}
-            className="rounded-[var(--radius)] bg-[color:var(--cta-bg)] px-6 py-3 font-medium text-[color:var(--cta-text)] shadow-sm transition hover:opacity-90 focus-ring"
+            className="j-cta rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring"
           >
             {label}
           </a>
@@ -752,11 +754,17 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
 
 // Full-width top banner that slides down on load. Editable announcements +
 // an optional click-to-call button (desktop).
-// Whether the top banner bar should render (enabled + has content or a logo).
+// Whether the journey logo should sit inside the top bar (opt-in via
+// banner.logoInBar). When off, the logo stays in the in-form header.
+function bannerLogoShown(theme: NonNullable<JourneyDefinition["theme"]>): boolean {
+  return Boolean(theme.logoUrl) && theme.banner?.logoInBar === true;
+}
+
+// Whether the top banner bar should render (enabled + has content or a bar logo).
 function bannerShown(theme: NonNullable<JourneyDefinition["theme"]>): boolean {
   const b = theme.banner;
   if (!b || b.enabled === false) return false;
-  return (b.items?.length ?? 0) > 0 || Boolean(b.phone) || Boolean(theme.logoUrl);
+  return (b.items?.length ?? 0) > 0 || Boolean(b.phone) || bannerLogoShown(theme);
 }
 
 function Banner({
@@ -796,13 +804,13 @@ function Banner({
             <a
               href={`tel:${banner.phone.replace(/[^\d+]/g, "")}`}
               onClick={onCtaClick}
-              className="hidden items-center gap-2 rounded-full bg-[color:var(--cta-bg)] px-4 py-1.5 normal-case text-[color:var(--cta-text)] sm:inline-flex"
+              className="j-cta hidden items-center gap-2 rounded-full px-4 py-1.5 normal-case sm:inline-flex"
             >
               <PhoneIcon />
               {banner.phoneLabel ?? "Call Now"} {formatPhone(banner.phone)}
             </a>
           )}
-          {theme.logoUrl && (
+          {bannerLogoShown(theme) && (
             <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
           )}
         </div>

@@ -231,6 +231,9 @@ export const themeTokensSchema = z
         // Explicit colors for the top bar; fall back to a tint of the theme.
         background: z.string().optional(),
         textColor: z.string().optional(),
+        // Show the journey logo inside the bar (larger). When false the logo
+        // stays in the in-form header instead.
+        logoInBar: z.boolean().optional(),
       })
       .optional(),
   })
