@@ -254,9 +254,14 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   }, [theme]);
 
   const firm = attribution?.firm ?? "";
-  // When the logo lives in the top bar, the in-form header only needs the
-  // language toggle (and can be shorter).
+  // The top bar hosts the language toggle (and, when opted in, the logo). The
+  // in-form header only renders what's left over — and disappears entirely when
+  // both live in the bar, giving the form more room.
+  const showBanner = bannerShown(theme);
   const logoInBar = bannerLogoShown(theme);
+  const logoInHeader = !logoInBar && Boolean(theme.logoUrl || firm);
+  const toggleInHeader = !showBanner && languages.length > 1;
+  const showHeader = logoInHeader || toggleInHeader;
 
   // Trust stats render at the bottom (under the CTAs); everything else on top.
   const visibleComps = (page?.components ?? []).filter((c) => isComponentVisible(c, definition, answers));
@@ -282,7 +287,14 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       }}
       className="flex min-h-dvh flex-col"
     >
-      <Banner theme={theme} L={L} onCtaClick={() => emit("cta_click")} />
+      <Banner
+        theme={theme}
+        L={L}
+        onCtaClick={() => emit("cta_click")}
+        languages={languages}
+        locale={locale}
+        setLocale={setLocale}
+      />
       <div className="flex flex-1 flex-col md:flex-row">
       {theme.sideImageUrl && (
         <aside
@@ -316,29 +328,14 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       )}
 
       <section className="relative flex flex-1 flex-col px-6 py-6 md:px-14">
-        <header className={`flex ${logoInBar ? "h-11" : "h-16"} shrink-0 items-center justify-between gap-3`}>
-          {!logoInBar ? <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} /> : <span />}
-          {languages.length > 1 && (
-            <div className="ml-auto flex items-center gap-1.5 text-sm font-medium">
-              {languages.map((lng) => (
-                <button
-                  key={lng}
-                  type="button"
-                  onClick={() => setLocale(lng)}
-                  aria-pressed={locale === lng}
-                  className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 transition ${
-                    locale === lng
-                      ? "border-transparent bg-[color:var(--text)] text-[color:var(--bg)]"
-                      : "border-[color:color-mix(in_srgb,var(--text)_25%,transparent)] opacity-70 hover:opacity-100"
-                  }`}
-                >
-                  <Flag code={lng} />
-                  {(LANGUAGE_LABELS[lng] ?? lng).slice(0, 3).toUpperCase()}
-                </button>
-              ))}
-            </div>
-          )}
-        </header>
+        {showHeader && (
+          <header className={`flex ${logoInHeader ? "h-16" : "h-11"} shrink-0 items-center justify-between gap-3`}>
+            {logoInHeader ? <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} /> : <span />}
+            {toggleInHeader && (
+              <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="ml-auto" />
+            )}
+          </header>
+        )}
 
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-4">
           {terminal ? (
@@ -458,6 +455,41 @@ function LogoOrName({
     </a>
   ) : (
     inner
+  );
+}
+
+// EN/ES language pills. Used in the top bar (when shown) or the in-form header.
+function LangToggle({
+  languages,
+  locale,
+  setLocale,
+  className,
+}: {
+  languages: string[];
+  locale: string;
+  setLocale: (l: string) => void;
+  className?: string;
+}) {
+  if (languages.length <= 1) return null;
+  return (
+    <div className={`flex items-center gap-1.5 text-sm font-medium normal-case ${className ?? ""}`}>
+      {languages.map((lng) => (
+        <button
+          key={lng}
+          type="button"
+          onClick={() => setLocale(lng)}
+          aria-pressed={locale === lng}
+          className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 transition ${
+            locale === lng
+              ? "border-transparent bg-[color:var(--text)] text-[color:var(--bg)]"
+              : "border-[color:color-mix(in_srgb,var(--text)_25%,transparent)] opacity-70 hover:opacity-100"
+          }`}
+        >
+          <Flag code={lng} />
+          {(LANGUAGE_LABELS[lng] ?? lng).slice(0, 3).toUpperCase()}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -746,10 +778,16 @@ function Banner({
   theme,
   L,
   onCtaClick,
+  languages,
+  locale,
+  setLocale,
 }: {
   theme: NonNullable<JourneyDefinition["theme"]>;
   L: Localize;
   onCtaClick?: () => void;
+  languages: string[];
+  locale: string;
+  setLocale: (l: string) => void;
 }) {
   if (!bannerShown(theme)) return null;
   const banner = theme.banner!;
@@ -764,7 +802,8 @@ function Banner({
       }}
     >
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-xs font-semibold uppercase tracking-wide sm:justify-between sm:text-sm">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="mr-1" />
           {items.map((it, i) => (
             <span key={i} className="flex items-center gap-3">
               {i > 0 && <span className="opacity-30">|</span>}
