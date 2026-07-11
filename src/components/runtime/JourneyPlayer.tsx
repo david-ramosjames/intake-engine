@@ -316,9 +316,10 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       )}
 
       <section className="relative flex flex-1 flex-col px-6 py-6 md:px-14">
-        <header className={`flex ${logoInBar ? "h-11" : "h-16"} shrink-0 items-center justify-between`}>
-          {languages.length > 1 ? (
-            <div className="flex items-center gap-1.5 text-sm font-medium">
+        <header className={`flex ${logoInBar ? "h-11" : "h-16"} shrink-0 items-center justify-between gap-3`}>
+          {!logoInBar ? <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} /> : <span />}
+          {languages.length > 1 && (
+            <div className="ml-auto flex items-center gap-1.5 text-sm font-medium">
               {languages.map((lng) => (
                 <button
                   key={lng}
@@ -336,10 +337,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                 </button>
               ))}
             </div>
-          ) : (
-            <span />
           )}
-          {!logoInBar && <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} />}
         </header>
 
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-4">
@@ -373,10 +371,6 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
               </div>
 
               {error && <p className="text-sm text-[color:var(--acc)]">{error}</p>}
-
-              {/* Mobile: big tap-to-call number (desktop shows the call button
-                  inline with Start instead). */}
-              {page && <MobileCallNumber page={page} onCtaClick={() => emit("cta_click")} />}
 
               {/* Primary intake action and the call CTA share a row, so the
                   form stays compact. Back sits alongside them. */}
@@ -674,40 +668,20 @@ function ctaNumber(c: { value?: string; href?: string }) {
   return c.value ?? c.href?.replace(/^tel:|^sms:/, "") ?? "";
 }
 
-// Call-to-action buttons. Call buttons show the number inside the button on
-// desktop and are hidden on mobile (the big tappable number covers mobile).
-// Non-call CTAs (links) show on all sizes.
+// Call-to-action buttons. Call buttons show on every size (tappable to dial);
+// the phone number is appended inside the button on desktop only, so the mobile
+// button stays compact. Non-call CTAs (links) show on all sizes.
 function CtaBlock({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
   if (!page.cta || page.cta.length === 0) return null;
   return (
-    <div className="space-y-4 pt-1">
-      <MobileCallNumber page={page} onCtaClick={onCtaClick} />
-      <div className="flex flex-wrap gap-3">
-        <CtaButtons page={page} L={L} onCtaClick={onCtaClick} />
-      </div>
+    <div className="flex flex-wrap gap-3 pt-1">
+      <CtaButtons page={page} L={L} onCtaClick={onCtaClick} />
     </div>
   );
 }
 
-// The big tap-to-call number shown only on mobile (desktop uses the button).
-function MobileCallNumber({ page, onCtaClick }: { page: Page; onCtaClick?: () => void }) {
-  const phoneCta = page.cta?.find(isCallCta);
-  const phoneValue = phoneCta ? ctaNumber(phoneCta) : "";
-  if (!phoneValue) return null;
-  return (
-    <a
-      href={`tel:${phoneValue.replace(/[^\d+]/g, "")}`}
-      onClick={onCtaClick}
-      className="inline-block text-3xl font-bold tracking-tight text-[color:var(--acc)] underline-offset-4 hover:underline sm:hidden"
-    >
-      {formatPhone(phoneValue)}
-    </a>
-  );
-}
-
-// The CTA buttons themselves (call button hidden on mobile; links on all
-// sizes). Rendered inside a flex row — reused on ending screens and inline
-// with the Continue button on form screens.
+// The CTA buttons themselves — reused on ending screens and inline with the
+// Continue button on form screens.
 function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
   if (!page.cta || page.cta.length === 0) return null;
   return (
@@ -721,11 +695,11 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
               key={i}
               href={ctaHref(cta)}
               onClick={onCtaClick}
-              className="j-cta hidden items-center gap-2 rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring sm:inline-flex"
+              className="j-cta inline-flex items-center gap-2 rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring"
             >
               <PhoneIcon />
               {label}
-              {num ? ` ${formatPhone(num)}` : ""}
+              {num ? <span className="hidden sm:inline">&nbsp;{formatPhone(num)}</span> : null}
             </a>
           );
         }
