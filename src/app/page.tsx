@@ -1,10 +1,35 @@
 import Link from "next/link";
+import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
 import { getAdminOrg } from "@/server/currentOrg";
+import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store } from "@/server/store";
+import { resolveCustomDomain } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // On a connected custom domain, the root serves that domain's journey.
+  const custom = await resolveCustomDomain();
+  if (custom?.journeySlug) {
+    const journey = await getPublishedJourneyCached(custom.org.id, custom.journeySlug);
+    if (journey && journey.status === "PUBLISHED") {
+      const sp = await searchParams;
+      const pick = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
+      const attribution: Record<string, string> = { org: custom.org.slug, firm: custom.org.name };
+      const source = pick("utm_source") ?? pick("source");
+      const campaign = pick("utm_campaign") ?? pick("campaign");
+      const medium = pick("utm_medium") ?? pick("medium");
+      if (source) attribution.source = source;
+      if (campaign) attribution.campaign = campaign;
+      if (medium) attribution.medium = medium;
+      return <JourneyPlayer slug={journey.slug} definition={journey.definition} attribution={attribution} />;
+    }
+  }
+
   const org = await getAdminOrg();
   const journeys = org ? await store.listJourneys(org.id) : [];
 

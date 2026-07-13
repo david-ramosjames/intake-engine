@@ -9,11 +9,14 @@ import path from "node:path";
 import { carAccidentJourney } from "@/modules/journeys/content/pi-car-accident";
 import {
   newId,
+  normalizeHostname,
+  type CreateDomainInput,
   type CreateJourneyInput,
   type CreateLeadInput,
   type CreateOrgInput,
   type PlatformStore,
   type RecordEventInput,
+  type StoredDomain,
   type StoredEvent,
   type UpdateJourneyInput,
   type StoredJourney,
@@ -26,6 +29,7 @@ interface Db {
   journeys: StoredJourney[];
   leads: StoredLead[];
   events: StoredEvent[];
+  domains: StoredDomain[];
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -53,7 +57,7 @@ function seed(): Db {
     createdAt: now,
     updatedAt: now,
   };
-  return { organizations: [org], journeys: [journey], leads: [], events: [] };
+  return { organizations: [org], journeys: [journey], leads: [], events: [], domains: [] };
 }
 
 async function load(): Promise<Db> {
@@ -62,6 +66,7 @@ async function load(): Promise<Db> {
     const raw = await fs.readFile(DATA_FILE, "utf8");
     cache = JSON.parse(raw) as Db;
     cache.events ??= []; // back-compat for stores created before events
+    cache.domains ??= []; // back-compat for stores created before domains
   } catch {
     cache = seed();
     await persist();
@@ -237,5 +242,43 @@ export const demoStore: PlatformStore = {
     db.leads.push(lead);
     await persist();
     return lead;
+  },
+
+  async listDomains(orgId) {
+    const db = await load();
+    return db.domains
+      .filter((d) => d.organizationId === orgId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+
+  async addDomain(input: CreateDomainInput) {
+    const db = await load();
+    const hostname = normalizeHostname(input.hostname);
+    if (!hostname) throw new Error("Enter a valid domain, e.g. intake.yourfirm.com");
+    if (db.domains.some((d) => d.hostname === hostname)) {
+      throw new Error(`The domain "${hostname}" is already connected.`);
+    }
+    const domain: StoredDomain = {
+      id: newId("dom"),
+      organizationId: input.organizationId,
+      journeyId: input.journeyId,
+      hostname,
+      createdAt: new Date().toISOString(),
+    };
+    db.domains.push(domain);
+    await persist();
+    return domain;
+  },
+
+  async deleteDomain(orgId, id) {
+    const db = await load();
+    db.domains = db.domains.filter((d) => !(d.id === id && d.organizationId === orgId));
+    await persist();
+  },
+
+  async getDomainByHost(hostname) {
+    const db = await load();
+    const host = normalizeHostname(hostname);
+    return db.domains.find((d) => d.hostname === host) ?? null;
   },
 };

@@ -84,6 +84,22 @@ export interface CreateLeadInput {
   medium?: string;
 }
 
+export interface StoredDomain {
+  id: string;
+  organizationId: string;
+  // Journey served at this domain's root; null → org's first published journey.
+  journeyId?: string;
+  hostname: string;
+  verifiedAt?: string;
+  createdAt: string;
+}
+
+export interface CreateDomainInput {
+  organizationId: string;
+  journeyId?: string;
+  hostname: string;
+}
+
 export type EventType = "opened" | "started" | "completed" | "cta_click";
 
 export interface StoredEvent {
@@ -127,6 +143,20 @@ export interface PlatformStore {
 
   recordEvent(input: RecordEventInput): Promise<void>;
   listEvents(orgId: string, sinceISO?: string): Promise<StoredEvent[]>;
+
+  listDomains(orgId: string): Promise<StoredDomain[]>;
+  addDomain(input: CreateDomainInput): Promise<StoredDomain>;
+  deleteDomain(orgId: string, id: string): Promise<void>;
+  getDomainByHost(hostname: string): Promise<StoredDomain | null>;
+}
+
+/** Normalize a hostname for storage/lookup: lowercase, strip scheme/port/path. */
+export function normalizeHostname(input: string): string {
+  let h = input.trim().toLowerCase();
+  h = h.replace(/^https?:\/\//, "");
+  h = h.split("/")[0] ?? h;
+  h = h.split(":")[0] ?? h; // strip port
+  return h;
 }
 
 /** Small URL-safe id (not a cuid, but fine for the DEMO store). */

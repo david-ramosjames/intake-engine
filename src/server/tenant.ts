@@ -9,6 +9,30 @@ import { getPrisma, hasDatabase } from "./db";
 import { store } from "./store";
 import type { StoredOrg } from "./store/types";
 
+/**
+ * If the current request arrives on a connected custom domain, resolve the
+ * organization and the journey slug it should serve (its mapped journey, or the
+ * org's first published journey). Works in both DEMO and DB modes — the host
+ * hint is set by middleware for every request.
+ */
+export async function resolveCustomDomain(): Promise<{ org: StoredOrg; journeySlug: string | null } | null> {
+  const h = await headers();
+  const kind = h.get("x-tenant-kind");
+  const host = h.get("x-tenant-host") ?? undefined;
+  if (kind !== "custom" || !host) return null;
+
+  const domain = await store.getDomainByHost(host);
+  if (!domain) return null;
+  const org = await store.getOrganization(domain.organizationId);
+  if (!org) return null;
+
+  const journeys = await store.listJourneys(org.id);
+  const published = journeys.filter((j) => j.status === "PUBLISHED");
+  const mapped = domain.journeyId ? published.find((j) => j.id === domain.journeyId) : undefined;
+  const journeySlug = (mapped ?? published[0])?.slug ?? null;
+  return { org, journeySlug };
+}
+
 export async function resolvePublicOrg(orgParam?: string): Promise<StoredOrg | null> {
   if (!hasDatabase) {
     if (orgParam) {

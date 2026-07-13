@@ -68,6 +68,9 @@ model Domain {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   hostname       String    @unique // e.g. "intake.ramosjames.com"
+  // Which journey this domain serves at its root. Null → the org's first
+  // published journey.
+  journeyId      String?
   isPrimary      Boolean   @default(false)
   verifiedAt     DateTime?
   createdAt      DateTime  @default(now())

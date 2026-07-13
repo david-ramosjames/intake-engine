@@ -31,6 +31,8 @@ type AnyDelegate = {
   create: (args?: unknown) => Promise<any>;
   update: (args?: unknown) => Promise<any>;
   upsert: (args?: unknown) => Promise<any>;
+  delete: (args?: unknown) => Promise<any>;
+  deleteMany: (args?: unknown) => Promise<any>;
 };
 
 const globalForPrisma = globalThis as unknown as { prisma?: Db };

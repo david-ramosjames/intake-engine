@@ -12,6 +12,7 @@ const items: Array<[label: string, href: string]> = [
   ["Leads", "/admin/leads"],
   ["Analytics", "/admin/analytics"],
   ["Automations", "/admin/automations"],
+  ["Domains", "/admin/domains"],
   ["Settings", "/admin/settings"],
 ];
 

@@ -5,16 +5,30 @@
 
 import { safeParseJourneyDefinition, type JourneyDefinition } from "@/modules/journeys/domain/schema";
 import { getPrisma } from "../db";
-import type {
-  CreateJourneyInput,
-  CreateLeadInput,
-  CreateOrgInput,
-  PlatformStore,
-  StoredEvent,
-  StoredJourney,
-  StoredLead,
-  StoredOrg,
+import {
+  normalizeHostname,
+  type CreateDomainInput,
+  type CreateJourneyInput,
+  type CreateLeadInput,
+  type CreateOrgInput,
+  type PlatformStore,
+  type StoredDomain,
+  type StoredEvent,
+  type StoredJourney,
+  type StoredLead,
+  type StoredOrg,
 } from "./types";
+
+function domainRow(d: any): StoredDomain {
+  return {
+    id: d.id,
+    organizationId: d.organizationId,
+    journeyId: d.journeyId ?? undefined,
+    hostname: d.hostname,
+    verifiedAt: d.verifiedAt?.toISOString?.() ?? (d.verifiedAt ? String(d.verifiedAt) : undefined),
+    createdAt: d.createdAt?.toISOString?.() ?? String(d.createdAt),
+  };
+}
 
 function orgRow(o: any): StoredOrg {
   return { id: o.id, slug: o.slug, name: o.name, industry: o.industry ?? undefined, createdAt: o.createdAt?.toISOString?.() ?? String(o.createdAt) };
@@ -291,5 +305,37 @@ export const prismaStore: PlatformStore = {
       medium: input.medium,
       createdAt: new Date().toISOString(),
     };
+  },
+
+  async listDomains(orgId) {
+    const prisma = await getPrisma();
+    const rows = await prisma.domain.findMany({
+      where: { organizationId: orgId },
+      orderBy: { createdAt: "asc" },
+    });
+    return rows.map(domainRow);
+  },
+
+  async addDomain(input: CreateDomainInput) {
+    const prisma = await getPrisma();
+    const hostname = normalizeHostname(input.hostname);
+    if (!hostname) throw new Error("Enter a valid domain, e.g. intake.yourfirm.com");
+    const existing = await prisma.domain.findUnique({ where: { hostname } });
+    if (existing) throw new Error(`The domain "${hostname}" is already connected.`);
+    const row = await prisma.domain.create({
+      data: { organizationId: input.organizationId, journeyId: input.journeyId ?? null, hostname },
+    });
+    return domainRow(row);
+  },
+
+  async deleteDomain(orgId, id) {
+    const prisma = await getPrisma();
+    await prisma.domain.deleteMany({ where: { id, organizationId: orgId } });
+  },
+
+  async getDomainByHost(hostname) {
+    const prisma = await getPrisma();
+    const row = await prisma.domain.findUnique({ where: { hostname: normalizeHostname(hostname) } });
+    return row ? domainRow(row) : null;
   },
 };
