@@ -13,11 +13,9 @@ type JourneyRef = { id: string; name: string; slug: string };
 export function DomainsManager({
   initialDomains,
   journeys,
-  rootDomain,
 }: {
   initialDomains: Domain[];
   journeys: JourneyRef[];
-  rootDomain: string;
 }) {
   const [domains, setDomains] = useState<Domain[]>(initialDomains);
   const [hostname, setHostname] = useState("");
@@ -59,6 +57,14 @@ export function DomainsManager({
 
   return (
     <div className="space-y-6">
+      {/* How it works */}
+      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-gray-600">
+        <span className="font-semibold text-gray-800">How this works:</span> each domain shows{" "}
+        <span className="font-medium">one journey</span>. Connect a domain, pick which journey it should open, and
+        visitors who go to that domain land straight on it — no <code className="rounded bg-white px-1">/j/…</code>{" "}
+        link needed. Connect a separate domain for each journey you want to give its own URL.
+      </div>
+
       {/* Connected domains */}
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-5 py-3 text-sm font-semibold text-gray-700">
@@ -120,6 +126,7 @@ export function DomainsManager({
                 </option>
               ))}
             </select>
+            <span className="mt-1 block text-xs text-gray-400">Visitors to this domain will land on this journey.</span>
           </label>
           <button
             type="submit"
@@ -134,22 +141,32 @@ export function DomainsManager({
 
       {/* DNS setup */}
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-        <div className="font-semibold text-gray-700">Point your domain here</div>
-        <ol className="mt-2 list-decimal space-y-1.5 pl-5">
+        <div className="font-semibold text-gray-700">Make the domain go live (one-time DNS setup)</div>
+        <p className="mt-1 text-xs text-gray-500">
+          Connecting a domain above tells the app which journey to show. These steps route the actual web traffic to
+          the app.
+        </p>
+        <ol className="mt-3 list-decimal space-y-2 pl-5">
           <li>
-            At your DNS provider, add a <span className="font-medium">CNAME</span> record from your subdomain
-            (e.g. <code className="rounded bg-white px-1">intake</code>) to{" "}
-            <code className="rounded bg-white px-1">{rootDomain}</code>.
+            In <span className="font-medium">Railway</span>, open this app&apos;s service → Settings → Networking →{" "}
+            <span className="font-medium">Custom Domain</span>, and enter the same domain you connected above (e.g.{" "}
+            <code className="rounded bg-white px-1">intake.yourfirm.com</code>). Railway will show you a{" "}
+            <span className="font-medium">CNAME target</span> (something like{" "}
+            <code className="rounded bg-white px-1">xxxx.up.railway.app</code>).
           </li>
           <li>
-            Add the same domain in your hosting platform (Railway → the service → Settings → Networking → Custom
-            Domain) so it can issue an HTTPS certificate.
+            At your <span className="font-medium">DNS provider</span> (GoDaddy, Cloudflare, Namecheap…), add a{" "}
+            <span className="font-medium">CNAME record</span>: the name is your subdomain (e.g.{" "}
+            <code className="rounded bg-white px-1">intake</code>) and the value is the CNAME target Railway gave you.
           </li>
-          <li>DNS can take a few minutes to a few hours to propagate. Once live, the domain serves the chosen journey at its root.</li>
+          <li>
+            Save and wait for it to go live — usually a few minutes, up to a few hours. Railway issues the HTTPS
+            certificate automatically. Then visiting your domain shows the journey.
+          </li>
         </ol>
-        <p className="mt-2 text-xs text-gray-400">
-          Apex domains (yourfirm.com with no subdomain) may need an ALIAS/ANAME record or the provider&apos;s flattening
-          feature instead of a CNAME.
+        <p className="mt-3 text-xs text-gray-400">
+          Using a root/apex domain (<code className="rounded bg-white px-1">yourfirm.com</code> with no subdomain)?
+          Most providers need an ALIAS/ANAME record or &quot;CNAME flattening&quot; instead of a plain CNAME.
         </p>
       </div>
     </div>

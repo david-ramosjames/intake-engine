@@ -10,7 +10,6 @@ export default async function DomainsPage() {
 
   const [domains, journeys] = await Promise.all([store.listDomains(org.id), store.listJourneys(org.id)]);
   const published = journeys.filter((j) => j.status === "PUBLISHED");
-  const rootDomain = process.env.PLATFORM_ROOT_DOMAIN || "your-app.up.railway.app";
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -23,7 +22,6 @@ export default async function DomainsPage() {
         <DomainsManager
           initialDomains={domains.map((d) => ({ id: d.id, hostname: d.hostname, journeyId: d.journeyId }))}
           journeys={published.map((j) => ({ id: j.id, name: j.name, slug: j.slug }))}
-          rootDomain={rootDomain}
         />
       </div>
     </div>
