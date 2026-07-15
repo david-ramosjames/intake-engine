@@ -30,6 +30,31 @@ type Outcome = "lead" | "referral" | "declined";
 // Compact input types that can share a row two-up on wider screens. Longer
 // inputs (long text, address, uploads) and all content/choice blocks stay
 // full width. A field can opt out with props.full = true.
+// A headline can be authored as multiple lines, each its own color (props.lines).
+type HeadingLine = { text: string; color?: string };
+function headingLines(c: Component): HeadingLine[] | null {
+  const raw = c.props?.lines;
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  return raw.map((l) => {
+    const o = (l && typeof l === "object" ? l : {}) as Record<string, unknown>;
+    return { text: typeof o.text === "string" ? o.text : "", color: typeof o.color === "string" ? o.color : undefined };
+  });
+}
+// Render a heading's inner text — colored lines if authored, else plain content.
+function HeadingBody({ component, L }: { component: Component; L: Localize }) {
+  const lines = headingLines(component);
+  if (!lines) return <>{L(tk.content(component.id), component.content)}</>;
+  return (
+    <>
+      {lines.map((ln, i) => (
+        <span key={i} className="block" style={ln.color ? { color: ln.color } : undefined}>
+          {L(tk.line(component.id, i), ln.text)}
+        </span>
+      ))}
+    </>
+  );
+}
+
 const COMPACT_FIELDS = new Set<Component["type"]>([
   "shortText",
   "email",
@@ -248,13 +273,14 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       ["--btn-text"]: theme.buttonText ?? text,
       ["--btn-hover-bg"]: theme.buttonHoverBg ?? text,
       ["--btn-hover-text"]: theme.buttonHoverText ?? bg,
-      // Primary action buttons (Continue / call-to-action). Use the journey's
-      // Button color when set, otherwise the accent so older journeys are
-      // unchanged.
-      ["--cta-bg"]: theme.buttonBg ?? theme.colorAccent ?? "#e63946",
-      ["--cta-text"]: theme.buttonText ?? "#ffffff",
+      // Primary (filled call) button — its own color, else Button color, else
+      // accent so older journeys are unchanged.
+      ["--cta-bg"]: theme.ctaPrimaryBg ?? theme.buttonBg ?? theme.colorAccent ?? "#e63946",
+      ["--cta-text"]: theme.ctaPrimaryText ?? theme.buttonText ?? "#ffffff",
       ["--cta-hover-bg"]: theme.buttonHoverBg ?? text,
       ["--cta-hover-text"]: theme.buttonHoverText ?? bg,
+      // Secondary (outlined "start") button — border + text color.
+      ["--cta2"]: theme.ctaSecondaryColor ?? theme.colorAccent ?? text,
     } as React.CSSProperties;
   }, [theme]);
 
@@ -379,14 +405,16 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           {/* Dark scrim so the white name (top) and headline (bottom) stay
               readable over any photo, regardless of the journey's theme. */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/45" />
+          {/* Extra darkening in the top-right quarter. */}
+          <div className="absolute right-0 top-0 h-1/2 w-1/2 bg-gradient-to-bl from-black/55 via-black/20 to-transparent" />
           {theme.logoUrl && (
             <div className="absolute left-5 top-4">
               <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
             </div>
           )}
-          {/* Attorney name/details — upper-left. */}
+          {/* Attorney name/details — upper-left, no more than ~1/3 wide. */}
           {(theme.sideOverlay?.title || theme.sideOverlay?.subtitle) && (
-            <div className="absolute left-6 top-[26%] max-w-[62%] text-white drop-shadow">
+            <div className="absolute left-6 top-[15%] max-w-[38%] text-white drop-shadow">
               {theme.sideOverlay?.title && (
                 <div className="text-2xl font-bold leading-tight">{theme.sideOverlay.title}</div>
               )}
@@ -400,7 +428,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           {/* Welcome headline — bottom of the photo. */}
           {heroHeading && (
             <h1 className="absolute inset-x-0 bottom-5 whitespace-pre-line px-6 text-3xl font-bold leading-tight text-white drop-shadow">
-              {L(tk.content(heroHeading.id), heroHeading.content)}
+              <HeadingBody component={heroHeading} L={L} />
             </h1>
           )}
         </div>
@@ -671,18 +699,20 @@ function ContentOrField({
 }) {
   switch (component.type) {
     case "heading": {
-      const text = L(tk.content(component.id), component.content);
       // A level-2 heading is a compact "question" prompt above a field group —
-      // smaller than the page headline. It inherits the theme text color (so it
-      // matches the rest of the copy); its weight/size set it apart.
+      // smaller than the page headline. Text may be plain or colored lines.
       if (component.props?.level === 2) {
         return (
           <h2 className="whitespace-pre-line text-lg font-semibold leading-snug sm:text-xl">
-            {text}
+            <HeadingBody component={component} L={L} />
           </h2>
         );
       }
-      return <h1 className="whitespace-pre-line text-2xl font-semibold leading-tight sm:text-3xl">{text}</h1>;
+      return (
+        <h1 className="whitespace-pre-line text-2xl font-semibold leading-tight sm:text-3xl">
+          <HeadingBody component={component} L={L} />
+        </h1>
+      );
     }
     case "paragraph":
       return <p className="text-base leading-relaxed opacity-70">{L(tk.content(component.id), component.content)}</p>;

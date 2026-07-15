@@ -268,6 +268,8 @@ export function JourneyEditor({
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).colorAccent = v))}
             />
           </div>
+          {/* Answer (choice) buttons */}
+          <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Answer buttons</div>
           <div className="flex flex-wrap gap-6">
             <ColorField
               label="Button"
@@ -290,6 +292,31 @@ export function JourneyEditor({
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).buttonHoverText = v))}
             />
           </div>
+
+          {/* The two action buttons (Call = filled, Start = outlined) */}
+          <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Call &amp; Start buttons
+          </div>
+          <div className="flex flex-wrap gap-6">
+            <ColorField
+              label="Call button (fill)"
+              value={def.theme?.ctaPrimaryBg ?? def.theme?.buttonBg ?? def.theme?.colorAccent ?? "#c1322f"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaPrimaryBg = v))}
+            />
+            <ColorField
+              label="Call button text"
+              value={def.theme?.ctaPrimaryText ?? def.theme?.buttonText ?? "#ffffff"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaPrimaryText = v))}
+            />
+            <ColorField
+              label="Start button (outline)"
+              value={def.theme?.ctaSecondaryColor ?? def.theme?.colorAccent ?? def.theme?.colorText ?? "#c1322f"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaSecondaryColor = v))}
+            />
+          </div>
+          <p className="text-xs text-gray-400">
+            &ldquo;Call button&rdquo; is the filled button; &ldquo;Start button&rdquo; is the outlined one.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-500">Logo URL</label>
@@ -535,15 +562,31 @@ export function JourneyEditor({
             </div>
 
             {!terminalTypes.has(page.type) && (
-              <div className="mt-4">
-                <label className="mb-1 block text-xs font-medium text-gray-500">Continue button text</label>
-                <input
-                  className={input}
-                  placeholder="Continue"
-                  value={page.continueLabel ?? ""}
-                  onChange={(e) => mutate((d) => void (d.pages[pi]!.continueLabel = e.target.value || undefined))}
-                />
-                <EsBox es={es} k={tk.continue(page.id)} placeholder="Continue — Spanish" />
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Start / Continue button text</label>
+                  <input
+                    className={input}
+                    placeholder="Continue"
+                    value={page.continueLabel ?? ""}
+                    onChange={(e) => mutate((d) => void (d.pages[pi]!.continueLabel = e.target.value || undefined))}
+                  />
+                  <EsBox es={es} k={tk.continue(page.id)} placeholder="Continue — Spanish" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">
+                    Second line / helper (optional)
+                  </label>
+                  <input
+                    className={input}
+                    placeholder="e.g. Takes about 2 minutes"
+                    value={page.continueSubtitle ?? ""}
+                    onChange={(e) =>
+                      mutate((d) => void (d.pages[pi]!.continueSubtitle = e.target.value || undefined))
+                    }
+                  />
+                  <EsBox es={es} k={tk.continueSubtitle(page.id)} placeholder="Helper — Spanish" />
+                </div>
               </div>
             )}
 
@@ -595,6 +638,12 @@ export function JourneyEditor({
                     mutate((d) => void d.pages[pi]!.components[ci]!.options!.splice(oi, 1))
                   }
                   onStats={(stats) => mutate((d) => void (d.pages[pi]!.components[ci]!.stats = stats))}
+                  onLines={(lines) =>
+                    mutate((d) => {
+                      const c = d.pages[pi]!.components[ci]!;
+                      c.props = { ...(c.props ?? {}), lines: lines.length ? lines : undefined };
+                    })
+                  }
                   onRemove={
                     page.components.length > 1
                       ? () => mutate((d) => void d.pages[pi]!.components.splice(ci, 1))
@@ -699,6 +748,7 @@ function ComponentEditor({
   onAddOption,
   onRemoveOption,
   onStats,
+  onLines,
   onRemove,
 }: {
   component: Component;
@@ -713,6 +763,7 @@ function ComponentEditor({
   onAddOption: () => void;
   onRemoveOption: (oi: number) => void;
   onStats?: (stats: Array<{ value: string; label: string; icon?: string }>) => void;
+  onLines?: (lines: Array<{ text: string; color?: string }>) => void;
   onRemove?: () => void;
 }) {
   if (component.type === "stats") {
@@ -814,6 +865,9 @@ function ComponentEditor({
           <p className="mt-1 text-xs text-gray-400">Press Enter to add a line break.</p>
         )}
         <EsBox es={es} k={tk.content(component.id)} placeholder="Spanish" />
+        {component.type === "heading" && onLines && (
+          <HeadingLinesEditor component={component} es={es} onLines={onLines} />
+        )}
       </div>
     );
   }
@@ -914,6 +968,8 @@ function ComponentEditor({
 
 type CtaRow = {
   label: string;
+  subtitle?: string;
+  note?: string;
   type: "call" | "text" | "schedule" | "link" | "custom";
   value: string;
   href?: string;
@@ -933,6 +989,8 @@ function CtaEditor({
 }) {
   const rows: CtaRow[] = cta.map((c) => ({
     label: c.label ?? "",
+    subtitle: c.subtitle,
+    note: c.note,
     type: c.type ?? (c.href?.startsWith("tel:") ? "call" : "link"),
     value: c.value ?? (c.href ? c.href.replace(/^tel:|^sms:/, "") : ""),
     style: c.style ?? "primary",
@@ -985,6 +1043,22 @@ function CtaEditor({
               </button>
             </div>
             <EsBox es={es} k={tk.cta(pageId, i)} placeholder="Button label — Spanish" />
+            <div className="flex flex-wrap gap-2">
+              <input
+                className={`${controlBase} min-w-0 flex-1`}
+                placeholder="Second line / helper (e.g. Speak with our team now)"
+                value={c.subtitle ?? ""}
+                onChange={(e) => set(i, { subtitle: e.target.value || undefined })}
+              />
+              <input
+                className={`${controlBase} w-40 shrink-0`}
+                placeholder="Pill (e.g. Available 24/7)"
+                value={c.note ?? ""}
+                onChange={(e) => set(i, { note: e.target.value || undefined })}
+              />
+            </div>
+            <EsBox es={es} k={tk.ctaSubtitle(pageId, i)} placeholder="Second line — Spanish" />
+            <EsBox es={es} k={tk.ctaNote(pageId, i)} placeholder="Pill — Spanish" />
           </div>
         ))}
         {rows.length < 5 && (
@@ -996,6 +1070,77 @@ function CtaEditor({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// Per-line text + color for a headline (props.lines). When any line exists it
+// overrides the plain heading text, letting each line be its own color.
+function HeadingLinesEditor({
+  component,
+  es,
+  onLines,
+}: {
+  component: Component;
+  es: EsHelpers;
+  onLines: (lines: Array<{ text: string; color?: string }>) => void;
+}) {
+  const raw = (component.props?.lines as Array<{ text?: string; color?: string }> | undefined) ?? [];
+  const lines = raw.map((l) => ({
+    text: typeof l?.text === "string" ? l.text : "",
+    color: typeof l?.color === "string" ? l.color : undefined,
+  }));
+  const setLine = (i: number, patch: Partial<{ text: string; color?: string }>) =>
+    onLines(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  return (
+    <div className="mt-3 rounded-md border border-gray-100 bg-gray-50/60 p-3">
+      <div className="mb-2 text-xs font-medium text-gray-500">
+        Colored lines (optional — overrides the text above; each line its own color)
+      </div>
+      <div className="space-y-2">
+        {lines.map((ln, i) => (
+          <div key={i}>
+            <div className="flex items-center gap-2">
+              <input
+                className={`${controlBase} min-w-0 flex-1`}
+                placeholder="Line text"
+                value={ln.text}
+                onChange={(e) => setLine(i, { text: e.target.value })}
+              />
+              <input
+                type="color"
+                value={ln.color ?? "#111827"}
+                onChange={(e) => setLine(i, { color: e.target.value })}
+                className="h-9 w-10 shrink-0 cursor-pointer rounded border border-gray-300 bg-white"
+                title="Line color"
+              />
+              {ln.color && (
+                <button
+                  onClick={() => setLine(i, { color: undefined })}
+                  className="shrink-0 text-[11px] text-gray-400 hover:text-gray-700"
+                  title="Use the default heading color"
+                >
+                  auto
+                </button>
+              )}
+              <button
+                onClick={() => onLines(lines.filter((_, j) => j !== i))}
+                className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Remove line"
+              >
+                ✕
+              </button>
+            </div>
+            <EsBox es={es} k={tk.line(component.id, i)} placeholder="Line — Spanish" />
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => onLines([...lines, { text: "New line" }])}
+        className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+      >
+        + Add colored line
+      </button>
     </div>
   );
 }

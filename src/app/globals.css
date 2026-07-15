@@ -113,19 +113,23 @@ body {
   background: var(--surface, #fff);
 }
 
-/* Secondary CTA — outline that fills (inverse) on hover. */
+/* Secondary CTA — outline (its own --cta2 color) that fills on hover. */
 .j-outline {
-  border: 1px solid color-mix(in srgb, var(--text, #0b1f3a) 30%, transparent);
-  color: var(--text, #0b1f3a);
+  border: 1px solid color-mix(in srgb, var(--cta2, var(--text, #0b1f3a)) 45%, transparent);
+  color: var(--cta2, var(--text, #0b1f3a));
   transition:
     background 0.15s ease,
     color 0.15s ease,
-    border-color 0.15s ease;
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 .j-outline:hover {
-  background: var(--text, #0b1f3a);
+  background: var(--cta2, var(--text, #0b1f3a));
   color: var(--bg, #fff);
-  border-color: var(--text, #0b1f3a);
+  border-color: var(--cta2, var(--text, #0b1f3a));
+}
+.j-outline:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 @keyframes fade-up {

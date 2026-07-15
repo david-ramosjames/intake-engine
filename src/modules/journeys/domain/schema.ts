@@ -212,6 +212,12 @@ export const themeTokensSchema = z
     buttonText: z.string().optional(),
     buttonHoverBg: z.string().optional(),
     buttonHoverText: z.string().optional(),
+    // The two action buttons on landing/ending screens get their own colors:
+    //   primary  = the filled call button (fill + text)
+    //   secondary = the outlined "start" button (border + text)
+    ctaPrimaryBg: z.string().optional(),
+    ctaPrimaryText: z.string().optional(),
+    ctaSecondaryColor: z.string().optional(),
     // Branding: a logo shown at the top, and an optional side/hero image shown
     // on the left on desktop. `logoLink` makes the logo clickable.
     logoUrl: z.string().optional(),
