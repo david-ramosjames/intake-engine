@@ -423,7 +423,17 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           <div
             className="absolute inset-0"
             style={{
-              background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.28) 26%, transparent 48%)",
+              background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.22) 24%, transparent 46%)",
+            }}
+          />
+          {/* Cinematic dissolve — the photo melts into the page background below
+              (var(--bg)) so the hero flows into the content like a movie poster,
+              never a hard cut. */}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5"
+            style={{
+              background:
+                "linear-gradient(to top, var(--bg) 8%, color-mix(in srgb, var(--bg) 60%, transparent) 42%, transparent 100%)",
             }}
           />
           {theme.logoUrl && (
@@ -853,7 +863,7 @@ function CountUp({ raw }: { raw: string }) {
 function StatsBar({ stats }: { stats: StatItem[] }) {
   return (
     <div
-      className="animate-fade-up rounded-2xl border p-4 shadow-sm"
+      className="animate-fade-up rounded-2xl border px-5 py-7 shadow-sm sm:px-8 sm:py-8"
       style={{
         borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
         background: "color-mix(in srgb, var(--text) 4%, var(--surface))",
@@ -863,14 +873,14 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
         {stats.map((s, i) => (
           <div
             key={i}
-            className={`px-2 text-center ${i > 0 ? "border-l" : ""}`}
-            style={{ borderColor: "color-mix(in srgb, var(--text) 12%, transparent)" }}
+            className={`px-3 text-center sm:px-5 ${i > 0 ? "border-l" : ""}`}
+            style={{ borderColor: "color-mix(in srgb, var(--text) 10%, transparent)" }}
           >
-            {s.icon && <div className="mb-1 text-xl leading-none">{s.icon}</div>}
-            <div className="text-2xl font-bold leading-none">
+            {s.icon && <div className="mb-2 text-2xl leading-none">{s.icon}</div>}
+            <div className="text-[26px] font-bold leading-none sm:text-3xl">
               <CountUp raw={s.value} />
             </div>
-            <div className="mt-1.5 text-[11px] leading-tight opacity-60 sm:text-xs">{s.label}</div>
+            <div className="mt-2.5 text-[11px] leading-tight opacity-60 sm:text-xs">{s.label}</div>
           </div>
         ))}
       </div>

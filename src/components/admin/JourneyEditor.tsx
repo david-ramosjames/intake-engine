@@ -309,13 +309,14 @@ export function JourneyEditor({
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaPrimaryText = v))}
             />
             <ColorField
-              label="Start button (outline)"
+              label="Start button (text & border)"
               value={def.theme?.ctaSecondaryColor ?? def.theme?.colorAccent ?? def.theme?.colorText ?? "#c1322f"}
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaSecondaryColor = v))}
             />
           </div>
           <p className="text-xs text-gray-400">
-            &ldquo;Call button&rdquo; is the filled button; &ldquo;Start button&rdquo; is the outlined one.
+            &ldquo;Call button&rdquo; is the filled button. &ldquo;Start button (text &amp; border)&rdquo; sets the
+            outlined button&rsquo;s font and border color.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -642,7 +643,7 @@ export function JourneyEditor({
                   <div className="text-[11px] font-medium text-gray-500">Button colors</div>
                   <div className="mt-2 flex flex-wrap gap-6">
                     <ColorField
-                      label="Start button (outline)"
+                      label="Start button (text & border)"
                       value={def.theme?.ctaSecondaryColor ?? def.theme?.colorAccent ?? def.theme?.colorText ?? "#c1322f"}
                       onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaSecondaryColor = v))}
                     />
