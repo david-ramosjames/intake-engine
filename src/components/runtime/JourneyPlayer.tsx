@@ -30,25 +30,24 @@ type Outcome = "lead" | "referral" | "declined";
 // Compact input types that can share a row two-up on wider screens. Longer
 // inputs (long text, address, uploads) and all content/choice blocks stay
 // full width. A field can opt out with props.full = true.
-// A headline can be authored as multiple lines, each its own color (props.lines).
-type HeadingLine = { text: string; color?: string };
-function headingLines(c: Component): HeadingLine[] | null {
-  const raw = c.props?.lines;
+// Optional accent colors for a heading, one per line of its text (props.lineColors,
+// index-aligned to the newline-separated content). It never changes the text —
+// just tints individual lines.
+function lineColors(c: Component): (string | undefined)[] | null {
+  const raw = c.props?.lineColors;
   if (!Array.isArray(raw) || raw.length === 0) return null;
-  return raw.map((l) => {
-    const o = (l && typeof l === "object" ? l : {}) as Record<string, unknown>;
-    return { text: typeof o.text === "string" ? o.text : "", color: typeof o.color === "string" ? o.color : undefined };
-  });
+  return raw.map((v) => (typeof v === "string" && v ? v : undefined));
 }
-// Render a heading's inner text — colored lines if authored, else plain content.
+// Render a heading's text; if per-line colors are set, tint each line.
 function HeadingBody({ component, L }: { component: Component; L: Localize }) {
-  const lines = headingLines(component);
-  if (!lines) return <>{L(tk.content(component.id), component.content)}</>;
+  const text = L(tk.content(component.id), component.content) ?? "";
+  const colors = lineColors(component);
+  if (!colors) return <>{text}</>;
   return (
     <>
-      {lines.map((ln, i) => (
-        <span key={i} className="block" style={ln.color ? { color: ln.color } : undefined}>
-          {L(tk.line(component.id, i), ln.text)}
+      {text.split("\n").map((ln, i) => (
+        <span key={i} className="block" style={colors[i] ? { color: colors[i] } : undefined}>
+          {ln}
         </span>
       ))}
     </>
@@ -402,19 +401,19 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
             className="absolute inset-0 animate-hero-zoom bg-cover bg-center"
             style={{ backgroundImage: `url("${theme.sideImageUrl}")` }}
           />
-          {/* Dark scrim so the white name (top) and headline (bottom) stay
-              readable over any photo, regardless of the journey's theme. */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/45" />
-          {/* Extra darkening in the top-right quarter. */}
-          <div className="absolute right-0 top-0 h-1/2 w-1/2 bg-gradient-to-bl from-black/55 via-black/20 to-transparent" />
+          {/* Left side darkened for the name/logo; softly fades out toward the
+              attorney's face on the right (never a hard edge). */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
+          {/* Bottom scrim so the white headline stays readable over the photo. */}
+          <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 to-transparent" />
           {theme.logoUrl && (
             <div className="absolute left-5 top-4">
               <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
             </div>
           )}
-          {/* Attorney name/details — upper-left, no more than ~1/3 wide. */}
+          {/* Attorney name/details — upper-left, below the logo, ~1/3 wide. */}
           {(theme.sideOverlay?.title || theme.sideOverlay?.subtitle) && (
-            <div className="absolute left-6 top-[15%] max-w-[38%] text-white drop-shadow">
+            <div className="absolute left-6 top-[25%] max-w-[42%] text-white drop-shadow">
               {theme.sideOverlay?.title && (
                 <div className="text-2xl font-bold leading-tight">{theme.sideOverlay.title}</div>
               )}

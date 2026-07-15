@@ -638,10 +638,11 @@ export function JourneyEditor({
                     mutate((d) => void d.pages[pi]!.components[ci]!.options!.splice(oi, 1))
                   }
                   onStats={(stats) => mutate((d) => void (d.pages[pi]!.components[ci]!.stats = stats))}
-                  onLines={(lines) =>
+                  onLineColors={(colors) =>
                     mutate((d) => {
                       const c = d.pages[pi]!.components[ci]!;
-                      c.props = { ...(c.props ?? {}), lines: lines.length ? lines : undefined };
+                      const cleaned = colors.some(Boolean) ? colors : undefined;
+                      c.props = { ...(c.props ?? {}), lineColors: cleaned };
                     })
                   }
                   onRemove={
@@ -748,7 +749,7 @@ function ComponentEditor({
   onAddOption,
   onRemoveOption,
   onStats,
-  onLines,
+  onLineColors,
   onRemove,
 }: {
   component: Component;
@@ -763,7 +764,7 @@ function ComponentEditor({
   onAddOption: () => void;
   onRemoveOption: (oi: number) => void;
   onStats?: (stats: Array<{ value: string; label: string; icon?: string }>) => void;
-  onLines?: (lines: Array<{ text: string; color?: string }>) => void;
+  onLineColors?: (colors: Array<string | null>) => void;
   onRemove?: () => void;
 }) {
   if (component.type === "stats") {
@@ -865,8 +866,8 @@ function ComponentEditor({
           <p className="mt-1 text-xs text-gray-400">Press Enter to add a line break.</p>
         )}
         <EsBox es={es} k={tk.content(component.id)} placeholder="Spanish" />
-        {component.type === "heading" && onLines && (
-          <HeadingLinesEditor component={component} es={es} onLines={onLines} />
+        {component.type === "heading" && onLineColors && (
+          <HeadingLineColorsEditor component={component} onLineColors={onLineColors} />
         )}
       </div>
     );
@@ -1074,73 +1075,51 @@ function CtaEditor({
   );
 }
 
-// Per-line text + color for a headline (props.lines). When any line exists it
-// overrides the plain heading text, letting each line be its own color.
-function HeadingLinesEditor({
+// Optional accent color per line of a heading. The text is authored in the
+// content box above (each newline is a line); this just tints those lines.
+function HeadingLineColorsEditor({
   component,
-  es,
-  onLines,
+  onLineColors,
 }: {
   component: Component;
-  es: EsHelpers;
-  onLines: (lines: Array<{ text: string; color?: string }>) => void;
+  onLineColors: (colors: Array<string | null>) => void;
 }) {
-  const raw = (component.props?.lines as Array<{ text?: string; color?: string }> | undefined) ?? [];
-  const lines = raw.map((l) => ({
-    text: typeof l?.text === "string" ? l.text : "",
-    color: typeof l?.color === "string" ? l.color : undefined,
-  }));
-  const setLine = (i: number, patch: Partial<{ text: string; color?: string }>) =>
-    onLines(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  const textLines = (component.content ?? "").split("\n");
+  const stored = (component.props?.lineColors as Array<string | null | undefined> | undefined) ?? [];
+  const colors = textLines.map((_, i) => (typeof stored[i] === "string" ? (stored[i] as string) : null));
+  const setColor = (i: number, color: string | null) =>
+    onLineColors(textLines.map((_, j) => (j === i ? color : (colors[j] ?? null))));
+  if (textLines.length === 0) return null;
   return (
     <div className="mt-3 rounded-md border border-gray-100 bg-gray-50/60 p-3">
       <div className="mb-2 text-xs font-medium text-gray-500">
-        Colored lines (optional — overrides the text above; each line its own color)
+        Line colors (optional accent — one per line of the text above)
       </div>
-      <div className="space-y-2">
-        {lines.map((ln, i) => (
-          <div key={i}>
-            <div className="flex items-center gap-2">
-              <input
-                className={`${controlBase} min-w-0 flex-1`}
-                placeholder="Line text"
-                value={ln.text}
-                onChange={(e) => setLine(i, { text: e.target.value })}
-              />
-              <input
-                type="color"
-                value={ln.color ?? "#111827"}
-                onChange={(e) => setLine(i, { color: e.target.value })}
-                className="h-9 w-10 shrink-0 cursor-pointer rounded border border-gray-300 bg-white"
-                title="Line color"
-              />
-              {ln.color && (
-                <button
-                  onClick={() => setLine(i, { color: undefined })}
-                  className="shrink-0 text-[11px] text-gray-400 hover:text-gray-700"
-                  title="Use the default heading color"
-                >
-                  auto
-                </button>
-              )}
+      <div className="space-y-1.5">
+        {textLines.map((ln, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate text-sm text-gray-700">
+              {ln || <span className="italic text-gray-400">(blank line)</span>}
+            </span>
+            <input
+              type="color"
+              value={colors[i] ?? "#111827"}
+              onChange={(e) => setColor(i, e.target.value)}
+              className="h-8 w-9 shrink-0 cursor-pointer rounded border border-gray-300 bg-white"
+              title="Line color"
+            />
+            {colors[i] && (
               <button
-                onClick={() => onLines(lines.filter((_, j) => j !== i))}
-                className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                aria-label="Remove line"
+                onClick={() => setColor(i, null)}
+                className="shrink-0 text-[11px] text-gray-400 hover:text-gray-700"
+                title="Use the default heading color"
               >
-                ✕
+                auto
               </button>
-            </div>
-            <EsBox es={es} k={tk.line(component.id, i)} placeholder="Line — Spanish" />
+            )}
           </div>
         ))}
       </div>
-      <button
-        onClick={() => onLines([...lines, { text: "New line" }])}
-        className="mt-2 text-sm text-blue-600 hover:text-blue-700"
-      >
-        + Add colored line
-      </button>
     </div>
   );
 }

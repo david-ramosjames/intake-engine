@@ -19,7 +19,6 @@ export const LANGUAGE_FLAGS: Record<string, string> = {
 export const tk = {
   label: (componentId: string) => `c:${componentId}:label`,
   content: (componentId: string) => `c:${componentId}:content`,
-  line: (componentId: string, index: number) => `c:${componentId}:line:${index}`,
   help: (componentId: string) => `c:${componentId}:help`,
   option: (componentId: string, value: string) => `o:${componentId}:${value}`,
   cta: (pageId: string, index: number) => `cta:${pageId}:${index}`,

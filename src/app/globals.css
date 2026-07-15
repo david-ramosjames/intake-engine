@@ -83,12 +83,29 @@ body {
   box-shadow: 0 2px 8px color-mix(in srgb, var(--cta-bg, #e63946) 35%, transparent);
 }
 
-/* Full-bleed premium CTA (mobile-first). Adds a subtle top highlight + depth on
-   top of the shared .j-cta color/press behavior. */
+/* Full-bleed premium CTA (mobile-first). A top-to-bottom sheen over the button
+   color gives it dimension; the drop shadow + inner highlight lift it off the
+   page. */
 .j-cta-primary {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, #fff 18%, transparent),
+    transparent 45%,
+    color-mix(in srgb, #000 14%, transparent)
+  );
   box-shadow:
-    0 10px 24px -6px color-mix(in srgb, var(--cta-bg, #e63946) 55%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+    0 12px 26px -8px color-mix(in srgb, var(--cta-bg, #e63946) 60%, transparent),
+    0 2px 4px color-mix(in srgb, #000 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
+}
+
+/* The outlined "start" button gets a faint glassy fill + soft depth so it reads
+   as a real button, not just a border. */
+.j-outline {
+  background: color-mix(in srgb, var(--cta2, var(--text, #0b1f3a)) 8%, transparent);
+  box-shadow:
+    0 8px 20px -10px color-mix(in srgb, #000 45%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent);
 }
 
 /* Runtime text inputs — iOS-style: soft fill, generous radius, gentle focus
