@@ -351,6 +351,41 @@ export function JourneyEditor({
                 mutate((d) => void ((d.theme ??= {}).sideImageUrl = e.target.value || undefined))
               }
             />
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Photo focus <span className="text-gray-400">(x% y%, e.g. 70% 60%)</span>
+                </label>
+                <input
+                  className={input}
+                  placeholder="50% 35%"
+                  value={def.theme?.heroPosition ?? ""}
+                  onChange={(e) =>
+                    mutate((d) => void ((d.theme ??= {}).heroPosition = e.target.value || undefined))
+                  }
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Zoom <span className="text-gray-400">(1 = fit, 1.3 = +30%)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.05"
+                  min="1"
+                  max="2"
+                  className={input}
+                  placeholder="1"
+                  value={def.theme?.heroScale ?? ""}
+                  onChange={(e) =>
+                    mutate(
+                      (d) =>
+                        void ((d.theme ??= {}).heroScale = e.target.value ? Number(e.target.value) : undefined),
+                    )
+                  }
+                />
+              </div>
+            </div>
           </div>
 
           {/* Side image overlay (trust signals over the photo) */}
@@ -374,6 +409,14 @@ export function JourneyEditor({
                 }
               />
             </div>
+            <input
+              className={`${input} mt-2`}
+              placeholder="Extra message (under the name on desktop / under the headline on mobile)"
+              value={def.theme?.sideOverlay?.message ?? ""}
+              onChange={(e) =>
+                mutate((d) => void (((d.theme ??= {}).sideOverlay ??= {}).message = e.target.value || undefined))
+              }
+            />
             <div className="mt-2 space-y-2">
               {(def.theme?.sideOverlay?.bullets ?? []).map((b, i) => (
                 <div key={i} className="flex items-center gap-2">

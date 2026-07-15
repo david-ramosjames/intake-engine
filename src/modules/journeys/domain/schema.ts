@@ -223,11 +223,18 @@ export const themeTokensSchema = z
     logoUrl: z.string().optional(),
     logoLink: z.string().optional(),
     sideImageUrl: z.string().optional(),
+    // How the hero photo is framed: CSS background-position (e.g. "70% 60%")
+    // and a zoom multiplier (1 = fit, 1.3 = zoomed in 30%).
+    heroPosition: z.string().optional(),
+    heroScale: z.number().optional(),
     // Optional overlay of trust signals on top of the side image.
     sideOverlay: z
       .object({
         title: z.string().optional(),
         subtitle: z.string().optional(),
+        // Extra messaging shown under the name on desktop / under the headline
+        // on mobile.
+        message: z.string().optional(),
         bullets: z.array(z.string()).optional(),
       })
       .optional(),

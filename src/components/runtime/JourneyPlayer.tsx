@@ -297,6 +297,14 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   // attorney photo as an edge-to-edge hero with the content floating over it.
   const isLanding = !terminal && history.length <= 1;
   const mobileHero = isLanding && Boolean(theme.sideImageUrl);
+  // How the hero photo is framed (position + zoom), applied to both the desktop
+  // side image and the mobile hero.
+  const heroBgStyle: React.CSSProperties = {
+    backgroundImage: theme.sideImageUrl ? `url("${theme.sideImageUrl}")` : undefined,
+    backgroundPosition: theme.heroPosition ?? "50% 35%",
+    backgroundSize: theme.heroScale && theme.heroScale > 1 ? `${theme.heroScale * 100}%` : "cover",
+  };
+  const heroMessage = theme.sideOverlay?.message;
 
   // Sticky bottom CTA appears once the primary button scrolls out of view.
   const [scrolled, setScrolled] = useState(false);
@@ -363,18 +371,23 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       />
       <div className="flex flex-1 flex-col md:flex-row">
       {theme.sideImageUrl && (
-        <aside
-          className="relative hidden bg-cover bg-center md:block md:w-[38%] lg:w-[40%]"
-          style={{ backgroundImage: `url("${theme.sideImageUrl}")` }}
-        >
+        <aside className="relative hidden bg-center md:block md:w-[38%] lg:w-[40%]" style={heroBgStyle}>
           {theme.sideOverlay &&
-            (theme.sideOverlay.title || theme.sideOverlay.subtitle || theme.sideOverlay.bullets?.length) && (
+            (theme.sideOverlay.title ||
+              theme.sideOverlay.subtitle ||
+              heroMessage ||
+              theme.sideOverlay.bullets?.length) && (
               <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/40 to-transparent p-8 text-white lg:p-10">
                 {theme.sideOverlay.title && (
                   <div className="text-2xl font-semibold lg:text-3xl">{theme.sideOverlay.title}</div>
                 )}
                 {theme.sideOverlay.subtitle && (
                   <div className="mt-1 text-white/80">{theme.sideOverlay.subtitle}</div>
+                )}
+                {heroMessage && (
+                  <div className="mt-3 border-l-2 border-[color:var(--acc)] pl-3 text-sm leading-snug text-white/90">
+                    {heroMessage}
+                  </div>
                 )}
                 {theme.sideOverlay.bullets && theme.sideOverlay.bullets.length > 0 && (
                   <ul className="mt-4 space-y-2">
@@ -397,10 +410,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           into the page so the content flows on one surface (no floating card). */}
       {mobileHero && (
         <div className="relative h-[46vh] w-full shrink-0 overflow-hidden md:hidden">
-          <div
-            className="absolute inset-0 animate-hero-zoom bg-cover bg-center"
-            style={{ backgroundImage: `url("${theme.sideImageUrl}")` }}
-          />
+          <div className="absolute inset-0 animate-hero-zoom bg-center" style={heroBgStyle} />
           {/* Left side darkened for the name/logo; softly fades out toward the
               attorney's face on the right (never a hard edge). */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
@@ -456,6 +466,13 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
             <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-5">
+              {/* Extra message under the headline (mobile only — desktop shows it
+                  in the side panel under the name). */}
+              {mobileHero && heroMessage && (
+                <p className="border-l-2 border-[color:var(--acc)] pl-3 text-base leading-snug opacity-90 md:hidden">
+                  {heroMessage}
+                </p>
+              )}
               <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2">
                 {mainComps.map((c) => {
                   const isChoice = soleChoice && c.id === soleChoice.id;
@@ -914,10 +931,24 @@ function ActionButton({
     ? `${base} flex w-full items-center gap-3.5 rounded-[var(--radius)] px-3.5 py-3 text-left focus-ring`
     : `${base} inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring`;
   const full = `${cls} ${as === "button" ? "disabled:opacity-50" : ""}`;
+  // High-contrast accents. On the filled (Call) button the icon circle and pill
+  // use the site background with white content. On the outlined (Start) button
+  // the icon circle uses the filled button's color so it pops.
+  const circleStyle: React.CSSProperties =
+    variant === "outline"
+      ? { background: "var(--cta-bg)", color: "var(--cta-text)" }
+      : { background: "var(--bg)", color: "#ffffff" };
+  const pillStyle: React.CSSProperties =
+    variant === "outline"
+      ? { background: "var(--cta-bg)", color: "var(--cta-text)" }
+      : { background: "var(--bg)", color: "#ffffff" };
   const body = rich ? (
     <>
       {icon && (
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,currentColor_15%,transparent)] ring-1 ring-[color:color-mix(in_srgb,currentColor_12%,transparent)]">
+        <span
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-sm"
+          style={circleStyle}
+        >
           {icon}
         </span>
       )}
@@ -928,7 +959,10 @@ function ActionButton({
         )}
       </span>
       {note ? (
-        <span className="shrink-0 rounded-full bg-[color:color-mix(in_srgb,currentColor_18%,transparent)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide">
+        <span
+          className="shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide"
+          style={pillStyle}
+        >
           {note}
         </span>
       ) : (
