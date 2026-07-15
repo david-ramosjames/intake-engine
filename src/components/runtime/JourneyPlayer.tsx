@@ -217,7 +217,12 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   function onContinue() {
     if (!page) return;
     for (const c of page.components) {
-      if (c.key && c.validation?.required && isComponentVisible(c, definition, answers)) {
+      if (
+        c.key &&
+        c.validation?.required &&
+        deviceMatches(c, isMobile) &&
+        isComponentVisible(c, definition, answers)
+      ) {
         const v = answers[c.key];
         if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) {
           setError(`Please answer: ${L(tk.label(c.id), c.label) || c.key}`);
@@ -277,10 +282,27 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Track viewport so device-scoped fields (e.g. a desktop-only form) aren't
+  // validated on the device where they're hidden.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   // Trust stats render at the bottom (under the CTAs); everything else on top.
   const visibleComps = (page?.components ?? []).filter((c) => isComponentVisible(c, definition, answers));
   const statsComps = visibleComps.filter((c) => c.type === "stats");
-  const mainComps = visibleComps.filter((c) => c.type !== "stats");
+  const contentComps = visibleComps.filter((c) => c.type !== "stats");
+  // Content can render above (default) or below (props.below) the action buttons.
+  const mainComps = contentComps.filter((c) => c.props?.below !== true);
+  const belowComps = contentComps.filter((c) => c.props?.below === true);
+  // On the mobile hero, trust stats overlay the photo instead of the card.
+  const heroStats = mobileHero ? statsComps[0]?.stats : undefined;
   const continueText = busy
     ? locale === "es"
       ? "Enviando…"
@@ -349,16 +371,29 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
             style={{ backgroundImage: `url("${theme.sideImageUrl}")` }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--surface)] via-[color:color-mix(in_srgb,var(--surface)_20%,transparent)] to-transparent" />
-          {theme.sideOverlay && (theme.sideOverlay.title || theme.sideOverlay.subtitle) && (
-            <div className="absolute inset-x-0 bottom-8 px-6 text-white drop-shadow">
-              {theme.sideOverlay.title && (
-                <div className="text-2xl font-semibold">{theme.sideOverlay.title}</div>
-              )}
-              {theme.sideOverlay.subtitle && (
-                <div className="mt-0.5 text-sm text-white/85">{theme.sideOverlay.subtitle}</div>
-              )}
-            </div>
-          )}
+          <div className="absolute inset-x-0 bottom-16 px-6 text-white drop-shadow">
+            {theme.sideOverlay?.title && (
+              <div className="text-2xl font-semibold">{theme.sideOverlay.title}</div>
+            )}
+            {theme.sideOverlay?.subtitle && (
+              <div className="mt-0.5 text-sm text-white/85">{theme.sideOverlay.subtitle}</div>
+            )}
+            {heroStats && heroStats.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {heroStats.map((s, i) => (
+                  <div key={i} className="rounded-xl bg-white/15 px-3 py-1.5 ring-1 ring-white/20 backdrop-blur">
+                    <div className="flex items-baseline gap-1">
+                      {s.icon && <span className="text-sm leading-none">{s.icon}</span>}
+                      <span className="text-base font-bold leading-none">
+                        <CountUp raw={s.value} />
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] leading-tight text-white/80">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -395,7 +430,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   // can force full width with props.full.
                   const half = !isChoice && COMPACT_FIELDS.has(c.type) && c.props?.full !== true;
                   return (
-                    <div key={c.id} className={half ? "" : "sm:col-span-2"}>
+                    <div key={c.id} className={`${half ? "" : "sm:col-span-2"} ${deviceClass(c)}`}>
                       {isChoice ? (
                         <ChoiceGrid component={c} L={L} onSelect={(o) => selectOption(c, o)} disabled={busy} />
                       ) : (
@@ -442,8 +477,29 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                 )}
               </div>
 
-              {/* Trust stats under the CTAs. */}
-              {statsComps.map((c) => (c.stats ? <StatsBar key={c.id} stats={c.stats} /> : null))}
+              {/* Content marked to render below the actions (e.g. a desktop-only
+                  "or leave your info" form). */}
+              {belowComps.map((c) => (
+                <div key={c.id} className={deviceClass(c)}>
+                  <ContentOrField
+                    component={c}
+                    answers={answers}
+                    definition={definition}
+                    L={L}
+                    onChange={(v) => c.key && set(c.key, v)}
+                  />
+                </div>
+              ))}
+
+              {/* Trust stats under the CTAs. Hidden on mobile when they already
+                  overlay the hero photo. */}
+              {statsComps.map((c) =>
+                c.stats ? (
+                  <div key={c.id} className={heroStats ? "hidden md:block" : ""}>
+                    <StatsBar stats={c.stats} />
+                  </div>
+                ) : null,
+              )}
             </div>
           )}
         </div>
@@ -530,29 +586,32 @@ function LangToggle({
   locale,
   setLocale,
   className,
+  compact,
 }: {
   languages: string[];
   locale: string;
   setLocale: (l: string) => void;
   className?: string;
+  compact?: boolean;
 }) {
   if (languages.length <= 1) return null;
+  const pad = compact ? "gap-1 px-2 py-0.5 text-[11px]" : "gap-2 px-3.5 py-1.5 text-sm";
   return (
-    <div className={`flex items-center gap-1.5 text-sm font-medium normal-case ${className ?? ""}`}>
+    <div className={`flex items-center gap-1 font-medium normal-case ${compact ? "opacity-80" : ""} ${className ?? ""}`}>
       {languages.map((lng) => (
         <button
           key={lng}
           type="button"
           onClick={() => setLocale(lng)}
           aria-pressed={locale === lng}
-          className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 transition ${
+          className={`flex items-center rounded-full border transition ${pad} ${
             locale === lng
-              ? "border-transparent bg-[color:var(--text)] text-[color:var(--bg)]"
-              : "border-[color:color-mix(in_srgb,var(--text)_25%,transparent)] opacity-70 hover:opacity-100"
+              ? "border-transparent bg-[color:color-mix(in_srgb,currentColor_16%,transparent)]"
+              : "border-[color:color-mix(in_srgb,currentColor_22%,transparent)] opacity-70 hover:opacity-100"
           }`}
         >
           <Flag code={lng} />
-          {(LANGUAGE_LABELS[lng] ?? lng).slice(0, 3).toUpperCase()}
+          {(LANGUAGE_LABELS[lng] ?? lng).slice(0, 2).toUpperCase()}
         </button>
       ))}
     </div>
@@ -835,7 +894,24 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
 // Whether the journey logo should sit inside the top bar (opt-in via
 // banner.logoInBar). When off, the logo stays in the in-form header.
 function bannerLogoShown(theme: NonNullable<JourneyDefinition["theme"]>): boolean {
-  return Boolean(theme.logoUrl) && theme.banner?.logoInBar === true;
+  // Logo lives in the top bar by default whenever one is set; opt out with
+  // banner.logoInBar === false.
+  return Boolean(theme.logoUrl) && theme.banner?.logoInBar !== false;
+}
+
+// A component can be limited to one device via props.showOn ("mobile"|"desktop").
+function deviceMatches(c: Component, isMobile: boolean): boolean {
+  const showOn = c.props?.showOn;
+  if (showOn === "mobile") return isMobile;
+  if (showOn === "desktop") return !isMobile;
+  return true;
+}
+// Tailwind visibility for a device-scoped component (CSS-driven, no hydration flash).
+function deviceClass(c: Component): string {
+  const showOn = c.props?.showOn;
+  if (showOn === "mobile") return "md:hidden";
+  if (showOn === "desktop") return "hidden md:block";
+  return "";
 }
 
 // Whether the top banner bar should render (enabled + has content or a bar logo).
@@ -874,7 +950,7 @@ function Banner({
     >
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-xs font-semibold uppercase tracking-wide sm:justify-between sm:text-sm">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="mr-1" />
+          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="mr-1" compact />
           {items.map((it, i) => (
             <span key={i} className="flex items-center gap-3">
               {i > 0 && <span className="opacity-30">|</span>}
