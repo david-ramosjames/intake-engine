@@ -301,8 +301,6 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   // Content can render above (default) or below (props.below) the action buttons.
   const mainComps = contentComps.filter((c) => c.props?.below !== true);
   const belowComps = contentComps.filter((c) => c.props?.below === true);
-  // On the mobile hero, trust stats overlay the photo instead of the card.
-  const heroStats = mobileHero ? statsComps[0]?.stats : undefined;
   const continueText = busy
     ? locale === "es"
       ? "Enviando…"
@@ -312,6 +310,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         ? "Enviar"
         : "Submit"
       : L(tk.continue(page?.id ?? ""), page?.continueLabel) || (locale === "es" ? "Continuar" : "Continue");
+  const continueSubtitle = L(tk.continueSubtitle(page?.id ?? ""), page?.continueSubtitle) || undefined;
 
   return (
     <main
@@ -330,6 +329,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         languages={languages}
         locale={locale}
         setLocale={setLocale}
+        logoMobileHidden={mobileHero}
       />
       <div className="flex flex-1 flex-col md:flex-row">
       {theme.sideImageUrl && (
@@ -363,45 +363,38 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         </aside>
       )}
 
-      {/* Mobile hero — edge-to-edge attorney photo on the landing screen. */}
+      {/* Mobile hero — attorney photo with the logo and name over it; it fades
+          into the page so the content flows on one surface (no floating card). */}
       {mobileHero && (
-        <div className="relative h-[52vh] w-full shrink-0 overflow-hidden md:hidden">
+        <div className="relative h-[46vh] w-full shrink-0 overflow-hidden md:hidden">
           <div
             className="absolute inset-0 animate-hero-zoom bg-cover bg-center"
             style={{ backgroundImage: `url("${theme.sideImageUrl}")` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--surface)] via-[color:color-mix(in_srgb,var(--surface)_20%,transparent)] to-transparent" />
-          <div className="absolute inset-x-0 bottom-16 px-6 text-white drop-shadow">
-            {theme.sideOverlay?.title && (
-              <div className="text-2xl font-semibold">{theme.sideOverlay.title}</div>
-            )}
-            {theme.sideOverlay?.subtitle && (
-              <div className="mt-0.5 text-sm text-white/85">{theme.sideOverlay.subtitle}</div>
-            )}
-            {heroStats && heroStats.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {heroStats.map((s, i) => (
-                  <div key={i} className="rounded-xl bg-white/15 px-3 py-1.5 ring-1 ring-white/20 backdrop-blur">
-                    <div className="flex items-baseline gap-1">
-                      {s.icon && <span className="text-sm leading-none">{s.icon}</span>}
-                      <span className="text-base font-bold leading-none">
-                        <CountUp raw={s.value} />
-                      </span>
-                    </div>
-                    <div className="mt-0.5 text-[10px] leading-tight text-white/80">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--bg)] via-[color:color-mix(in_srgb,var(--bg)_25%,transparent)] to-[color:color-mix(in_srgb,var(--bg)_10%,transparent)]" />
+          {theme.logoUrl && (
+            <div className="absolute left-5 top-4">
+              <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
+            </div>
+          )}
+          {(theme.sideOverlay?.title || theme.sideOverlay?.subtitle) && (
+            <div className="absolute inset-x-0 bottom-5 px-6 text-white drop-shadow">
+              {theme.sideOverlay?.title && (
+                <div className="text-2xl font-bold leading-tight">{theme.sideOverlay.title}</div>
+              )}
+              {theme.sideOverlay?.subtitle && (
+                <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-white/80">
+                  {theme.sideOverlay.subtitle}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       <section
         className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 ${
-          mobileHero
-            ? "z-10 -mt-8 animate-card-rise rounded-t-3xl bg-[color:var(--surface)] shadow-[0_-12px_40px_-12px_rgba(0,0,0,0.28)] md:mt-0 md:animate-none md:rounded-none md:bg-transparent md:shadow-none"
-            : ""
+          mobileHero ? "z-10 -mt-6 animate-card-rise md:mt-0 md:animate-none" : ""
         }`}
       >
         {showHeader && (
@@ -456,14 +449,15 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                 <div className="flex flex-col gap-3">
                   {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
                   {!soleChoice && (
-                    <button
-                      type="button"
+                    <ActionButton
+                      as="button"
                       onClick={onContinue}
                       disabled={busy}
-                      className="j-cta min-h-[3.5rem] w-full rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring disabled:opacity-50"
-                    >
-                      {continueText}
-                    </button>
+                      variant={continueSubtitle ? "outline" : "primary"}
+                      icon={continueSubtitle ? <ChatIcon /> : undefined}
+                      title={continueText}
+                      subtitle={continueSubtitle}
+                    />
                   )}
                 </div>
                 {history.length > 1 && (
@@ -491,15 +485,8 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                 </div>
               ))}
 
-              {/* Trust stats under the CTAs. Hidden on mobile when they already
-                  overlay the hero photo. */}
-              {statsComps.map((c) =>
-                c.stats ? (
-                  <div key={c.id} className={heroStats ? "hidden md:block" : ""}>
-                    <StatsBar stats={c.stats} />
-                  </div>
-                ) : null,
-              )}
+              {/* Trust metrics card under the CTAs. */}
+              {statsComps.map((c) => (c.stats ? <StatsBar key={c.id} stats={c.stats} /> : null))}
             </div>
           )}
         </div>
@@ -788,29 +775,32 @@ function CountUp({ raw }: { raw: string }) {
   );
 }
 
-// Trust metrics as premium, elevated cards that count up and rise in on load.
+// Trust metrics as one elevated, bordered card — icon over a counting number
+// over a label, split by subtle dividers (Apple/Stripe-style stat row).
 function StatsBar({ stats }: { stats: StatItem[] }) {
   return (
-    <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(96px,1fr))]">
-      {stats.map((s, i) => (
-        <div
-          key={i}
-          className="animate-fade-up rounded-2xl border p-3 text-center shadow-sm"
-          style={{
-            animationDelay: `${i * 90}ms`,
-            borderColor: "color-mix(in srgb, var(--text) 10%, transparent)",
-            background: "color-mix(in srgb, var(--text) 4%, var(--surface))",
-          }}
-        >
-          <div className="flex items-center justify-center gap-1">
-            {s.icon && <span className="text-base leading-none">{s.icon}</span>}
-            <span className="text-lg font-bold sm:text-xl">
+    <div
+      className="animate-fade-up rounded-2xl border p-4 shadow-sm"
+      style={{
+        borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
+        background: "color-mix(in srgb, var(--text) 4%, var(--surface))",
+      }}
+    >
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
+        {stats.map((s, i) => (
+          <div
+            key={i}
+            className={`px-2 text-center ${i > 0 ? "border-l" : ""}`}
+            style={{ borderColor: "color-mix(in srgb, var(--text) 12%, transparent)" }}
+          >
+            {s.icon && <div className="mb-1 text-xl leading-none">{s.icon}</div>}
+            <div className="text-2xl font-bold leading-none">
               <CountUp raw={s.value} />
-            </span>
+            </div>
+            <div className="mt-1.5 text-[11px] leading-tight opacity-60 sm:text-xs">{s.label}</div>
           </div>
-          <div className="mt-0.5 text-[11px] leading-tight opacity-60 sm:text-xs">{s.label}</div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -823,13 +813,78 @@ function PhoneIcon({ className }: { className?: string }) {
   );
 }
 
+function ChatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
+      <path d="M4 4h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 3.5V16H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+    </svg>
+  );
+}
+
+// A CTA/primary button. With a subtitle/note/icon it renders in the richer
+// icon-left layout (title over subtitle, optional pill on the right); otherwise
+// a simple centered button. Works as a link (<a>) or an action (<button>).
+function ActionButton({
+  as = "button",
+  href,
+  onClick,
+  disabled,
+  variant = "primary",
+  icon,
+  title,
+  subtitle,
+  note,
+}: {
+  as?: "a" | "button";
+  href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  variant?: "primary" | "outline";
+  icon?: React.ReactNode;
+  title: React.ReactNode;
+  subtitle?: string;
+  note?: string;
+}) {
+  const base = variant === "outline" ? "j-outline" : "j-cta j-cta-primary";
+  const rich = Boolean(subtitle || note || icon);
+  const cls = rich
+    ? `${base} flex w-full items-center gap-3.5 rounded-[var(--radius)] px-4 py-3 text-left focus-ring`
+    : `${base} inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring`;
+  const full = `${cls} ${as === "button" ? "disabled:opacity-50" : ""}`;
+  const body = rich ? (
+    <>
+      {icon && (
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,currentColor_16%,transparent)]">
+          {icon}
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-bold leading-tight sm:text-lg">{title}</span>
+        {subtitle && <span className="mt-0.5 block text-sm font-normal opacity-80">{subtitle}</span>}
+      </span>
+      {note && (
+        <span className="shrink-0 rounded-full bg-[color:color-mix(in_srgb,currentColor_18%,transparent)] px-3 py-1 text-xs font-semibold">
+          {note}
+        </span>
+      )}
+    </>
+  ) : (
+    title
+  );
+  return as === "a" ? (
+    <a href={href} onClick={onClick} className={full}>
+      {body}
+    </a>
+  ) : (
+    <button type="button" onClick={onClick} disabled={disabled} className={full}>
+      {body}
+    </button>
+  );
+}
+
 function isCallCta(c: { type?: string; href?: string }) {
   return c.type === "call" || c.type === "text" || c.href?.startsWith("tel:");
 }
-function ctaNumber(c: { value?: string; href?: string }) {
-  return c.value ?? c.href?.replace(/^tel:|^sms:/, "") ?? "";
-}
-
 // Call-to-action buttons. Call buttons show on every size (tappable to dial);
 // the phone number is appended inside the button on desktop only, so the mobile
 // button stays compact. Non-call CTAs (links) show on all sizes.
@@ -850,39 +905,21 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
     <>
       {page.cta.map((cta, i) => {
         const label = L(tk.cta(page.id, i), cta.label);
-        if (isCallCta(cta)) {
-          const num = ctaNumber(cta);
-          return (
-            <a
-              key={i}
-              href={ctaHref(cta)}
-              onClick={onCtaClick}
-              className="j-cta j-cta-primary inline-flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring"
-            >
-              <PhoneIcon />
-              {label}
-              {num ? <span className="hidden sm:inline">&nbsp;{formatPhone(num)}</span> : null}
-            </a>
-          );
-        }
-        return cta.style === "secondary" ? (
-          <a
+        const subtitle = L(tk.ctaSubtitle(page.id, i), cta.subtitle) || undefined;
+        const note = L(tk.ctaNote(page.id, i), cta.note) || undefined;
+        const call = isCallCta(cta);
+        return (
+          <ActionButton
             key={i}
+            as="a"
             href={ctaHref(cta)}
             onClick={onCtaClick}
-            className="j-outline inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring"
-          >
-            {label}
-          </a>
-        ) : (
-          <a
-            key={i}
-            href={ctaHref(cta)}
-            onClick={onCtaClick}
-            className="j-cta inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring"
-          >
-            {label}
-          </a>
+            variant={cta.style === "secondary" ? "outline" : "primary"}
+            icon={call ? <PhoneIcon /> : undefined}
+            title={label}
+            subtitle={subtitle}
+            note={note}
+          />
         );
       })}
     </>
@@ -928,6 +965,7 @@ function Banner({
   languages,
   locale,
   setLocale,
+  logoMobileHidden,
 }: {
   theme: NonNullable<JourneyDefinition["theme"]>;
   L: Localize;
@@ -935,6 +973,7 @@ function Banner({
   languages: string[];
   locale: string;
   setLocale: (l: string) => void;
+  logoMobileHidden?: boolean;
 }) {
   if (!bannerShown(theme)) return null;
   const banner = theme.banner!;
@@ -972,7 +1011,9 @@ function Banner({
             </a>
           )}
           {bannerLogoShown(theme) && (
-            <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
+            <span className={logoMobileHidden ? "hidden md:block" : ""}>
+              <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
+            </span>
           )}
         </div>
       </div>

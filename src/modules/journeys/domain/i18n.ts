@@ -22,7 +22,10 @@ export const tk = {
   help: (componentId: string) => `c:${componentId}:help`,
   option: (componentId: string, value: string) => `o:${componentId}:${value}`,
   cta: (pageId: string, index: number) => `cta:${pageId}:${index}`,
+  ctaSubtitle: (pageId: string, index: number) => `cta:${pageId}:${index}:sub`,
+  ctaNote: (pageId: string, index: number) => `cta:${pageId}:${index}:note`,
   continue: (pageId: string) => `p:${pageId}:continue`,
+  continueSubtitle: (pageId: string) => `p:${pageId}:continue:sub`,
   bannerItem: (index: number) => `banner:item:${index}`,
 };
 

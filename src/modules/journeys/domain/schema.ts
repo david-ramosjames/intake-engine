@@ -64,6 +64,10 @@ export type Option = z.infer<typeof optionSchema>;
 // A call-to-action on an ending screen: call, text, schedule, or a link.
 export const ctaSchema = z.object({
   label: z.string(),
+  // Optional second line under the label, and a small pill on the right (e.g.
+  // "Available 24/7"). When set, the button renders in the richer icon layout.
+  subtitle: z.string().optional(),
+  note: z.string().optional(),
   // How to interpret `value`: phone for call/text; URL for schedule/link/custom.
   type: z.enum(["call", "text", "schedule", "link", "custom"]).optional(),
   value: z.string().optional(),
@@ -157,8 +161,9 @@ export const pageSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: pageType.default("question"),
-  // Custom label for the primary advance button (default "Continue").
+  // Custom label (and optional second line) for the primary advance button.
   continueLabel: z.string().optional(),
+  continueSubtitle: z.string().optional(),
   // Page-level visibility: skip entirely when false.
   condition: expressionSchema.optional(),
   // Conditional branching evaluated in order; first match wins. When none
