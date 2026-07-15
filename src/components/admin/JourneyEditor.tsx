@@ -605,30 +605,38 @@ export function JourneyEditor({
             </div>
 
             {!terminalTypes.has(page.type) && (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-500">Start / Continue button text</label>
-                  <input
-                    className={input}
-                    placeholder="Continue"
-                    value={page.continueLabel ?? ""}
-                    onChange={(e) => mutate((d) => void (d.pages[pi]!.continueLabel = e.target.value || undefined))}
-                  />
-                  <EsBox es={es} k={tk.continue(page.id)} placeholder="Continue — Spanish" />
+              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Start button (advances / submits this screen)
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-500">
-                    Second line / helper (optional)
-                  </label>
-                  <input
-                    className={input}
-                    placeholder="e.g. Takes about 2 minutes"
-                    value={page.continueSubtitle ?? ""}
-                    onChange={(e) =>
-                      mutate((d) => void (d.pages[pi]!.continueSubtitle = e.target.value || undefined))
-                    }
-                  />
-                  <EsBox es={es} k={tk.continueSubtitle(page.id)} placeholder="Helper — Spanish" />
+                <p className="mt-0.5 text-xs text-gray-400">
+                  The Call button is edited under &ldquo;Buttons&rdquo; further down.
+                </p>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500">Start button text</label>
+                    <input
+                      className={input}
+                      placeholder="Continue"
+                      value={page.continueLabel ?? ""}
+                      onChange={(e) => mutate((d) => void (d.pages[pi]!.continueLabel = e.target.value || undefined))}
+                    />
+                    <EsBox es={es} k={tk.continue(page.id)} placeholder="Continue — Spanish" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500">
+                      Start button — second line (optional)
+                    </label>
+                    <input
+                      className={input}
+                      placeholder="e.g. Takes about 2 minutes"
+                      value={page.continueSubtitle ?? ""}
+                      onChange={(e) =>
+                        mutate((d) => void (d.pages[pi]!.continueSubtitle = e.target.value || undefined))
+                      }
+                    />
+                    <EsBox es={es} k={tk.continueSubtitle(page.id)} placeholder="Helper — Spanish" />
+                  </div>
                 </div>
               </div>
             )}

@@ -409,13 +409,19 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       {/* Mobile hero — attorney photo with the logo and name over it; it fades
           into the page so the content flows on one surface (no floating card). */}
       {mobileHero && (
-        <div className="relative h-[46vh] w-full shrink-0 overflow-hidden md:hidden">
+        <div className="relative h-[56vh] w-full shrink-0 overflow-hidden md:hidden">
           <div className="absolute inset-0 animate-hero-zoom bg-center" style={heroBgStyle} />
-          {/* Left side darkened for the name/logo; softly fades out toward the
-              attorney's face on the right (never a hard edge). */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
-          {/* Bottom scrim so the white headline stays readable over the photo. */}
-          <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 to-transparent" />
+          {/* Vignette: the center (over the attorney's face) stays clear; only
+              the edges fade dark so the corners/text stay legible. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(120% 105% at 60% 30%, transparent 42%, rgba(0,0,0,0.22) 70%, rgba(0,0,0,0.55) 100%)",
+            }}
+          />
+          {/* Gentle bottom scrim just for the headline/message zone. */}
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
           {theme.logoUrl && (
             <div className="absolute left-5 top-4">
               <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
@@ -423,7 +429,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           )}
           {/* Attorney name/details — upper-left, below the logo, ~1/3 wide. */}
           {(theme.sideOverlay?.title || theme.sideOverlay?.subtitle) && (
-            <div className="absolute left-6 top-[25%] max-w-[42%] text-white drop-shadow">
+            <div className="absolute left-6 top-[13%] max-w-[42%] text-white drop-shadow">
               {theme.sideOverlay?.title && (
                 <div className="text-2xl font-bold leading-tight">{theme.sideOverlay.title}</div>
               )}
@@ -434,11 +440,20 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
               )}
             </div>
           )}
-          {/* Welcome headline — bottom of the photo. */}
-          {heroHeading && (
-            <h1 className="absolute inset-x-0 bottom-5 whitespace-pre-line px-6 text-3xl font-bold leading-tight text-white drop-shadow">
-              <HeadingBody component={heroHeading} L={L} />
-            </h1>
+          {/* Welcome headline + extra message — bottom of the photo. */}
+          {(heroHeading || heroMessage) && (
+            <div className="absolute inset-x-0 bottom-5 px-6 text-white drop-shadow">
+              {heroHeading && (
+                <h1 className="whitespace-pre-line text-3xl font-bold leading-tight">
+                  <HeadingBody component={heroHeading} L={L} />
+                </h1>
+              )}
+              {heroMessage && (
+                <p className="mt-2.5 border-l-2 border-[color:var(--acc)] pl-3 text-sm leading-snug text-white/90">
+                  {heroMessage}
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -466,13 +481,6 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
             <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-5">
-              {/* Extra message under the headline (mobile only — desktop shows it
-                  in the side panel under the name). */}
-              {mobileHero && heroMessage && (
-                <p className="border-l-2 border-[color:var(--acc)] pl-3 text-base leading-snug opacity-90 md:hidden">
-                  {heroMessage}
-                </p>
-              )}
               <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2">
                 {mainComps.map((c) => {
                   const isChoice = soleChoice && c.id === soleChoice.id;
