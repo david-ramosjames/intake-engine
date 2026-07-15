@@ -411,17 +411,21 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       {mobileHero && (
         <div className="relative h-[56vh] w-full shrink-0 overflow-hidden md:hidden">
           <div className="absolute inset-0 animate-hero-zoom bg-center" style={heroBgStyle} />
-          {/* Vignette: the center (over the attorney's face) stays clear; only
-              the edges fade dark so the corners/text stay legible. */}
+          {/* Left scrim for the name — darkens the left, fully clear before the
+              center so the attorney's face (right) is never covered. */}
           <div
             className="absolute inset-0"
             style={{
-              background:
-                "radial-gradient(120% 105% at 60% 30%, transparent 42%, rgba(0,0,0,0.22) 70%, rgba(0,0,0,0.55) 100%)",
+              background: "linear-gradient(to right, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.35) 30%, transparent 56%)",
             }}
           />
-          {/* Gentle bottom scrim just for the headline/message zone. */}
-          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
+          {/* Bottom scrim for the headline + message. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.28) 26%, transparent 48%)",
+            }}
+          />
           {theme.logoUrl && (
             <div className="absolute left-5 top-4">
               <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
@@ -429,7 +433,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           )}
           {/* Attorney name/details — upper-left, below the logo, ~1/3 wide. */}
           {(theme.sideOverlay?.title || theme.sideOverlay?.subtitle) && (
-            <div className="absolute left-6 top-[13%] max-w-[42%] text-white drop-shadow">
+            <div className="absolute left-6 top-[22%] max-w-[42%] text-white drop-shadow">
               {theme.sideOverlay?.title && (
                 <div className="text-2xl font-bold leading-tight">{theme.sideOverlay.title}</div>
               )}

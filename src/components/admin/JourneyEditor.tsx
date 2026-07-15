@@ -638,6 +638,29 @@ export function JourneyEditor({
                     <EsBox es={es} k={tk.continueSubtitle(page.id)} placeholder="Helper — Spanish" />
                   </div>
                 </div>
+                <div className="mt-3 border-t border-gray-200 pt-3">
+                  <div className="text-[11px] font-medium text-gray-500">Button colors</div>
+                  <div className="mt-2 flex flex-wrap gap-6">
+                    <ColorField
+                      label="Start button (outline)"
+                      value={def.theme?.ctaSecondaryColor ?? def.theme?.colorAccent ?? def.theme?.colorText ?? "#c1322f"}
+                      onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaSecondaryColor = v))}
+                    />
+                    <ColorField
+                      label="Call button (fill)"
+                      value={def.theme?.ctaPrimaryBg ?? def.theme?.buttonBg ?? def.theme?.colorAccent ?? "#c1322f"}
+                      onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaPrimaryBg = v))}
+                    />
+                    <ColorField
+                      label="Call button text"
+                      value={def.theme?.ctaPrimaryText ?? def.theme?.buttonText ?? "#ffffff"}
+                      onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaPrimaryText = v))}
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    These set the Call &amp; Start button colors for the whole journey.
+                  </p>
+                </div>
               </div>
             )}
 
