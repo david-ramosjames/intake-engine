@@ -301,6 +301,11 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   // Content can render above (default) or below (props.below) the action buttons.
   const mainComps = contentComps.filter((c) => c.props?.below !== true);
   const belowComps = contentComps.filter((c) => c.props?.below === true);
+  // On the mobile hero, the page's main headline overlays the bottom of the
+  // photo (the name moves up to the top-left). On desktop it stays in content.
+  const heroHeading = mobileHero
+    ? mainComps.find((c) => c.type === "heading" && c.props?.level !== 2)
+    : undefined;
   const continueText = busy
     ? locale === "es"
       ? "Enviando…"
@@ -371,30 +376,39 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
             className="absolute inset-0 animate-hero-zoom bg-cover bg-center"
             style={{ backgroundImage: `url("${theme.sideImageUrl}")` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--bg)] via-[color:color-mix(in_srgb,var(--bg)_25%,transparent)] to-[color:color-mix(in_srgb,var(--bg)_10%,transparent)]" />
+          {/* Dark scrim so the white name (top) and headline (bottom) stay
+              readable over any photo, regardless of the journey's theme. */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/45" />
           {theme.logoUrl && (
             <div className="absolute left-5 top-4">
               <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
             </div>
           )}
+          {/* Attorney name/details — upper-left. */}
           {(theme.sideOverlay?.title || theme.sideOverlay?.subtitle) && (
-            <div className="absolute inset-x-0 bottom-5 px-6 text-white drop-shadow">
+            <div className="absolute left-6 top-[26%] max-w-[62%] text-white drop-shadow">
               {theme.sideOverlay?.title && (
                 <div className="text-2xl font-bold leading-tight">{theme.sideOverlay.title}</div>
               )}
               {theme.sideOverlay?.subtitle && (
-                <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-white/80">
+                <div className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-white/80">
                   {theme.sideOverlay.subtitle}
                 </div>
               )}
             </div>
+          )}
+          {/* Welcome headline — bottom of the photo. */}
+          {heroHeading && (
+            <h1 className="absolute inset-x-0 bottom-5 whitespace-pre-line px-6 text-3xl font-bold leading-tight text-white drop-shadow">
+              {L(tk.content(heroHeading.id), heroHeading.content)}
+            </h1>
           )}
         </div>
       )}
 
       <section
         className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 ${
-          mobileHero ? "z-10 -mt-6 animate-card-rise md:mt-0 md:animate-none" : ""
+          mobileHero ? "z-10 animate-card-rise md:animate-none" : ""
         }`}
       >
         {showHeader && (
@@ -422,8 +436,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   // wider screens; everything else spans the full width. A field
                   // can force full width with props.full.
                   const half = !isChoice && COMPACT_FIELDS.has(c.type) && c.props?.full !== true;
+                  const heroMoved = c.id === heroHeading?.id ? "hidden md:block" : "";
                   return (
-                    <div key={c.id} className={`${half ? "" : "sm:col-span-2"} ${deviceClass(c)}`}>
+                    <div key={c.id} className={`${half ? "" : "sm:col-span-2"} ${deviceClass(c)} ${heroMoved}`}>
                       {isChoice ? (
                         <ChoiceGrid component={c} L={L} onSelect={(o) => selectOption(c, o)} disabled={busy} />
                       ) : (
@@ -815,8 +830,27 @@ function PhoneIcon({ className }: { className?: string }) {
 
 function ChatIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden>
       <path d="M4 4h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 3.5V16H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M9 6l6 6-6 6" />
     </svg>
   );
 }
@@ -848,24 +882,28 @@ function ActionButton({
   const base = variant === "outline" ? "j-outline" : "j-cta j-cta-primary";
   const rich = Boolean(subtitle || note || icon);
   const cls = rich
-    ? `${base} flex w-full items-center gap-3.5 rounded-[var(--radius)] px-4 py-3 text-left focus-ring`
+    ? `${base} flex w-full items-center gap-3.5 rounded-[var(--radius)] px-3.5 py-3 text-left focus-ring`
     : `${base} inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring`;
   const full = `${cls} ${as === "button" ? "disabled:opacity-50" : ""}`;
   const body = rich ? (
     <>
       {icon && (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,currentColor_16%,transparent)]">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,currentColor_15%,transparent)] ring-1 ring-[color:color-mix(in_srgb,currentColor_12%,transparent)]">
           {icon}
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block text-base font-bold leading-tight sm:text-lg">{title}</span>
-        {subtitle && <span className="mt-0.5 block text-sm font-normal opacity-80">{subtitle}</span>}
+        <span className="block text-[17px] font-bold leading-tight">{title}</span>
+        {subtitle && (
+          <span className="mt-0.5 block text-[13px] font-medium leading-snug opacity-75">{subtitle}</span>
+        )}
       </span>
-      {note && (
-        <span className="shrink-0 rounded-full bg-[color:color-mix(in_srgb,currentColor_18%,transparent)] px-3 py-1 text-xs font-semibold">
+      {note ? (
+        <span className="shrink-0 rounded-full bg-[color:color-mix(in_srgb,currentColor_18%,transparent)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide">
           {note}
         </span>
+      ) : (
+        <ChevronIcon className="shrink-0 opacity-45" />
       )}
     </>
   ) : (
@@ -987,11 +1025,11 @@ function Banner({
         borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
       }}
     >
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-xs font-semibold uppercase tracking-wide sm:justify-between sm:text-sm">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="mr-1" compact />
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-x-2 overflow-hidden px-3 py-2 text-[10px] font-semibold uppercase tracking-wide sm:gap-x-4 sm:px-4 sm:text-sm">
+        <div className="flex min-w-0 flex-nowrap items-center gap-x-2 whitespace-nowrap sm:gap-x-3">
+          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="mr-0.5 shrink-0" compact />
           {items.map((it, i) => (
-            <span key={i} className="flex items-center gap-3">
+            <span key={i} className="flex shrink-0 items-center gap-2 sm:gap-3">
               {i > 0 && <span className="opacity-30">|</span>}
               <span className={i === 0 && !banner.textColor ? "text-[color:var(--acc)]" : ""}>
                 {L(tk.bannerItem(i), it)}
