@@ -414,21 +414,22 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
               {error && <p className="text-sm text-[color:var(--acc)]">{error}</p>}
 
-              {/* Primary intake action + call CTA. Full-width and stacked on
-                  phones (big thumb targets); inline on wider screens. */}
+              {/* Call CTA sits above the primary intake button (the call is the
+                  top action), both full-width and the same size on every
+                  screen. */}
               <div className="space-y-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="flex flex-col gap-3">
+                  {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
                   {!soleChoice && (
                     <button
                       type="button"
                       onClick={onContinue}
                       disabled={busy}
-                      className="j-cta j-cta-primary min-h-[3.5rem] w-full rounded-[var(--radius)] px-10 text-lg font-semibold focus-ring disabled:opacity-50 sm:w-auto"
+                      className="j-cta min-h-[3.5rem] w-full rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring disabled:opacity-50"
                     >
                       {continueText}
                     </button>
                   )}
-                  {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
                 </div>
                 {history.length > 1 && (
                   <button
@@ -797,7 +798,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
               key={i}
               href={ctaHref(cta)}
               onClick={onCtaClick}
-              className="j-cta inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring sm:w-auto"
+              className="j-cta j-cta-primary inline-flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring"
             >
               <PhoneIcon />
               {label}
@@ -810,7 +811,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
             key={i}
             href={ctaHref(cta)}
             onClick={onCtaClick}
-            className="j-outline inline-flex min-h-[3.25rem] w-full items-center justify-center rounded-[var(--radius)] px-6 py-3 font-medium focus-ring sm:w-auto"
+            className="j-outline inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring"
           >
             {label}
           </a>
@@ -819,7 +820,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
             key={i}
             href={ctaHref(cta)}
             onClick={onCtaClick}
-            className="j-cta inline-flex min-h-[3.25rem] w-full items-center justify-center rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring sm:w-auto"
+            className="j-cta inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring"
           >
             {label}
           </a>
