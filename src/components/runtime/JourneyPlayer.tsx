@@ -263,6 +263,20 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const toggleInHeader = !showBanner && languages.length > 1;
   const showHeader = logoInHeader || toggleInHeader;
 
+  // App-onboarding treatment on phones: the first (landing) screen shows the
+  // attorney photo as an edge-to-edge hero with the content floating over it.
+  const isLanding = !terminal && history.length <= 1;
+  const mobileHero = isLanding && Boolean(theme.sideImageUrl);
+
+  // Sticky bottom CTA appears once the primary button scrolls out of view.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onScroll = () => setScrolled(window.scrollY > 240);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Trust stats render at the bottom (under the CTAs); everything else on top.
   const visibleComps = (page?.components ?? []).filter((c) => isComponentVisible(c, definition, answers));
   const statsComps = visibleComps.filter((c) => c.type === "stats");
@@ -327,7 +341,34 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         </aside>
       )}
 
-      <section className="relative flex flex-1 flex-col px-6 py-6 md:px-14">
+      {/* Mobile hero — edge-to-edge attorney photo on the landing screen. */}
+      {mobileHero && (
+        <div className="relative h-[52vh] w-full shrink-0 overflow-hidden md:hidden">
+          <div
+            className="absolute inset-0 animate-hero-zoom bg-cover bg-center"
+            style={{ backgroundImage: `url("${theme.sideImageUrl}")` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--surface)] via-[color:color-mix(in_srgb,var(--surface)_20%,transparent)] to-transparent" />
+          {theme.sideOverlay && (theme.sideOverlay.title || theme.sideOverlay.subtitle) && (
+            <div className="absolute inset-x-0 bottom-8 px-6 text-white drop-shadow">
+              {theme.sideOverlay.title && (
+                <div className="text-2xl font-semibold">{theme.sideOverlay.title}</div>
+              )}
+              {theme.sideOverlay.subtitle && (
+                <div className="mt-0.5 text-sm text-white/85">{theme.sideOverlay.subtitle}</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <section
+        className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 ${
+          mobileHero
+            ? "z-10 -mt-8 animate-card-rise rounded-t-3xl bg-[color:var(--surface)] shadow-[0_-12px_40px_-12px_rgba(0,0,0,0.28)] md:mt-0 md:animate-none md:rounded-none md:bg-transparent md:shadow-none"
+            : ""
+        }`}
+      >
         {showHeader && (
           <header className={`flex ${logoInHeader ? "h-16" : "h-11"} shrink-0 items-center justify-between gap-3`}>
             {logoInHeader ? <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm={firm} /> : <span />}
@@ -337,7 +378,11 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           </header>
         )}
 
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center py-4">
+        <div
+          className={`mx-auto flex w-full max-w-2xl flex-1 flex-col py-4 md:justify-center ${
+            mobileHero ? "justify-start pt-1" : "justify-center"
+          }`}
+        >
           {terminal ? (
             <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
@@ -369,29 +414,31 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
               {error && <p className="text-sm text-[color:var(--acc)]">{error}</p>}
 
-              {/* Primary intake action and the call CTA share a row, so the
-                  form stays compact. Back sits alongside them. */}
-              <div className="flex flex-wrap items-center gap-3">
+              {/* Primary intake action + call CTA. Full-width and stacked on
+                  phones (big thumb targets); inline on wider screens. */}
+              <div className="space-y-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  {!soleChoice && (
+                    <button
+                      type="button"
+                      onClick={onContinue}
+                      disabled={busy}
+                      className="j-cta j-cta-primary min-h-[3.5rem] w-full rounded-[var(--radius)] px-10 text-lg font-semibold focus-ring disabled:opacity-50 sm:w-auto"
+                    >
+                      {continueText}
+                    </button>
+                  )}
+                  {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
+                </div>
                 {history.length > 1 && (
                   <button
                     type="button"
                     onClick={back}
-                    className="rounded-[var(--radius)] px-5 py-3 opacity-70 transition hover:opacity-100 focus-ring"
+                    className="rounded-[var(--radius)] px-1 py-1 text-sm opacity-60 transition hover:opacity-100 focus-ring"
                   >
                     ← {locale === "es" ? "Atrás" : "Back"}
                   </button>
                 )}
-                {!soleChoice && (
-                  <button
-                    type="button"
-                    onClick={onContinue}
-                    disabled={busy}
-                    className="j-cta rounded-[var(--radius)] px-10 py-4 text-lg font-semibold shadow-md focus-ring disabled:opacity-50"
-                  >
-                    {continueText}
-                  </button>
-                )}
-                {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
               </div>
 
               {/* Trust stats under the CTAs. */}
@@ -401,6 +448,24 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         </div>
       </section>
       </div>
+
+      {/* Sticky bottom CTA on phones — the primary action stays a thumb-tap away
+          once it scrolls out of view. */}
+      {!terminal && !soleChoice && scrolled && (
+        <div
+          className="animate-bar-up fixed inset-x-0 bottom-0 z-30 border-t border-black/5 bg-[color:color-mix(in_srgb,var(--surface)_92%,transparent)] px-4 pt-3 backdrop-blur md:hidden"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+        >
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={busy}
+            className="j-cta j-cta-primary min-h-[3.5rem] w-full rounded-[var(--radius)] text-lg font-semibold focus-ring disabled:opacity-50"
+          >
+            {continueText}
+          </button>
+        </div>
+      )}
     </main>
   );
 }
@@ -663,22 +728,27 @@ function CountUp({ raw }: { raw: string }) {
   );
 }
 
+// Trust metrics as premium, elevated cards that count up and rise in on load.
 function StatsBar({ stats }: { stats: StatItem[] }) {
   return (
-    <div className="flex flex-wrap gap-x-6 gap-y-3">
+    <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(96px,1fr))]">
       {stats.map((s, i) => (
         <div
           key={i}
-          className={i > 0 ? "sm:border-l sm:pl-6" : ""}
-          style={i > 0 ? { borderColor: "color-mix(in srgb, currentColor 18%, transparent)" } : undefined}
+          className="animate-fade-up rounded-2xl border p-3 text-center shadow-sm"
+          style={{
+            animationDelay: `${i * 90}ms`,
+            borderColor: "color-mix(in srgb, var(--text) 10%, transparent)",
+            background: "color-mix(in srgb, var(--text) 4%, var(--surface))",
+          }}
         >
-          <div className="flex items-baseline gap-2">
-            {s.icon && <span className="text-xl leading-none">{s.icon}</span>}
-            <span className="text-xl font-semibold sm:text-2xl">
+          <div className="flex items-center justify-center gap-1">
+            {s.icon && <span className="text-base leading-none">{s.icon}</span>}
+            <span className="text-lg font-bold sm:text-xl">
               <CountUp raw={s.value} />
             </span>
           </div>
-          <div className="text-sm opacity-70">{s.label}</div>
+          <div className="mt-0.5 text-[11px] leading-tight opacity-60 sm:text-xs">{s.label}</div>
         </div>
       ))}
     </div>
@@ -727,7 +797,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
               key={i}
               href={ctaHref(cta)}
               onClick={onCtaClick}
-              className="j-cta inline-flex items-center gap-2 rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring"
+              className="j-cta inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring sm:w-auto"
             >
               <PhoneIcon />
               {label}
@@ -740,7 +810,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
             key={i}
             href={ctaHref(cta)}
             onClick={onCtaClick}
-            className="j-outline rounded-[var(--radius)] px-6 py-3 font-medium focus-ring"
+            className="j-outline inline-flex min-h-[3.25rem] w-full items-center justify-center rounded-[var(--radius)] px-6 py-3 font-medium focus-ring sm:w-auto"
           >
             {label}
           </a>
@@ -749,7 +819,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
             key={i}
             href={ctaHref(cta)}
             onClick={onCtaClick}
-            className="j-cta rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring"
+            className="j-cta inline-flex min-h-[3.25rem] w-full items-center justify-center rounded-[var(--radius)] px-6 py-3 font-medium shadow-sm focus-ring sm:w-auto"
           >
             {label}
           </a>

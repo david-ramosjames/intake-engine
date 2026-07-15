@@ -77,12 +77,30 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px color-mix(in srgb, var(--cta-hover-bg, #0b1f3a) 30%, transparent);
 }
+/* Tactile press — feels app-native on touch. */
+.j-cta:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--cta-bg, #e63946) 35%, transparent);
+}
 
-/* Runtime text inputs — adapt to the journey theme (light or dark). */
+/* Full-bleed premium CTA (mobile-first). Adds a subtle top highlight + depth on
+   top of the shared .j-cta color/press behavior. */
+.j-cta-primary {
+  box-shadow:
+    0 10px 24px -6px color-mix(in srgb, var(--cta-bg, #e63946) 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+}
+
+/* Runtime text inputs — iOS-style: soft fill, generous radius, gentle focus
+   ring. Adapts to the journey theme (light or dark). */
 .j-input {
-  background: color-mix(in srgb, var(--text, #0b1f3a) 4%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text, #0b1f3a) 20%, transparent);
+  background: color-mix(in srgb, var(--text, #0b1f3a) 5%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--text, #0b1f3a) 14%, transparent);
   color: var(--text, #0b1f3a);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 .j-input::placeholder {
   color: var(--text, #0b1f3a);
@@ -91,6 +109,8 @@ body {
 .j-input:focus {
   outline: none;
   border-color: var(--acc, #e63946);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc, #e63946) 16%, transparent);
+  background: var(--surface, #fff);
 }
 
 /* Secondary CTA — outline that fills (inverse) on hover. */
@@ -134,4 +154,55 @@ body {
 
 .animate-slide-down {
   animation: slide-down 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Floating content card rises over the hero on load. */
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-card-rise {
+  animation: card-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Slow hero zoom (Ken Burns) — subtle, premium. */
+@keyframes hero-zoom {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.animate-hero-zoom {
+  animation: hero-zoom 6s ease-out both;
+}
+
+/* Sticky mobile CTA bar slides up when it appears. */
+@keyframes bar-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.animate-bar-up {
+  animation: bar-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-slide-down,
+  .animate-card-rise,
+  .animate-hero-zoom,
+  .animate-bar-up {
+    animation: none;
+  }
 }
