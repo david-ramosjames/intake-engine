@@ -916,7 +916,9 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
       className="animate-fade-up rounded-2xl border px-5 py-6 shadow-sm sm:px-8 sm:py-4"
       style={{
         borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
-        background: "color-mix(in srgb, var(--text) 4%, var(--surface))",
+        // Tint from the page background (not --surface) so the card floats on
+        // the hero as a subtle lift regardless of the journey's surface color.
+        background: "color-mix(in srgb, var(--text) 6%, var(--bg))",
       }}
     >
       <div className="grid" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
@@ -1058,7 +1060,7 @@ function CallbackField({
       <div className="relative">
         <span className="pointer-events-none absolute left-3 top-3 opacity-45">{icon}</span>
         <textarea
-          className="j-input w-full rounded-xl py-3 pl-10 pr-3 text-base transition focus-ring"
+          className="j-input-onbg w-full rounded-xl py-3 pl-10 pr-3 text-base transition focus-ring"
           rows={2}
           placeholder={ph}
           value={v}
@@ -1073,7 +1075,7 @@ function CallbackField({
       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 opacity-45">{icon}</span>
       <input
         type={inputType}
-        className="j-input w-full rounded-xl py-3 pl-10 pr-3 text-base transition focus-ring"
+        className="j-input-onbg w-full rounded-xl py-3 pl-10 pr-3 text-base transition focus-ring"
         placeholder={ph}
         value={v}
         onChange={(e) => onChange(e.target.value)}

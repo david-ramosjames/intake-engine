@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { duplicateJourney } from "@/app/admin/actions";
+import { DeleteJourneyButton } from "@/components/admin/DeleteJourneyButton";
 import { getAdminOrg } from "@/server/currentOrg";
 import { hasDatabase } from "@/server/db";
 import { store } from "@/server/store";
@@ -88,6 +89,7 @@ export default async function AdminJourneys() {
               >
                 Edit
               </Link>
+              <DeleteJourneyButton slug={j.slug} name={j.name} />
             </div>
           </div>
         ))}

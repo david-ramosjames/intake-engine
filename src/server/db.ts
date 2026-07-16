@@ -30,6 +30,7 @@ type AnyDelegate = {
   findUnique: (args?: unknown) => Promise<any>;
   create: (args?: unknown) => Promise<any>;
   update: (args?: unknown) => Promise<any>;
+  updateMany: (args?: unknown) => Promise<any>;
   upsert: (args?: unknown) => Promise<any>;
   delete: (args?: unknown) => Promise<any>;
   deleteMany: (args?: unknown) => Promise<any>;

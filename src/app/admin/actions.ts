@@ -56,6 +56,19 @@ export async function duplicateJourney(formData: FormData) {
   redirect(`/admin/journeys/${copy.slug}/edit`);
 }
 
+export async function deleteJourney(formData: FormData) {
+  await requireUser();
+  const org = await getAdminOrg();
+  if (!org) throw new Error("No organization selected.");
+  const slug = String(formData.get("slug") ?? "");
+  if (slug) {
+    await store.deleteJourney(org.id, slug);
+    revalidateJourney(org.id, slug);
+  }
+  revalidatePath("/admin/journeys");
+  redirect("/admin/journeys");
+}
+
 export async function deleteLead(formData: FormData) {
   await requireUser();
   const org = await getAdminOrg();

@@ -197,6 +197,25 @@ export const prismaStore: PlatformStore = {
     });
   },
 
+  async deleteJourney(orgId, slug) {
+    const prisma = await getPrisma();
+    const j = await prisma.journey.findFirst({ where: { organizationId: orgId, slug } });
+    if (!j) return;
+    // Detach any custom domains pointing here so they fall back to the org's
+    // default journey instead of a dangling reference.
+    await (prisma.domain as any).updateMany({
+      where: { organizationId: orgId, journeyId: j.id },
+      data: { journeyId: null },
+    });
+    // Leads have a required journey FK with no cascade, so remove them first
+    // (their answer/event/tag children cascade from the lead).
+    await (prisma.lead as any).deleteMany({ where: { organizationId: orgId, journeyId: j.id } });
+    // Break the published-version pointer, then delete — versions, experiments
+    // and automations cascade from the journey.
+    await (prisma.journey as any).update({ where: { id: j.id }, data: { publishedVersionId: null } });
+    await (prisma.journey as any).delete({ where: { id: j.id } });
+  },
+
   async listLeads(orgId) {
     const prisma = await getPrisma();
     const rows = await prisma.lead.findMany({

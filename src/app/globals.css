@@ -130,6 +130,30 @@ body {
   background: var(--surface, #fff);
 }
 
+/* Callback-card inputs sit directly on the page background (not on a surface
+   card), so they tint from --bg instead of --surface. This keeps them blended
+   with the page whatever the journey's surface color is (e.g. a white surface
+   would otherwise make them render as bright white boxes on a dark hero). */
+.j-input-onbg {
+  background: color-mix(in srgb, var(--text, #0b1f3a) 7%, var(--bg, #fff));
+  border: 1px solid color-mix(in srgb, var(--text, #0b1f3a) 16%, transparent);
+  color: var(--text, #0b1f3a);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+.j-input-onbg::placeholder {
+  color: var(--text, #0b1f3a);
+  opacity: 0.45;
+}
+.j-input-onbg:focus {
+  outline: none;
+  border-color: var(--acc, #e63946);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc, #e63946) 16%, transparent);
+  background: color-mix(in srgb, var(--text, #0b1f3a) 4%, var(--bg, #fff));
+}
+
 /* Secondary CTA — outline (its own --cta2 color) that fills on hover. */
 .j-outline {
   border: 1px solid color-mix(in srgb, var(--cta2, var(--text, #0b1f3a)) 45%, transparent);

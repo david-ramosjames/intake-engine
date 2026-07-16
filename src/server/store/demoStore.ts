@@ -183,6 +183,24 @@ export const demoStore: PlatformStore = {
     return copy;
   },
 
+  async deleteJourney(orgId, slug) {
+    const db = await load();
+    const idx = db.journeys.findIndex((j) => j.orgId === orgId && j.slug === slug);
+    if (idx === -1) return;
+    const [removed] = db.journeys.splice(idx, 1);
+    if (removed) {
+      // Remove leads captured by this journey (matches the Prisma path, where
+      // the lead→journey FK would otherwise block the delete).
+      db.leads = db.leads.filter((l) => !(l.orgId === orgId && l.journeyId === removed.id));
+      // Detach any custom domains that pointed here so they fall back to the
+      // org's default journey instead of a dangling reference.
+      for (const d of db.domains) {
+        if (d.organizationId === orgId && d.journeyId === removed.id) d.journeyId = undefined;
+      }
+    }
+    await persist();
+  },
+
   async listLeads(orgId) {
     const db = await load();
     return db.leads
