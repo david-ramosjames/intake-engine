@@ -500,7 +500,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       )}
 
       <section
-        className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 ${
+        className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 md:py-3 ${
           mobileHero ? "z-10 animate-card-rise md:animate-none" : ""
         }`}
       >
@@ -514,15 +514,15 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         )}
 
         <div
-          className={`mx-auto flex w-full max-w-2xl flex-1 flex-col py-4 md:justify-center ${
+          className={`mx-auto flex w-full max-w-2xl flex-1 flex-col py-4 md:py-2 md:justify-center ${
             mobileHero ? "justify-start pt-1" : "justify-center"
           }`}
         >
           {terminal ? (
             <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
-            <div key={page?.id} className="animate-fade-up space-y-5">
-              <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2">
+            <div key={page?.id} className="animate-fade-up space-y-5 md:space-y-4">
+              <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 md:gap-y-3">
                 {mainComps.map((c) => {
                   const isChoice = soleChoice && c.id === soleChoice.id;
                   // Compact inputs (name, phone, email…) share a row two-up on
@@ -903,7 +903,7 @@ function CountUp({ raw }: { raw: string }) {
 function StatsBar({ stats }: { stats: StatItem[] }) {
   return (
     <div
-      className="animate-fade-up rounded-2xl border px-5 py-7 shadow-sm sm:px-8 sm:py-8"
+      className="animate-fade-up rounded-2xl border px-5 py-5 shadow-sm sm:px-8 sm:py-6"
       style={{
         borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
         background: "color-mix(in srgb, var(--text) 4%, var(--surface))",
@@ -972,7 +972,7 @@ function CallbackCard({
       </div>
 
       <div
-        className="mt-4 grid gap-3"
+        className="mt-3 grid gap-2.5"
         style={{ gridTemplateColumns: `repeat(${Math.min(shortFields.length, 3)}, minmax(0, 1fr))` }}
       >
         {shortFields.map((f) => (
@@ -986,7 +986,7 @@ function CallbackCard({
         ))}
       </div>
 
-      <div className={`mt-3 grid gap-3 ${longField ? "md:grid-cols-3" : ""}`}>
+      <div className={`mt-2.5 grid gap-2.5 ${longField ? "md:grid-cols-3" : ""}`}>
         {longField && (
           <div className="md:col-span-2">
             <CallbackField
@@ -1010,7 +1010,7 @@ function CallbackCard({
       </div>
 
       {/* Secure footer — the lock line. */}
-      <div className="mt-3 flex items-center justify-center gap-1.5 text-xs opacity-55">
+      <div className="mt-2.5 flex items-center justify-center gap-1.5 text-xs opacity-55">
         <LockIcon />
         {secure}
       </div>
@@ -1049,7 +1049,7 @@ function CallbackField({
         <span className="pointer-events-none absolute left-3 top-3 opacity-45">{icon}</span>
         <textarea
           className="j-input w-full rounded-xl py-3 pl-10 pr-3 text-base transition focus-ring"
-          rows={3}
+          rows={2}
           placeholder={ph}
           value={v}
           onChange={(e) => onChange(e.target.value)}
@@ -1161,7 +1161,7 @@ function ActionButton({
   const base = variant === "outline" ? "j-outline" : "j-cta j-cta-primary";
   const rich = Boolean(subtitle || note || icon);
   const cls = rich
-    ? `${base} flex w-full items-center gap-3.5 rounded-[var(--radius)] px-3.5 py-3 text-left focus-ring`
+    ? `${base} flex w-full items-center gap-3.5 rounded-[var(--radius)] px-3.5 py-3 text-left focus-ring md:py-2.5`
     : `${base} inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring`;
   const full = `${cls} ${as === "button" ? "disabled:opacity-50" : ""}`;
   // High-contrast accents. On the filled (Call) button the icon circle and pill
