@@ -399,6 +399,16 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       <div className="flex flex-1 flex-col md:flex-row">
       {theme.sideImageUrl && (
         <aside className="relative hidden bg-center md:block md:w-[38%] lg:w-[40%]" style={heroBgStyleDesktop}>
+          {/* Cinematic edge blend — the photo dissolves left→right into the page
+              background so the seam between the image and the content reads like
+              a movie poster, not a hard column split. */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(to right, transparent 40%, color-mix(in srgb, var(--bg) 55%, transparent) 74%, var(--bg) 100%)",
+            }}
+          />
           {theme.sideOverlay &&
             (theme.sideOverlay.title ||
               theme.sideOverlay.subtitle ||
@@ -521,7 +531,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           {terminal ? (
             <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
           ) : (
-            <div key={page?.id} className="animate-fade-up space-y-5 md:space-y-4">
+            <div key={page?.id} className="animate-fade-up space-y-5 md:space-y-3">
               <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 md:gap-y-3">
                 {mainComps.map((c) => {
                   const isChoice = soleChoice && c.id === soleChoice.id;
@@ -903,7 +913,7 @@ function CountUp({ raw }: { raw: string }) {
 function StatsBar({ stats }: { stats: StatItem[] }) {
   return (
     <div
-      className="animate-fade-up rounded-2xl border px-5 py-5 shadow-sm sm:px-8 sm:py-6"
+      className="animate-fade-up rounded-2xl border px-5 py-6 shadow-sm sm:px-8 sm:py-4"
       style={{
         borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
         background: "color-mix(in srgb, var(--text) 4%, var(--surface))",
@@ -1161,7 +1171,7 @@ function ActionButton({
   const base = variant === "outline" ? "j-outline" : "j-cta j-cta-primary";
   const rich = Boolean(subtitle || note || icon);
   const cls = rich
-    ? `${base} flex w-full items-center gap-3.5 rounded-[var(--radius)] px-3.5 py-3 text-left focus-ring md:py-2.5`
+    ? `${base} flex w-full items-center gap-3.5 rounded-[var(--radius)] px-3.5 py-3 text-left focus-ring md:py-2`
     : `${base} inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] px-8 text-lg font-semibold focus-ring`;
   const full = `${cls} ${as === "button" ? "disabled:opacity-50" : ""}`;
   // High-contrast accents. On the filled (Call) button the icon circle and pill
@@ -1321,7 +1331,7 @@ function Banner({
         borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
       }}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-x-2 overflow-hidden px-3 py-2 text-[10px] font-semibold uppercase tracking-wide sm:gap-x-4 sm:px-4 sm:text-sm">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-x-2 overflow-hidden px-3 py-2 text-[10px] font-semibold uppercase tracking-wide sm:gap-x-4 sm:px-4 sm:py-1.5 sm:text-sm">
         <div className="flex min-w-0 flex-nowrap items-center gap-x-2 whitespace-nowrap sm:gap-x-3">
           <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="mr-0.5 shrink-0" compact />
           {items.map((it, i) => (
