@@ -355,7 +355,7 @@ export function JourneyEditor({
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">
-                  Photo focus <span className="text-gray-400">(x% y%, e.g. 70% 60%)</span>
+                  Photo focus — mobile <span className="text-gray-400">(x% y%, e.g. 70% 60%)</span>
                 </label>
                 <input
                   className={input}
@@ -368,7 +368,7 @@ export function JourneyEditor({
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">
-                  Zoom <span className="text-gray-400">(1 = fit, 1.3 = +30%)</span>
+                  Zoom — mobile <span className="text-gray-400">(1 = fit, 1.3 = +30%)</span>
                 </label>
                 <input
                   type="number"
@@ -382,6 +382,41 @@ export function JourneyEditor({
                     mutate(
                       (d) =>
                         void ((d.theme ??= {}).heroScale = e.target.value ? Number(e.target.value) : undefined),
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Photo focus — desktop <span className="text-gray-400">(independent of mobile)</span>
+                </label>
+                <input
+                  className={input}
+                  placeholder="50% 30%"
+                  value={def.theme?.heroPositionDesktop ?? ""}
+                  onChange={(e) =>
+                    mutate((d) => void ((d.theme ??= {}).heroPositionDesktop = e.target.value || undefined))
+                  }
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Zoom — desktop <span className="text-gray-400">(1 = fit)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.05"
+                  min="1"
+                  max="2"
+                  className={input}
+                  placeholder="1"
+                  value={def.theme?.heroScaleDesktop ?? ""}
+                  onChange={(e) =>
+                    mutate(
+                      (d) =>
+                        void ((d.theme ??= {}).heroScaleDesktop = e.target.value
+                          ? Number(e.target.value)
+                          : undefined),
                     )
                   }
                 />
@@ -458,6 +493,55 @@ export function JourneyEditor({
               >
                 + Add trust signal
               </button>
+            </div>
+          </div>
+
+          {/* Desktop callback card (shown under the buttons when the landing
+              screen has below-the-actions form fields). */}
+          <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+            <div className="text-xs font-medium text-gray-500">Desktop callback card</div>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Appears under the buttons on desktop when the welcome screen has &ldquo;below&rdquo; form fields
+              (name, phone, email, message). Hidden on mobile.
+            </p>
+            <div className="mt-2 space-y-2">
+              <input
+                className={input}
+                placeholder="Divider heading — Prefer a quick callback? Leave your information."
+                value={def.theme?.callback?.heading ?? ""}
+                onChange={(e) =>
+                  mutate((d) => void (((d.theme ??= {}).callback ??= {}).heading = e.target.value || undefined))
+                }
+              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  className={input}
+                  placeholder="Button label — Request callback"
+                  value={def.theme?.callback?.buttonLabel ?? ""}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonLabel = e.target.value || undefined))
+                  }
+                />
+                <input
+                  className={input}
+                  placeholder="Button second line — We'll reach out shortly"
+                  value={def.theme?.callback?.buttonSubtitle ?? ""}
+                  onChange={(e) =>
+                    mutate(
+                      (d) =>
+                        void (((d.theme ??= {}).callback ??= {}).buttonSubtitle = e.target.value || undefined),
+                    )
+                  }
+                />
+              </div>
+              <input
+                className={input}
+                placeholder="Secure footer — Your information is secure and will never be shared."
+                value={def.theme?.callback?.secureText ?? ""}
+                onChange={(e) =>
+                  mutate((d) => void (((d.theme ??= {}).callback ??= {}).secureText = e.target.value || undefined))
+                }
+              />
             </div>
           </div>
 

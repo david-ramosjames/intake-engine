@@ -224,9 +224,26 @@ export const themeTokensSchema = z
     logoLink: z.string().optional(),
     sideImageUrl: z.string().optional(),
     // How the hero photo is framed: CSS background-position (e.g. "70% 60%")
-    // and a zoom multiplier (1 = fit, 1.3 = zoomed in 30%).
+    // and a zoom multiplier (1 = fit, 1.3 = zoomed in 30%). These apply to the
+    // MOBILE hero. The desktop side image is framed separately below so tuning
+    // the phone crop never shifts the desktop photo.
     heroPosition: z.string().optional(),
     heroScale: z.number().optional(),
+    // Desktop side-image framing (independent of the mobile hero). When unset
+    // the desktop photo uses a neutral centered crop.
+    heroPositionDesktop: z.string().optional(),
+    heroScaleDesktop: z.number().optional(),
+    // Desktop-only "quick callback" card shown under the action buttons: a
+    // labeled divider, a compact contact form, a submit button, and a secure
+    // footer line. Text is optional (sensible defaults are used).
+    callback: z
+      .object({
+        heading: z.string().optional(),
+        buttonLabel: z.string().optional(),
+        buttonSubtitle: z.string().optional(),
+        secureText: z.string().optional(),
+      })
+      .optional(),
     // Optional overlay of trust signals on top of the side image.
     sideOverlay: z
       .object({

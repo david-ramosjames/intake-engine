@@ -297,12 +297,19 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   // attorney photo as an edge-to-edge hero with the content floating over it.
   const isLanding = !terminal && history.length <= 1;
   const mobileHero = isLanding && Boolean(theme.sideImageUrl);
-  // How the hero photo is framed (position + zoom), applied to both the desktop
-  // side image and the mobile hero.
+  // Hero framing (position + zoom). The mobile hero and the desktop side image
+  // are framed independently so tuning the phone crop never shifts the desktop
+  // photo. Desktop falls back to a neutral centered crop when unset.
   const heroBgStyle: React.CSSProperties = {
     backgroundImage: theme.sideImageUrl ? `url("${theme.sideImageUrl}")` : undefined,
     backgroundPosition: theme.heroPosition ?? "50% 35%",
     backgroundSize: theme.heroScale && theme.heroScale > 1 ? `${theme.heroScale * 100}%` : "cover",
+  };
+  const heroBgStyleDesktop: React.CSSProperties = {
+    backgroundImage: theme.sideImageUrl ? `url("${theme.sideImageUrl}")` : undefined,
+    backgroundPosition: theme.heroPositionDesktop ?? "50% 30%",
+    backgroundSize:
+      theme.heroScaleDesktop && theme.heroScaleDesktop > 1 ? `${theme.heroScaleDesktop * 100}%` : "cover",
   };
   const heroMessage = theme.sideOverlay?.message;
 
@@ -334,6 +341,10 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   // Content can render above (default) or below (props.below) the action buttons.
   const mainComps = contentComps.filter((c) => c.props?.below !== true);
   const belowComps = contentComps.filter((c) => c.props?.below === true);
+  // Below-the-actions inputs form the desktop "quick callback" card; any other
+  // below content renders normally under it.
+  const belowFields = belowComps.filter((c) => Boolean(c.key));
+  const belowOther = belowComps.filter((c) => !c.key);
   // On the mobile hero, the page's main headline overlays the bottom of the
   // photo (the name moves up to the top-left). On desktop it stays in content.
   const heroHeading = mobileHero
@@ -371,7 +382,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       />
       <div className="flex flex-1 flex-col md:flex-row">
       {theme.sideImageUrl && (
-        <aside className="relative hidden bg-center md:block md:w-[38%] lg:w-[40%]" style={heroBgStyle}>
+        <aside className="relative hidden bg-center md:block md:w-[38%] lg:w-[40%]" style={heroBgStyleDesktop}>
           {theme.sideOverlay &&
             (theme.sideOverlay.title ||
               theme.sideOverlay.subtitle ||
@@ -552,9 +563,22 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                 )}
               </div>
 
-              {/* Content marked to render below the actions (e.g. a desktop-only
-                  "or leave your info" form). */}
-              {belowComps.map((c) => (
+              {/* Content marked to render below the actions. Input fields become
+                  the desktop "quick callback" card; anything else falls through
+                  to the normal renderer. */}
+              {belowFields.length > 0 && (
+                <CallbackCard
+                  fields={belowFields}
+                  answers={answers}
+                  definition={definition}
+                  theme={theme}
+                  L={L}
+                  onField={(key, v) => set(key, v)}
+                  onSubmit={onContinue}
+                  busy={busy}
+                />
+              )}
+              {belowOther.map((c) => (
                 <div key={c.id} className={deviceClass(c)}>
                   <ContentOrField
                     component={c}
@@ -888,10 +912,181 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
   );
 }
 
+// Desktop-only "quick callback" card: a labeled divider, a compact contact
+// form (short fields in a row, an optional message + submit button), and a
+// secure footer. Config-driven text with sensible defaults; submitting runs the
+// page's normal advance (recording the lead).
+function CallbackCard({
+  fields,
+  answers,
+  theme,
+  L,
+  onField,
+  onSubmit,
+  busy,
+}: {
+  fields: Component[];
+  answers: Answers;
+  definition: JourneyDefinition;
+  theme: JourneyDefinition["theme"] & object;
+  L: Localize;
+  onField: (key: string, value: unknown) => void;
+  onSubmit: () => void;
+  busy: boolean;
+}) {
+  const heading =
+    L(tk.callbackHeading(), theme.callback?.heading) || "Prefer a quick callback? Leave your information.";
+  const buttonLabel = L(tk.callbackButton(), theme.callback?.buttonLabel) || "Request callback";
+  const buttonSub = L(tk.callbackButtonSub(), theme.callback?.buttonSubtitle) || "We'll reach out shortly";
+  const secure =
+    L(tk.callbackSecure(), theme.callback?.secureText) || "Your information is secure and will never be shared.";
+  const shortFields = fields.filter((f) => f.type !== "longText");
+  const longField = fields.find((f) => f.type === "longText");
+  const rule = "h-px flex-1 bg-[color:color-mix(in_srgb,var(--text)_16%,transparent)]";
+  return (
+    <div className="hidden md:block">
+      {/* Labeled divider — the "top border" of the callback section. */}
+      <div className="flex items-center gap-3 text-sm opacity-75">
+        <span className={rule} />
+        <span className="flex items-center gap-2 font-medium">
+          <MailIcon />
+          {heading}
+        </span>
+        <span className={rule} />
+      </div>
+
+      <div
+        className="mt-4 grid gap-3"
+        style={{ gridTemplateColumns: `repeat(${Math.min(shortFields.length, 3)}, minmax(0, 1fr))` }}
+      >
+        {shortFields.map((f) => (
+          <CallbackField
+            key={f.id}
+            field={f}
+            value={f.key ? answers[f.key] : undefined}
+            onChange={(v) => f.key && onField(f.key, v)}
+            L={L}
+          />
+        ))}
+      </div>
+
+      <div className={`mt-3 grid gap-3 ${longField ? "md:grid-cols-3" : ""}`}>
+        {longField && (
+          <div className="md:col-span-2">
+            <CallbackField
+              field={longField}
+              value={longField.key ? answers[longField.key] : undefined}
+              onChange={(v) => longField.key && onField(longField.key, v)}
+              L={L}
+            />
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={busy}
+          className="flex flex-col items-center justify-center rounded-xl px-5 py-3 font-bold leading-tight text-white shadow-md transition hover:brightness-110 active:scale-[0.98] focus-ring disabled:opacity-50"
+          style={{ background: "var(--acc)" }}
+        >
+          <span className="text-sm uppercase tracking-wide">{buttonLabel}</span>
+          {buttonSub && <span className="mt-0.5 text-[12px] font-medium normal-case opacity-85">{buttonSub}</span>}
+        </button>
+      </div>
+
+      {/* Secure footer — the lock line. */}
+      <div className="mt-3 flex items-center justify-center gap-1.5 text-xs opacity-55">
+        <LockIcon />
+        {secure}
+      </div>
+    </div>
+  );
+}
+
+// A single callback-card input with a leading type icon (name / phone / email /
+// message). Label doubles as the placeholder for the clean, boxed look.
+function CallbackField({
+  field,
+  value,
+  onChange,
+  L,
+}: {
+  field: Component;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  L: Localize;
+}) {
+  const ph = L(tk.label(field.id), field.label) || field.placeholder || "";
+  const v = value == null ? "" : String(value);
+  const icon =
+    field.type === "phone" ? (
+      <PhoneIcon />
+    ) : field.type === "email" ? (
+      <MailIcon />
+    ) : field.type === "longText" ? (
+      <ChatIcon />
+    ) : (
+      <UserIcon />
+    );
+  if (field.type === "longText") {
+    return (
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-3 opacity-45">{icon}</span>
+        <textarea
+          className="j-input w-full rounded-xl py-3 pl-10 pr-3 text-base transition focus-ring"
+          rows={3}
+          placeholder={ph}
+          value={v}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+    );
+  }
+  const inputType = field.type === "email" ? "email" : field.type === "phone" ? "tel" : "text";
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 opacity-45">{icon}</span>
+      <input
+        type={inputType}
+        className="j-input w-full rounded-xl py-3 pl-10 pr-3 text-base transition focus-ring"
+        placeholder={ph}
+        value={v}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 function PhoneIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden className={className}>
       <path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.3 1L6.6 10.8z" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
     </svg>
   );
 }

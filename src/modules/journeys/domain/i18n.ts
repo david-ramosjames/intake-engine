@@ -27,6 +27,11 @@ export const tk = {
   continue: (pageId: string) => `p:${pageId}:continue`,
   continueSubtitle: (pageId: string) => `p:${pageId}:continue:sub`,
   bannerItem: (index: number) => `banner:item:${index}`,
+  // Desktop callback card (theme-level text).
+  callbackHeading: () => `callback:heading`,
+  callbackButton: () => `callback:button`,
+  callbackButtonSub: () => `callback:button:sub`,
+  callbackSecure: () => `callback:secure`,
 };
 
 /** Resolve a piece of text for a locale, falling back to the base value. */
