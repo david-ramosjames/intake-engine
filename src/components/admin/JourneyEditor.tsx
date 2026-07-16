@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Component, JourneyDefinition, Page } from "@/modules/journeys/domain/schema";
 import { tk } from "@/modules/journeys/domain/i18n";
+import { DeleteJourneyButton } from "@/components/admin/DeleteJourneyButton";
 
 const OPTION_TYPES = new Set(["singleSelect", "radio", "dropdown", "multiSelect", "checkbox"]);
 const CONTENT_TYPES = new Set(["heading", "paragraph"]);
@@ -155,6 +156,20 @@ export function JourneyEditor({
     });
   }
 
+  function addOpenEnded(pi: number) {
+    mutate((d) => {
+      const id = `q_${Math.random().toString(36).slice(2, 8)}`;
+      d.pages[pi]!.components.push({
+        id,
+        type: "longText",
+        key: id,
+        label: "Your question here",
+        placeholder: "Type your answer…",
+        validation: { required: true },
+      } as Component);
+    });
+  }
+
   function addPrompt(pi: number) {
     mutate((d) => {
       const id = `prompt_${Math.random().toString(36).slice(2, 8)}`;
@@ -210,6 +225,7 @@ export function JourneyEditor({
           ← Journeys
         </Link>
         <div className="flex items-center gap-3">
+          <DeleteJourneyButton slug={slug} name={def.name} />
           <Link
             href={`/j/${slug}?org=${orgSlug}`}
             target="_blank"
@@ -251,11 +267,16 @@ export function JourneyEditor({
               onChange={(e) => mutate((d) => void (d.name = e.target.value))}
             />
           </div>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap gap-6">
             <ColorField
               label="Background"
               value={def.theme?.colorBackground ?? "#0b1f3a"}
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).colorBackground = v))}
+            />
+            <ColorField
+              label="Surface"
+              value={def.theme?.colorSurface ?? def.theme?.colorBackground ?? "#0b1f3a"}
+              onChange={(v) => mutate((d) => void ((d.theme ??= {}).colorSurface = v))}
             />
             <ColorField
               label="Text"
@@ -268,6 +289,11 @@ export function JourneyEditor({
               onChange={(v) => mutate((d) => void ((d.theme ??= {}).colorAccent = v))}
             />
           </div>
+          <p className="text-xs text-gray-400">
+            <strong>Background</strong> is the page color behind everything. <strong>Surface</strong> is the fill for
+            cards and form inputs on inner pages — usually the same as the background (leave it matching for a flat
+            look, or lighten it slightly to make cards stand out).
+          </p>
           {/* Answer (choice) buttons */}
           <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Answer buttons</div>
           <div className="flex flex-wrap gap-6">
@@ -838,6 +864,9 @@ export function JourneyEditor({
               <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium text-blue-600">
                 <button onClick={() => addField(pi)} className="hover:text-blue-700">
                   + Add question (with answer options)
+                </button>
+                <button onClick={() => addOpenEnded(pi)} className="hover:text-blue-700">
+                  + Add open-ended answer
                 </button>
                 <button onClick={() => addPrompt(pi)} className="hover:text-blue-700">
                   + Add prompt text

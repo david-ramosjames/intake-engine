@@ -21,6 +21,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Tailwind v4 no longer sets cursor:pointer on buttons by default, so enabled
+   buttons looked unclickable. Restore the pointer for interactive elements. */
+button:not(:disabled),
+label[role="button"],
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
+}
+
 /* The admin is a light-themed console; scope color-scheme so native controls
    (selects, date pickers) render light regardless of the global dark chrome. */
 .admin-light {
