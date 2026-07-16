@@ -1,6 +1,6 @@
 "use client";
 
-// Create and manage lead automations. Each automation runs when a lead
+// Create, edit, and manage lead automations. Each automation runs when a lead
 // completes (LEAD_COMPLETED) and fires its actions — an email and/or a Slack
 // notification. Text fields support {{tokens}} filled from the lead.
 
@@ -21,6 +21,9 @@ type JourneyRef = { id: string; name: string };
 const input =
   "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
 
+// null = form hidden; "new" = create; an Automation = edit that one.
+type FormState = null | "new" | Automation;
+
 export function AutomationsManager({
   initialAutomations,
   journeys,
@@ -31,7 +34,7 @@ export function AutomationsManager({
   emailConfigured: boolean;
 }) {
   const [items, setItems] = useState<Automation[]>(initialAutomations);
-  const [showForm, setShowForm] = useState(initialAutomations.length === 0);
+  const [form, setForm] = useState<FormState>(initialAutomations.length === 0 ? "new" : null);
 
   const journeyName = (id?: string) => (id ? journeys.find((j) => j.id === id)?.name ?? "A journey" : "All journeys");
 
@@ -48,6 +51,7 @@ export function AutomationsManager({
   async function remove(id: string) {
     if (!window.confirm("Delete this automation?")) return;
     setItems((xs) => xs.filter((x) => x.id !== id));
+    if (form && form !== "new" && form.id === id) setForm(null);
     await fetch(`/api/admin/automations/${id}`, { method: "DELETE" }).catch(() => {});
   }
 
@@ -57,9 +61,9 @@ export function AutomationsManager({
       <div className="rounded-xl border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
           <span className="text-sm font-semibold text-gray-700">Your automations</span>
-          {!showForm && (
+          {form !== "new" && (
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => setForm("new")}
               className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700"
             >
               New automation
@@ -72,50 +76,59 @@ export function AutomationsManager({
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {items.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">{a.name}</span>
-                    {a.actions.map((ac, i) => (
-                      <span
-                        key={i}
-                        className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] text-gray-600"
-                      >
-                        {ac.type === "email" ? "✉ Email" : "💬 Slack"}
-                      </span>
-                    ))}
+            {items.map((a) => {
+              const isEditing = form && form !== "new" && form.id === a.id;
+              return (
+                <li key={a.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">{a.name}</span>
+                      {a.actions.map((ac, i) => (
+                        <span
+                          key={i}
+                          className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] text-gray-600"
+                        >
+                          {ac.type === "email" ? "✉ Email" : "💬 Slack"}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="text-xs text-gray-500">When a lead completes · {journeyName(a.journeyId)}</div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    When a lead completes · {journeyName(a.journeyId)}
+                  <div className="flex shrink-0 items-center gap-3">
+                    <label className="flex items-center gap-2 text-xs text-gray-500">
+                      <input type="checkbox" className="accent-blue-600" checked={a.enabled} onChange={() => toggle(a)} />
+                      {a.enabled ? "On" : "Off"}
+                    </label>
+                    <button
+                      onClick={() => setForm(isEditing ? null : a)}
+                      className="rounded-md px-2 py-1 text-sm text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+                    >
+                      {isEditing ? "Close" : "Edit"}
+                    </button>
+                    <button
+                      onClick={() => remove(a.id)}
+                      className="rounded-md px-2 py-1 text-sm text-gray-400 transition hover:bg-gray-100 hover:text-red-600"
+                    >
+                      Delete
+                    </button>
                   </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <label className="flex items-center gap-2 text-xs text-gray-500">
-                    <input type="checkbox" className="accent-blue-600" checked={a.enabled} onChange={() => toggle(a)} />
-                    {a.enabled ? "On" : "Off"}
-                  </label>
-                  <button
-                    onClick={() => remove(a.id)}
-                    className="rounded-md px-2 py-1 text-sm text-gray-400 transition hover:bg-gray-100 hover:text-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
 
-      {showForm && (
-        <NewAutomationForm
+      {form && (
+        <AutomationForm
+          key={form === "new" ? "new" : form.id}
+          existing={form === "new" ? null : form}
           journeys={journeys}
           emailConfigured={emailConfigured}
-          onCancel={items.length > 0 ? () => setShowForm(false) : undefined}
-          onCreated={(a) => {
-            setItems((xs) => [...xs, a]);
-            setShowForm(false);
+          onCancel={items.length > 0 ? () => setForm(null) : undefined}
+          onSaved={(a) => {
+            setItems((xs) => (xs.some((x) => x.id === a.id) ? xs.map((x) => (x.id === a.id ? a : x)) : [...xs, a]));
+            setForm(null);
           }}
         />
       )}
@@ -123,28 +136,34 @@ export function AutomationsManager({
   );
 }
 
-function NewAutomationForm({
+function AutomationForm({
+  existing,
   journeys,
   emailConfigured,
-  onCreated,
+  onSaved,
   onCancel,
 }: {
+  existing: Automation | null;
   journeys: JourneyRef[];
   emailConfigured: boolean;
-  onCreated: (a: Automation) => void;
+  onSaved: (a: Automation) => void;
   onCancel?: () => void;
 }) {
-  const [name, setName] = useState("New lead alert");
-  const [journeyId, setJourneyId] = useState("");
-  const [emailOn, setEmailOn] = useState(true);
-  const [slackOn, setSlackOn] = useState(false);
-  const [to, setTo] = useState("");
-  const [subject, setSubject] = useState("New lead: {{name}}");
+  const existingEmail = existing?.actions.find((a) => a.type === "email") as EmailAction | undefined;
+  const existingSlack = existing?.actions.find((a) => a.type === "slack") as SlackAction | undefined;
+
+  const [name, setName] = useState(existing?.name ?? "New lead alert");
+  const [journeyId, setJourneyId] = useState(existing?.journeyId ?? "");
+  const [emailOn, setEmailOn] = useState(existing ? Boolean(existingEmail) : true);
+  const [slackOn, setSlackOn] = useState(Boolean(existingSlack));
+  const [to, setTo] = useState(existingEmail?.to ?? "");
+  const [subject, setSubject] = useState(existingEmail?.subject ?? "New lead: {{name}}");
   const [body, setBody] = useState(
-    "You have a new lead from {{journey}}.\n\nName: {{name}}\nPhone: {{phone}}\nEmail: {{email}}\nMessage: {{description}}",
+    existingEmail?.body ??
+      "You have a new lead from {{journey}}.\n\nName: {{name}}\nPhone: {{phone}}\nEmail: {{email}}\nMessage: {{description}}",
   );
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [message, setMessage] = useState("🚨 New lead from {{journey}} — {{name}} ({{phone}})");
+  const [webhookUrl, setWebhookUrl] = useState(existingSlack?.webhookUrl ?? "");
+  const [message, setMessage] = useState(existingSlack?.message ?? "🚨 New lead from {{journey}} — {{name}} ({{phone}})");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -164,16 +183,17 @@ function NewAutomationForm({
 
     setBusy(true);
     try {
-      const res = await fetch("/api/admin/automations", {
-        method: "POST",
+      const payload = { name, journeyId: journeyId || null, trigger: { event: "LEAD_COMPLETED" }, actions };
+      const res = await fetch(existing ? `/api/admin/automations/${existing.id}` : "/api/admin/automations", {
+        method: existing ? "PATCH" : "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, journeyId: journeyId || undefined, trigger: { event: "LEAD_COMPLETED" }, actions }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error ?? "Could not create automation.");
-      onCreated(data.automation);
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Could not save automation.");
+      onSaved(data.automation);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create automation.");
+      setError(err instanceof Error ? err.message : "Could not save automation.");
     } finally {
       setBusy(false);
     }
@@ -181,7 +201,7 @@ function NewAutomationForm({
 
   return (
     <form onSubmit={save} className="space-y-5 rounded-xl border border-gray-200 bg-white p-5">
-      <div className="text-sm font-semibold text-gray-700">New automation</div>
+      <div className="text-sm font-semibold text-gray-700">{existing ? "Edit automation" : "New automation"}</div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label>
@@ -284,7 +304,7 @@ function NewAutomationForm({
           disabled={busy}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Create automation"}
+          {busy ? "Saving…" : existing ? "Save changes" : "Create automation"}
         </button>
         {onCancel && (
           <button type="button" onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-900">
