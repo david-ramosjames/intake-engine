@@ -173,6 +173,47 @@ export function JourneyEditor({
     });
   }
 
+  function addContactFields(pi: number) {
+    mutate((d) => {
+      const rnd = () => Math.random().toString(36).slice(2, 8);
+      // Standard contact block. The keys/types match how leads are read:
+      // full_name → the lead's name, an email-type field → email, a phone-type
+      // field → phone. This mirrors the built-in templates' contact page.
+      d.pages[pi]!.components.push(
+        {
+          id: `name_${rnd()}`,
+          type: "shortText",
+          key: "full_name",
+          label: "Full name",
+          placeholder: "Jane Doe",
+          validation: { required: true },
+        },
+        {
+          id: `phone_${rnd()}`,
+          type: "phone",
+          key: "phone",
+          label: "Phone number",
+          placeholder: "(512) 555-0100",
+          validation: { required: true },
+        },
+        {
+          id: `email_${rnd()}`,
+          type: "email",
+          key: "email",
+          label: "Email address",
+          placeholder: "you@example.com",
+          validation: { required: true },
+        },
+        {
+          id: `msg_${rnd()}`,
+          type: "longText",
+          key: "description",
+          label: "Anything else we should know? (optional)",
+        } as Component,
+      );
+    });
+  }
+
   function addPrompt(pi: number) {
     mutate((d) => {
       const id = `prompt_${Math.random().toString(36).slice(2, 8)}`;
@@ -912,6 +953,9 @@ export function JourneyEditor({
                 </button>
                 <button onClick={() => addOpenEnded(pi)} className="hover:text-blue-700">
                   + Add open-ended answer
+                </button>
+                <button onClick={() => addContactFields(pi)} className="hover:text-blue-700">
+                  + Add contact fields
                 </button>
                 <button onClick={() => addPrompt(pi)} className="hover:text-blue-700">
                   + Add prompt text
