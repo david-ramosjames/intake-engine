@@ -416,20 +416,20 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
               theme.sideOverlay.bullets?.length) && (
               <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/40 to-transparent p-8 text-white lg:p-10">
                 {theme.sideOverlay.title && (
-                  <div className="text-2xl font-semibold lg:text-3xl">{theme.sideOverlay.title}</div>
+                  <div className="text-[1.65rem] font-semibold lg:text-[2.05rem]">{theme.sideOverlay.title}</div>
                 )}
                 {theme.sideOverlay.subtitle && (
-                  <div className="mt-1 text-white/80">{theme.sideOverlay.subtitle}</div>
+                  <div className="mt-1 text-[1.1rem] text-white/80">{theme.sideOverlay.subtitle}</div>
                 )}
                 {heroMessage && (
-                  <div className="mt-3 border-l-2 border-[color:var(--acc)] pl-3 text-sm leading-snug text-white/90">
+                  <div className="mt-3 border-l-2 border-[color:var(--acc)] pl-3 text-[0.95rem] leading-snug text-white/90">
                     {heroMessage}
                   </div>
                 )}
                 {theme.sideOverlay.bullets && theme.sideOverlay.bullets.length > 0 && (
                   <ul className="mt-4 space-y-2">
                     {theme.sideOverlay.bullets.map((b, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-sm text-white/90">
+                      <li key={i} className="flex items-start gap-2.5 text-[0.95rem] text-white/90">
                         <span className="mt-0.5 text-amber-400" aria-hidden>
                           ★
                         </span>
