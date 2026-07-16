@@ -480,7 +480,10 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           )}
           {/* Attorney name/details — upper-left, below the logo, ~1/3 wide. */}
           {(theme.sideOverlay?.title || theme.sideOverlay?.subtitle) && (
-            <div className="absolute left-6 top-[22%] max-w-[42%] text-white drop-shadow">
+            <div
+              className="absolute left-6 max-w-[42%] text-white drop-shadow"
+              style={{ top: `${theme.heroNameYMobile ?? 22}%` }}
+            >
               {theme.sideOverlay?.title && (
                 <div className="text-2xl font-bold leading-tight">{theme.sideOverlay.title}</div>
               )}

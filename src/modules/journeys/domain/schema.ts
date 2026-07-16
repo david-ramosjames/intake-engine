@@ -233,6 +233,10 @@ export const themeTokensSchema = z
     // the desktop photo uses a neutral centered crop.
     heroPositionDesktop: z.string().optional(),
     heroScaleDesktop: z.number().optional(),
+    // Vertical position of the attorney name/title over the MOBILE hero, as a
+    // percent from the top (0 = top, higher = lower — set high to sit just
+    // above the headline). Defaults to 22.
+    heroNameYMobile: z.number().optional(),
     // Desktop-only "quick callback" card shown under the action buttons: a
     // labeled divider, a compact contact form, a submit button, and a secure
     // footer line. Text is optional (sensible defaults are used).

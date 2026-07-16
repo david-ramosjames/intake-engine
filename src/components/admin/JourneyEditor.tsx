@@ -13,6 +13,9 @@ import { tk } from "@/modules/journeys/domain/i18n";
 import { DeleteJourneyButton } from "@/components/admin/DeleteJourneyButton";
 
 const OPTION_TYPES = new Set(["singleSelect", "radio", "dropdown", "multiSelect", "checkbox"]);
+// Open-ended text answers can toggle between one line (shortText) and a
+// paragraph (longText).
+const TEXT_ANSWER_TYPES = new Set(["shortText", "longText"]);
 const CONTENT_TYPES = new Set(["heading", "paragraph"]);
 // Compact inputs can share a row two-up on the live form; offer a "Full width"
 // toggle for them. Must mirror COMPACT_FIELDS in the runtime player.
@@ -453,6 +456,26 @@ export function JourneyEditor({
           {/* Side image overlay (trust signals over the photo) */}
           <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
             <div className="text-xs font-medium text-gray-500">Side image overlay (trust signals)</div>
+            <div className="mt-2">
+              <label className="mb-1 block text-xs font-medium text-gray-500">
+                Name position — mobile{" "}
+                <span className="text-gray-400">(0 = top, higher = lower; set high to sit above the heading)</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0"
+                  max="70"
+                  step="1"
+                  className="flex-1 accent-blue-600"
+                  value={def.theme?.heroNameYMobile ?? 22}
+                  onChange={(e) => mutate((d) => void ((d.theme ??= {}).heroNameYMobile = Number(e.target.value)))}
+                />
+                <span className="w-10 shrink-0 text-right text-xs text-gray-500">
+                  {def.theme?.heroNameYMobile ?? 22}%
+                </span>
+              </div>
+            </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <input
                 className={input}
@@ -1115,6 +1138,19 @@ function ComponentEditor({
           />
           Required
         </label>
+        {TEXT_ANSWER_TYPES.has(component.type) && (
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Answer:
+            <select
+              className={`${controlBase} py-1`}
+              value={component.type}
+              onChange={(e) => onField("type", e.target.value)}
+            >
+              <option value="shortText">Short answer (one line)</option>
+              <option value="longText">Paragraph (multi-line)</option>
+            </select>
+          </label>
+        )}
         {COMPACT_INPUT_TYPES.has(component.type) && (
           <label className="flex items-center gap-2 text-sm text-gray-600" title="Take the full row instead of sharing it with the next field">
             <input
