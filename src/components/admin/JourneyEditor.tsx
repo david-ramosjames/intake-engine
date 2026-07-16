@@ -793,6 +793,28 @@ export function JourneyEditor({
                     <EsBox es={es} k={tk.continueSubtitle(page.id)} placeholder="Helper — Spanish" />
                   </div>
                 </div>
+                <div className="mt-3">
+                  <label className="mb-1 block text-xs font-medium text-gray-500">
+                    Continue button goes to
+                  </label>
+                  <select
+                    className={`${controlBase} w-full sm:w-72`}
+                    value={page.advanceTo ?? ""}
+                    onChange={(e) =>
+                      mutate((d) => void (d.pages[pi]!.advanceTo = e.target.value || undefined))
+                    }
+                    title="Where the Continue button leads (unless an answer branches elsewhere)"
+                  >
+                    <option value="">Next screen (default)</option>
+                    {pageList
+                      .filter((p) => p.id !== page.id)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {["end", "success", "referral", "decline"].includes(p.type) ? `⚑ ${p.name}` : p.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
                 <div className="mt-3 border-t border-gray-200 pt-3">
                   <div className="text-[11px] font-medium text-gray-500">Button colors</div>
                   <div className="mt-2 flex flex-wrap gap-6">

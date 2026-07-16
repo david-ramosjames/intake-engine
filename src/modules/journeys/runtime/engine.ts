@@ -38,6 +38,11 @@ export function resolveNext(
       if (evaluateBoolean(rule.when, ctx)) return rule.goTo;
     }
   }
+  // Unconditional Continue destination (e.g. an open-ended page with no option
+  // branching). Only used when no conditional rule matched above.
+  if (current?.advanceTo && def.pages.some((p) => p.id === current.advanceTo)) {
+    return current.advanceTo;
+  }
   const pages = visiblePages(def, answers);
   const idx = pages.findIndex((p) => p.id === currentPageId);
   if (idx === -1) return pages[0]?.id ?? null;
@@ -84,6 +89,11 @@ export function nextPageId(currentPageId: string, def: JourneyDefinition, answer
         if (target && isPageVisible(target, def, answers)) return rule.goTo;
       }
     }
+  }
+  // Unconditional Continue destination, when set and currently visible.
+  if (current?.advanceTo) {
+    const target = def.pages.find((p) => p.id === current.advanceTo);
+    if (target && isPageVisible(target, def, answers)) return current.advanceTo;
   }
   const pages = visiblePages(def, answers);
   const idx = pages.findIndex((p) => p.id === currentPageId);

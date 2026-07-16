@@ -169,6 +169,10 @@ export const pageSchema = z.object({
   // Conditional branching evaluated in order; first match wins. When none
   // match, advance to the next visible page.
   next: z.array(navigationRuleSchema).optional(),
+  // Unconditional Continue-button destination. Used when a page has no per-
+  // option branching (e.g. an open-ended answer): the Continue button jumps
+  // here. Conditional `next` rules still take precedence when they match.
+  advanceTo: z.string().optional(),
   // Call-to-action buttons, shown on terminal/ending screens (call, website…).
   cta: z.array(ctaSchema).optional(),
   components: z.array(componentSchema),
