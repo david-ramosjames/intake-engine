@@ -9,4 +9,4 @@ import type { PlatformStore } from "./types";
 
 export const store: PlatformStore = hasDatabase ? prismaStore : demoStore;
 
-export type { StoredOrg, StoredJourney, StoredLead, LeadOutcome } from "./types";
+export type { StoredOrg, StoredJourney, StoredLead, LeadOutcome, StoredAutomation } from "./types";

@@ -10,14 +10,17 @@ import { carAccidentJourney } from "@/modules/journeys/content/pi-car-accident";
 import {
   newId,
   normalizeHostname,
+  type CreateAutomationInput,
   type CreateDomainInput,
   type CreateJourneyInput,
   type CreateLeadInput,
   type CreateOrgInput,
   type PlatformStore,
   type RecordEventInput,
+  type StoredAutomation,
   type StoredDomain,
   type StoredEvent,
+  type UpdateAutomationInput,
   type UpdateJourneyInput,
   type StoredJourney,
   type StoredLead,
@@ -30,6 +33,7 @@ interface Db {
   leads: StoredLead[];
   events: StoredEvent[];
   domains: StoredDomain[];
+  automations: StoredAutomation[];
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -57,7 +61,7 @@ function seed(): Db {
     createdAt: now,
     updatedAt: now,
   };
-  return { organizations: [org], journeys: [journey], leads: [], events: [], domains: [] };
+  return { organizations: [org], journeys: [journey], leads: [], events: [], domains: [], automations: [] };
 }
 
 async function load(): Promise<Db> {
@@ -67,6 +71,7 @@ async function load(): Promise<Db> {
     cache = JSON.parse(raw) as Db;
     cache.events ??= []; // back-compat for stores created before events
     cache.domains ??= []; // back-compat for stores created before domains
+    cache.automations ??= []; // back-compat for stores created before automations
   } catch {
     cache = seed();
     await persist();
@@ -298,5 +303,51 @@ export const demoStore: PlatformStore = {
     const db = await load();
     const host = normalizeHostname(hostname);
     return db.domains.find((d) => d.hostname === host) ?? null;
+  },
+
+  async listAutomations(orgId) {
+    const db = await load();
+    return db.automations
+      .filter((a) => a.organizationId === orgId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+
+  async createAutomation(input: CreateAutomationInput) {
+    const db = await load();
+    const now = new Date().toISOString();
+    const automation: StoredAutomation = {
+      id: newId("auto"),
+      organizationId: input.organizationId,
+      journeyId: input.journeyId,
+      name: input.name,
+      enabled: input.enabled ?? true,
+      trigger: input.trigger,
+      actions: input.actions,
+      createdAt: now,
+      updatedAt: now,
+    };
+    db.automations.push(automation);
+    await persist();
+    return automation;
+  },
+
+  async updateAutomation(orgId, id, input: UpdateAutomationInput) {
+    const db = await load();
+    const a = db.automations.find((x) => x.id === id && x.organizationId === orgId);
+    if (!a) throw new Error("Automation not found.");
+    if (input.name !== undefined) a.name = input.name;
+    if (input.enabled !== undefined) a.enabled = input.enabled;
+    if (input.journeyId !== undefined) a.journeyId = input.journeyId ?? undefined;
+    if (input.trigger !== undefined) a.trigger = input.trigger;
+    if (input.actions !== undefined) a.actions = input.actions;
+    a.updatedAt = new Date().toISOString();
+    await persist();
+    return a;
+  },
+
+  async deleteAutomation(orgId, id) {
+    const db = await load();
+    db.automations = db.automations.filter((a) => !(a.id === id && a.organizationId === orgId));
+    await persist();
   },
 };

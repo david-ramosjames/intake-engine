@@ -100,6 +100,54 @@ export interface CreateDomainInput {
   hostname: string;
 }
 
+// --- Automations ------------------------------------------------------------
+// A trigger (currently just LEAD_COMPLETED) with an ordered list of actions.
+// Actions carry their own config; text fields support {{placeholder}} tokens
+// filled from the lead (name, email, phone, journey, score, and any answer key).
+
+export interface EmailAction {
+  type: "email";
+  to: string;
+  subject: string;
+  body: string;
+}
+export interface SlackAction {
+  type: "slack";
+  webhookUrl: string;
+  message: string;
+}
+export type AutomationAction = EmailAction | SlackAction;
+
+export interface StoredAutomation {
+  id: string;
+  organizationId: string;
+  // Scope to a single journey, or all of the org's journeys when undefined.
+  journeyId?: string;
+  name: string;
+  enabled: boolean;
+  trigger: { event: string };
+  actions: AutomationAction[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAutomationInput {
+  organizationId: string;
+  journeyId?: string;
+  name: string;
+  enabled?: boolean;
+  trigger: { event: string };
+  actions: AutomationAction[];
+}
+
+export interface UpdateAutomationInput {
+  name?: string;
+  enabled?: boolean;
+  journeyId?: string | null;
+  trigger?: { event: string };
+  actions?: AutomationAction[];
+}
+
 export type EventType = "opened" | "started" | "completed" | "cta_click";
 
 export interface StoredEvent {
@@ -149,6 +197,11 @@ export interface PlatformStore {
   addDomain(input: CreateDomainInput): Promise<StoredDomain>;
   deleteDomain(orgId: string, id: string): Promise<void>;
   getDomainByHost(hostname: string): Promise<StoredDomain | null>;
+
+  listAutomations(orgId: string): Promise<StoredAutomation[]>;
+  createAutomation(input: CreateAutomationInput): Promise<StoredAutomation>;
+  updateAutomation(orgId: string, id: string, input: UpdateAutomationInput): Promise<StoredAutomation>;
+  deleteAutomation(orgId: string, id: string): Promise<void>;
 }
 
 /** Normalize a hostname for storage/lookup: lowercase, strip scheme/port/path. */

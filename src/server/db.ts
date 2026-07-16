@@ -22,6 +22,7 @@ export type Db = {
   journey: AnyDelegate;
   journeyVersion: AnyDelegate;
   lead: AnyDelegate;
+  automation: AnyDelegate;
   $disconnect: () => Promise<void>;
 };
 type AnyDelegate = {

@@ -5,6 +5,7 @@
 
 import { extractContact, scoreLead, type Answers } from "@/modules/journeys/runtime/engine";
 import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/schema";
+import { runLeadAutomations } from "@/modules/automations/run";
 import { store, type LeadOutcome, type StoredJourney } from "@/server/store";
 
 export interface SubmitResult {
@@ -54,7 +55,14 @@ export async function submitLead(
     medium: attribution.medium ?? context.utm_medium,
   });
 
-  // TODO(automation-engine): enqueue AutomationRun for trigger LEAD_COMPLETED.
+  // Fire the org's automations for this completed lead (email / Slack). Awaited
+  // so it runs before the serverless function returns, but wrapped so a failure
+  // never affects the lead submission.
+  try {
+    await runLeadAutomations(journey, lead);
+  } catch (e) {
+    console.error("[automation] runLeadAutomations threw", e);
+  }
 
   return { leadId: lead.id, score, qualified: outcome === "lead", outcome };
 }

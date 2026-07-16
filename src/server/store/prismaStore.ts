@@ -7,11 +7,14 @@ import { safeParseJourneyDefinition, type JourneyDefinition } from "@/modules/jo
 import { getPrisma } from "../db";
 import {
   normalizeHostname,
+  type AutomationAction,
+  type CreateAutomationInput,
   type CreateDomainInput,
   type CreateJourneyInput,
   type CreateLeadInput,
   type CreateOrgInput,
   type PlatformStore,
+  type StoredAutomation,
   type StoredDomain,
   type StoredEvent,
   type StoredJourney,
@@ -27,6 +30,20 @@ function domainRow(d: any): StoredDomain {
     hostname: d.hostname,
     verifiedAt: d.verifiedAt?.toISOString?.() ?? (d.verifiedAt ? String(d.verifiedAt) : undefined),
     createdAt: d.createdAt?.toISOString?.() ?? String(d.createdAt),
+  };
+}
+
+function automationRow(a: any): StoredAutomation {
+  return {
+    id: a.id,
+    organizationId: a.organizationId,
+    journeyId: a.journeyId ?? undefined,
+    name: a.name,
+    enabled: a.enabled,
+    trigger: (a.trigger ?? { event: "LEAD_COMPLETED" }) as { event: string },
+    actions: (Array.isArray(a.actions) ? a.actions : []) as AutomationAction[],
+    createdAt: a.createdAt?.toISOString?.() ?? String(a.createdAt),
+    updatedAt: a.updatedAt?.toISOString?.() ?? String(a.updatedAt),
   };
 }
 
@@ -356,5 +373,48 @@ export const prismaStore: PlatformStore = {
     const prisma = await getPrisma();
     const row = await prisma.domain.findUnique({ where: { hostname: normalizeHostname(hostname) } });
     return row ? domainRow(row) : null;
+  },
+
+  async listAutomations(orgId) {
+    const prisma = await getPrisma();
+    const rows = await prisma.automation.findMany({
+      where: { organizationId: orgId },
+      orderBy: { createdAt: "asc" },
+    });
+    return rows.map(automationRow);
+  },
+
+  async createAutomation(input: CreateAutomationInput) {
+    const prisma = await getPrisma();
+    const row = await prisma.automation.create({
+      data: {
+        organizationId: input.organizationId,
+        journeyId: input.journeyId ?? null,
+        name: input.name,
+        enabled: input.enabled ?? true,
+        trigger: input.trigger,
+        actions: input.actions,
+      },
+    });
+    return automationRow(row);
+  },
+
+  async updateAutomation(orgId, id, input) {
+    const prisma = await getPrisma();
+    const data: Record<string, unknown> = {};
+    if (input.name !== undefined) data.name = input.name;
+    if (input.enabled !== undefined) data.enabled = input.enabled;
+    if (input.journeyId !== undefined) data.journeyId = input.journeyId ?? null;
+    if (input.trigger !== undefined) data.trigger = input.trigger;
+    if (input.actions !== undefined) data.actions = input.actions;
+    await prisma.automation.updateMany({ where: { id, organizationId: orgId }, data });
+    const row = await prisma.automation.findFirst({ where: { id, organizationId: orgId } });
+    if (!row) throw new Error("Automation not found.");
+    return automationRow(row);
+  },
+
+  async deleteAutomation(orgId, id) {
+    const prisma = await getPrisma();
+    await prisma.automation.deleteMany({ where: { id, organizationId: orgId } });
   },
 };
