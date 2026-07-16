@@ -238,6 +238,9 @@ export const themeTokensSchema = z
     // footer line. Text is optional (sensible defaults are used).
     callback: z
       .object({
+        // Turn the card on. When on and the landing screen has no explicit
+        // "below" fields, a default name/phone/email/message set is shown.
+        enabled: z.boolean().optional(),
         heading: z.string().optional(),
         buttonLabel: z.string().optional(),
         buttonSubtitle: z.string().optional(),

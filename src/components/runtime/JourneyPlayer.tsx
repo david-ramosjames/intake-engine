@@ -345,6 +345,22 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   // below content renders normally under it.
   const belowFields = belowComps.filter((c) => Boolean(c.key));
   const belowOther = belowComps.filter((c) => !c.key);
+  // The callback card shows when the page has explicit "below" fields, OR when
+  // it's simply turned on (theme.callback.enabled) on the landing screen — in
+  // which case a default name / phone / email / message set is used.
+  const es = locale === "es";
+  const defaultCallbackFields: Component[] = [
+    { id: "cb-name", type: "shortText", key: "full_name", label: es ? "Tu nombre" : "Your name" },
+    { id: "cb-phone", type: "phone", key: "phone", label: es ? "Número de teléfono" : "Phone number" },
+    { id: "cb-email", type: "email", key: "email", label: es ? "Correo electrónico" : "Email address" },
+    { id: "cb-msg", type: "longText", key: "description", label: es ? "¿Cómo podemos ayudarte?" : "How can we help?" },
+  ];
+  const callbackFields =
+    belowFields.length > 0
+      ? belowFields
+      : theme.callback?.enabled && isLanding && !terminal
+        ? defaultCallbackFields
+        : [];
   // On the mobile hero, the page's main headline overlays the bottom of the
   // photo (the name moves up to the top-left). On desktop it stays in content.
   const heroHeading = mobileHero
@@ -566,9 +582,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
               {/* Content marked to render below the actions. Input fields become
                   the desktop "quick callback" card; anything else falls through
                   to the normal renderer. */}
-              {belowFields.length > 0 && (
+              {callbackFields.length > 0 && (
                 <CallbackCard
-                  fields={belowFields}
+                  fields={callbackFields}
                   answers={answers}
                   definition={definition}
                   theme={theme}

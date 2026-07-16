@@ -496,13 +496,26 @@ export function JourneyEditor({
             </div>
           </div>
 
-          {/* Desktop callback card (shown under the buttons when the landing
-              screen has below-the-actions form fields). */}
+          {/* Desktop callback card — a quick contact form shown under the
+              action buttons on desktop (hidden on mobile). */}
           <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
-            <div className="text-xs font-medium text-gray-500">Desktop callback card</div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium text-gray-500">Desktop callback card</div>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  className="accent-blue-600"
+                  checked={def.theme?.callback?.enabled ?? false}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).callback ??= {}).enabled = e.target.checked))
+                  }
+                />
+                Show
+              </label>
+            </div>
             <p className="mt-0.5 text-xs text-gray-400">
-              Appears under the buttons on desktop when the welcome screen has &ldquo;below&rdquo; form fields
-              (name, phone, email, message). Hidden on mobile.
+              A name / phone / email / message form under the buttons on desktop (hidden on mobile). Turn it on
+              here — no need to add fields to the page.
             </p>
             <div className="mt-2 space-y-2">
               <input
@@ -513,26 +526,33 @@ export function JourneyEditor({
                   mutate((d) => void (((d.theme ??= {}).callback ??= {}).heading = e.target.value || undefined))
                 }
               />
+              <EsBox es={es} k={tk.callbackHeading()} placeholder="Divider heading — Spanish" />
               <div className="grid gap-2 sm:grid-cols-2">
-                <input
-                  className={input}
-                  placeholder="Button label — Request callback"
-                  value={def.theme?.callback?.buttonLabel ?? ""}
-                  onChange={(e) =>
-                    mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonLabel = e.target.value || undefined))
-                  }
-                />
-                <input
-                  className={input}
-                  placeholder="Button second line — We'll reach out shortly"
-                  value={def.theme?.callback?.buttonSubtitle ?? ""}
-                  onChange={(e) =>
-                    mutate(
-                      (d) =>
-                        void (((d.theme ??= {}).callback ??= {}).buttonSubtitle = e.target.value || undefined),
-                    )
-                  }
-                />
+                <div>
+                  <input
+                    className={input}
+                    placeholder="Button label — Request callback"
+                    value={def.theme?.callback?.buttonLabel ?? ""}
+                    onChange={(e) =>
+                      mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonLabel = e.target.value || undefined))
+                    }
+                  />
+                  <EsBox es={es} k={tk.callbackButton()} placeholder="Button label — Spanish" />
+                </div>
+                <div>
+                  <input
+                    className={input}
+                    placeholder="Button second line — We'll reach out shortly"
+                    value={def.theme?.callback?.buttonSubtitle ?? ""}
+                    onChange={(e) =>
+                      mutate(
+                        (d) =>
+                          void (((d.theme ??= {}).callback ??= {}).buttonSubtitle = e.target.value || undefined),
+                      )
+                    }
+                  />
+                  <EsBox es={es} k={tk.callbackButtonSub()} placeholder="Second line — Spanish" />
+                </div>
               </div>
               <input
                 className={input}
@@ -542,6 +562,7 @@ export function JourneyEditor({
                   mutate((d) => void (((d.theme ??= {}).callback ??= {}).secureText = e.target.value || undefined))
                 }
               />
+              <EsBox es={es} k={tk.callbackSecure()} placeholder="Secure footer — Spanish" />
             </div>
           </div>
 

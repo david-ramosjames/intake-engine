@@ -511,6 +511,7 @@ const leadForm: JourneyTemplate = {
         phoneLabel: "Call Now",
       },
       callback: {
+        enabled: true,
         heading: "Prefer a quick callback? Leave your information.",
         buttonLabel: "Request callback",
         buttonSubtitle: "We'll reach out shortly",
@@ -550,10 +551,6 @@ const leadForm: JourneyTemplate = {
               { value: "$50M+", label: "Recovered" },
             ],
           },
-          { id: "lf-name", type: "shortText", key: "full_name", label: "Your name", placeholder: "Your name", props: { below: true, showOn: "desktop" } },
-          { id: "lf-phone", type: "phone", key: "phone", label: "Phone number", placeholder: "Phone number", props: { below: true, showOn: "desktop" } },
-          { id: "lf-email", type: "email", key: "email", label: "Email address", placeholder: "Email address", props: { below: true, showOn: "desktop" } },
-          { id: "lf-msg", type: "longText", key: "description", label: "How can we help?", placeholder: "How can we help?", props: { below: true, showOn: "desktop" } },
         ],
       },
       {
@@ -593,10 +590,6 @@ const leadForm: JourneyTemplate = {
       es: {
         "c:lf-h:content": "¿Lesionado en un accidente?\nEstamos listos para ayudar.",
         "c:lf-p:content": "Habla con nosotros ahora, o comienza una consulta rápida de 2 minutos en línea.",
-        "c:lf-name:label": "Tu nombre",
-        "c:lf-phone:label": "Número de teléfono",
-        "c:lf-email:label": "Correo electrónico",
-        "c:lf-msg:label": "¿Cómo podemos ayudarte?",
         "callback:heading": "¿Prefieres que te llamemos? Deja tu información.",
         "callback:button": "Solicitar llamada",
         "callback:button:sub": "Nos comunicaremos en breve",
