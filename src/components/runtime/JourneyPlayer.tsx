@@ -406,7 +406,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "linear-gradient(to right, transparent 40%, color-mix(in srgb, var(--bg) 55%, transparent) 74%, var(--bg) 100%)",
+                "linear-gradient(to right, transparent 82%, color-mix(in srgb, var(--bg) 60%, transparent) 93%, var(--bg) 100%)",
             }}
           />
           {theme.sideOverlay &&
@@ -1252,6 +1252,18 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
         const subtitle = L(tk.ctaSubtitle(page.id, i), cta.subtitle) || undefined;
         const note = L(tk.ctaNote(page.id, i), cta.note) || undefined;
         const call = isCallCta(cta);
+        // On desktop, a call button also shows the phone number inline (people
+        // can read/dial it directly). Hidden on mobile, where tapping calls.
+        const phone = call ? formatPhone((cta.value ?? "").trim()) : "";
+        const title =
+          call && phone ? (
+            <>
+              {label}
+              <span className="ml-2 hidden font-semibold opacity-90 md:inline">{phone}</span>
+            </>
+          ) : (
+            label
+          );
         return (
           <ActionButton
             key={i}
@@ -1260,7 +1272,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
             onClick={onCtaClick}
             variant={cta.style === "secondary" ? "outline" : "primary"}
             icon={call ? <PhoneIcon /> : undefined}
-            title={label}
+            title={title}
             subtitle={subtitle}
             note={note}
           />
