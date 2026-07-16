@@ -174,9 +174,9 @@ summary {
     transform 0.15s ease;
 }
 .j-outline:hover {
-  background: var(--cta2, var(--text, #0b1f3a));
-  color: var(--bg, #fff);
-  border-color: var(--cta2, var(--text, #0b1f3a));
+  background: var(--cta2-hover, var(--cta2, var(--text, #0b1f3a)));
+  color: var(--cta2-hover-text, var(--bg, #fff));
+  border-color: var(--cta2-hover, var(--cta2, var(--text, #0b1f3a)));
 }
 .j-outline:active:not(:disabled) {
   transform: scale(0.98);

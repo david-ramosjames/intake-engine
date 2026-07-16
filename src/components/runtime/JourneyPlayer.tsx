@@ -278,8 +278,11 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       ["--cta-text"]: theme.ctaPrimaryText ?? theme.buttonText ?? "#ffffff",
       ["--cta-hover-bg"]: theme.buttonHoverBg ?? text,
       ["--cta-hover-text"]: theme.buttonHoverText ?? bg,
-      // Secondary (outlined "start") button — border + text color.
+      // Secondary (outlined "start") button — border + text color, plus its
+      // hover fill/text (defaults to filling with its own border color).
       ["--cta2"]: theme.ctaSecondaryColor ?? theme.colorAccent ?? text,
+      ["--cta2-hover"]: theme.ctaSecondaryHoverBg ?? theme.ctaSecondaryColor ?? theme.colorAccent ?? text,
+      ["--cta2-hover-text"]: theme.ctaSecondaryHoverText ?? bg,
     } as React.CSSProperties;
   }, [theme]);
 

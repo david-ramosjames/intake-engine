@@ -865,6 +865,21 @@ export function JourneyEditor({
                       onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaSecondaryColor = v))}
                     />
                     <ColorField
+                      label="Start button hover (fill)"
+                      value={
+                        def.theme?.ctaSecondaryHoverBg ??
+                        def.theme?.ctaSecondaryColor ??
+                        def.theme?.colorAccent ??
+                        "#c1322f"
+                      }
+                      onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaSecondaryHoverBg = v))}
+                    />
+                    <ColorField
+                      label="Start button hover text"
+                      value={def.theme?.ctaSecondaryHoverText ?? def.theme?.colorBackground ?? "#ffffff"}
+                      onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaSecondaryHoverText = v))}
+                    />
+                    <ColorField
                       label="Call button (fill)"
                       value={def.theme?.ctaPrimaryBg ?? def.theme?.buttonBg ?? def.theme?.colorAccent ?? "#c1322f"}
                       onChange={(v) => mutate((d) => void ((d.theme ??= {}).ctaPrimaryBg = v))}

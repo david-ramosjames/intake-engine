@@ -222,6 +222,10 @@ export const themeTokensSchema = z
     ctaPrimaryBg: z.string().optional(),
     ctaPrimaryText: z.string().optional(),
     ctaSecondaryColor: z.string().optional(),
+    // The outlined "start" button fills on hover. By default it fills with its
+    // own border color; set these to specify the hover fill and text.
+    ctaSecondaryHoverBg: z.string().optional(),
+    ctaSecondaryHoverText: z.string().optional(),
     // Branding: a logo shown at the top, and an optional side/hero image shown
     // on the left on desktop. `logoLink` makes the logo clickable.
     logoUrl: z.string().optional(),
