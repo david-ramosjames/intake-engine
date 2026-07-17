@@ -719,25 +719,43 @@ function LangToggle({
   compact?: boolean;
 }) {
   if (languages.length <= 1) return null;
+  const abbr = (l: string) => (LANGUAGE_LABELS[l] ?? l).slice(0, 2).toUpperCase();
+  // The language you'd switch to next (used for the compact single button on
+  // mobile — showing only the *other* language keeps it big and tappable).
+  const idx = Math.max(0, languages.indexOf(locale));
+  const next = languages[(idx + 1) % languages.length]!;
   const pad = compact ? "gap-1 px-2 py-0.5 text-[11px]" : "gap-2 px-3.5 py-1.5 text-sm";
   return (
-    <div className={`flex items-center gap-1 font-medium normal-case ${compact ? "opacity-80" : ""} ${className ?? ""}`}>
-      {languages.map((lng) => (
-        <button
-          key={lng}
-          type="button"
-          onClick={() => setLocale(lng)}
-          aria-pressed={locale === lng}
-          className={`flex items-center rounded-full border transition ${pad} ${
-            locale === lng
-              ? "border-transparent bg-[color:color-mix(in_srgb,currentColor_16%,transparent)]"
-              : "border-[color:color-mix(in_srgb,currentColor_22%,transparent)] opacity-70 hover:opacity-100"
-          }`}
-        >
-          <Flag code={lng} />
-          {(LANGUAGE_LABELS[lng] ?? lng).slice(0, 2).toUpperCase()}
-        </button>
-      ))}
+    <div className={`flex items-center ${className ?? ""}`}>
+      {/* Mobile: a single, larger "switch to the other language" button. */}
+      <button
+        type="button"
+        onClick={() => setLocale(next)}
+        aria-label={`Switch to ${LANGUAGE_LABELS[next] ?? next}`}
+        className="flex items-center gap-2 rounded-full border border-[color:color-mix(in_srgb,currentColor_28%,transparent)] px-3 py-1.5 text-sm font-medium normal-case transition hover:bg-[color:color-mix(in_srgb,currentColor_12%,transparent)] sm:hidden"
+      >
+        <Flag code={next} />
+        {abbr(next)}
+      </button>
+      {/* Desktop: the full toggle showing every language. */}
+      <div className={`hidden items-center gap-1 font-medium normal-case sm:flex ${compact ? "opacity-80" : ""}`}>
+        {languages.map((lng) => (
+          <button
+            key={lng}
+            type="button"
+            onClick={() => setLocale(lng)}
+            aria-pressed={locale === lng}
+            className={`flex items-center rounded-full border transition ${pad} ${
+              locale === lng
+                ? "border-transparent bg-[color:color-mix(in_srgb,currentColor_16%,transparent)]"
+                : "border-[color:color-mix(in_srgb,currentColor_22%,transparent)] opacity-70 hover:opacity-100"
+            }`}
+          >
+            <Flag code={lng} />
+            {abbr(lng)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1353,7 +1371,6 @@ function Banner({
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-x-2 overflow-hidden px-3 py-2 text-[10px] font-semibold uppercase tracking-wide sm:gap-x-4 sm:px-4 sm:py-1.5 sm:text-sm">
         <div className="flex min-w-0 flex-nowrap items-center gap-x-2 whitespace-nowrap sm:gap-x-3">
-          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="mr-0.5 shrink-0" compact />
           {items.map((it, i) => (
             <span key={i} className="flex shrink-0 items-center gap-2 sm:gap-3">
               {i > 0 && <span className="opacity-30">|</span>}
@@ -1363,7 +1380,8 @@ function Banner({
             </span>
           ))}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="shrink-0" compact />
           {banner.phone && (
             <a
               href={`tel:${banner.phone.replace(/[^\d+]/g, "")}`}
