@@ -1,4 +1,5 @@
 import { CallRailSettings } from "@/components/admin/CallRailSettings";
+import { GtmSettings } from "@/components/admin/GtmSettings";
 import { callRailConfig } from "@/modules/integrations/callrail";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
@@ -19,7 +20,9 @@ export default async function Settings() {
   const org = await getAdminOrg();
   if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
 
-  const cr = callRailConfig(await store.getOrgSettings(org.id));
+  const settings = await store.getOrgSettings(org.id);
+  const cr = callRailConfig(settings);
+  const gtmContainerId = ((settings.gtm as { containerId?: string } | undefined)?.containerId ?? "").trim();
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -48,6 +51,27 @@ export default async function Settings() {
           <div className="rounded-lg border border-dashed border-gray-300 px-4 py-2.5 text-gray-400">
             + add custom domain (e.g. intake.{org.slug}.com) — coming soon
           </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">Google Tag Manager</h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              gtmContainerId ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {gtmContainerId ? "Installed" : "Off"}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-gray-400">
+          Installs GTM on your journey pages. Add GA4, Google Ads conversions, the Meta pixel, etc. inside the Tag
+          Manager UI — no extra code here. (You don&apos;t install Google Analytics separately; add it as a GA4 tag
+          in GTM.)
+        </p>
+        <div className="mt-5">
+          <GtmSettings initialContainerId={gtmContainerId} />
         </div>
       </div>
 

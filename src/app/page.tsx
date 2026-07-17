@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
 import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
 import { getAdminOrg } from "@/server/currentOrg";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store } from "@/server/store";
-import { resolveCustomDomain } from "@/server/tenant";
+import { getPublicSiteConfig, resolveCustomDomain } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,13 @@ export default async function Home({
       if (source) attribution.source = source;
       if (campaign) attribution.campaign = campaign;
       if (medium) attribution.medium = medium;
-      return <JourneyPlayer slug={journey.slug} definition={journey.definition} attribution={attribution} />;
+      const { gtmId } = await getPublicSiteConfig(custom.org.id);
+      return (
+        <>
+          <GoogleTagManager gtmId={gtmId} />
+          <JourneyPlayer slug={journey.slug} definition={journey.definition} attribution={attribution} />
+        </>
+      );
     }
   }
 

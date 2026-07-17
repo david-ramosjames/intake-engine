@@ -39,6 +39,18 @@ export const resolveCustomDomain = cache(async function resolveCustomDomain(): P
   return { org, journeySlug };
 });
 
+// Non-secret, public-safe org config for the runtime (e.g. the GTM container
+// id). Deliberately excludes credentials in the settings blob. Cached per
+// request so the page render doesn't add an extra round-trip.
+export const getPublicSiteConfig = cache(async function getPublicSiteConfig(
+  orgId: string,
+): Promise<{ gtmId?: string }> {
+  const settings = await store.getOrgSettings(orgId);
+  const gtm = settings.gtm as { containerId?: string } | undefined;
+  const gtmId = gtm?.containerId?.trim();
+  return { gtmId: gtmId || undefined };
+});
+
 export const resolvePublicOrg = cache(async function resolvePublicOrg(
   orgParam?: string,
 ): Promise<StoredOrg | null> {

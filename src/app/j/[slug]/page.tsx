@@ -4,10 +4,11 @@
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
 import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
-import { resolvePublicOrg } from "@/server/tenant";
+import { getPublicSiteConfig, resolvePublicOrg } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -56,5 +57,12 @@ export default async function JourneyRuntimePage({
   attribution.org = org.slug; // so the submit endpoint resolves the same tenant
   attribution.firm = org.name; // logo fallback text
 
-  return <JourneyPlayer slug={journey.slug} definition={journey.definition} attribution={attribution} />;
+  const { gtmId } = await getPublicSiteConfig(org.id);
+
+  return (
+    <>
+      <GoogleTagManager gtmId={gtmId} />
+      <JourneyPlayer slug={journey.slug} definition={journey.definition} attribution={attribution} />
+    </>
+  );
 }
