@@ -231,6 +231,9 @@ export const themeTokensSchema = z
     logoUrl: z.string().optional(),
     logoLink: z.string().optional(),
     sideImageUrl: z.string().optional(),
+    // Dedicated image for link/social previews (ideally a public 1200×630 URL).
+    // Falls back to the hero photo, then the logo, when unset.
+    socialImageUrl: z.string().optional(),
     // How the hero photo is framed: CSS background-position (e.g. "70% 60%")
     // and a zoom multiplier (1 = fit, 1.3 = zoomed in 30%). These apply to the
     // MOBILE hero. The desktop side image is framed separately below so tuning

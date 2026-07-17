@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
-import { journeyMetadata } from "@/modules/journeys/og";
+import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
 import { getAdminOrg } from "@/server/currentOrg";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store } from "@/server/store";
@@ -31,6 +31,7 @@ export default async function Home({
   if (custom?.journeySlug) {
     const journey = await getPublishedJourneyCached(custom.org.id, custom.journeySlug);
     if (journey && journey.status === "PUBLISHED") {
+      preloadHero(journey.definition);
       const sp = await searchParams;
       const pick = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
       const attribution: Record<string, string> = { org: custom.org.slug, firm: custom.org.name };

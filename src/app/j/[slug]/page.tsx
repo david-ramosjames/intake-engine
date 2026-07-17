@@ -5,7 +5,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
-import { journeyMetadata } from "@/modules/journeys/og";
+import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { resolvePublicOrg } from "@/server/tenant";
 
@@ -44,6 +44,7 @@ export default async function JourneyRuntimePage({
 
   const journey = await getPublishedJourneyCached(org.id, slug);
   if (!journey || journey.status !== "PUBLISHED") notFound();
+  preloadHero(journey.definition);
 
   const attribution: Record<string, string> = {};
   const source = pick("utm_source") ?? pick("source");

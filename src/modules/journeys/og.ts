@@ -2,6 +2,7 @@
 // The card is about the firm: title = firm name, description = the journey's
 // welcome headline, image = the hero photo (or logo) when it's a public URL.
 
+import ReactDOM from "react-dom";
 import type { Metadata } from "next";
 import type { JourneyDefinition } from "./domain/schema";
 
@@ -22,11 +23,21 @@ function publicUrl(...candidates: (string | undefined)[]): string | undefined {
   return candidates.find((u) => typeof u === "string" && /^https?:\/\//i.test(u));
 }
 
+/**
+ * Start downloading the hero photo as early as possible (it's the LCP element).
+ * Only helps for hosted images — data: URIs are already inline. Call from a
+ * server component during render.
+ */
+export function preloadHero(def: JourneyDefinition): void {
+  const url = publicUrl(def.theme?.sideImageUrl);
+  if (url) ReactDOM.preload(url, { as: "image", fetchPriority: "high" });
+}
+
 export function journeyMetadata(def: JourneyDefinition, firmName: string): Metadata {
   const theme = def.theme ?? {};
   const title = firmName || def.name;
   const description = journeyHeadline(def) ?? def.name;
-  const image = publicUrl(theme.sideImageUrl, theme.logoUrl);
+  const image = publicUrl(theme.socialImageUrl, theme.sideImageUrl, theme.logoUrl);
   const images = image ? [{ url: image }] : undefined;
 
   return {

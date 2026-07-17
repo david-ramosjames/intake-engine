@@ -4,6 +4,7 @@
 // optionally hinted by an `?org=<slug>` query param (used by admin previews on
 // localhost, where there is no per-org host).
 
+import { cache } from "react";
 import { headers } from "next/headers";
 import { getPrisma, hasDatabase } from "./db";
 import { store } from "./store";
@@ -15,7 +16,12 @@ import type { StoredOrg } from "./store/types";
  * org's first published journey). Works in both DEMO and DB modes — the host
  * hint is set by middleware for every request.
  */
-export async function resolveCustomDomain(): Promise<{ org: StoredOrg; journeySlug: string | null } | null> {
+// Wrapped in React cache() so the tenant lookup runs once per request even
+// though it's called from both generateMetadata and the page render.
+export const resolveCustomDomain = cache(async function resolveCustomDomain(): Promise<{
+  org: StoredOrg;
+  journeySlug: string | null;
+} | null> {
   const h = await headers();
   const kind = h.get("x-tenant-kind");
   const host = h.get("x-tenant-host") ?? undefined;
@@ -31,9 +37,11 @@ export async function resolveCustomDomain(): Promise<{ org: StoredOrg; journeySl
   const mapped = domain.journeyId ? published.find((j) => j.id === domain.journeyId) : undefined;
   const journeySlug = (mapped ?? published[0])?.slug ?? null;
   return { org, journeySlug };
-}
+});
 
-export async function resolvePublicOrg(orgParam?: string): Promise<StoredOrg | null> {
+export const resolvePublicOrg = cache(async function resolvePublicOrg(
+  orgParam?: string,
+): Promise<StoredOrg | null> {
   if (!hasDatabase) {
     if (orgParam) {
       const bySlug = await store.getOrganizationBySlug(orgParam);
@@ -59,4 +67,4 @@ export async function resolvePublicOrg(orgParam?: string): Promise<StoredOrg | n
   // Fall back to org param (e.g. previews) even with a DB.
   if (orgParam) return store.getOrganizationBySlug(orgParam);
   return null;
-}
+});

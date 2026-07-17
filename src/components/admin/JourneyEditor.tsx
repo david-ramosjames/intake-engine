@@ -422,6 +422,23 @@ export function JourneyEditor({
                 mutate((d) => void ((d.theme ??= {}).sideImageUrl = e.target.value || undefined))
               }
             />
+            <div className="mt-2">
+              <label className="mb-1 block text-xs font-medium text-gray-500">
+                Social preview image URL{" "}
+                <span className="text-gray-400">(link previews; 1200×630. Falls back to the side image)</span>
+              </label>
+              <input
+                className={input}
+                placeholder="https://…/share.jpg"
+                value={def.theme?.socialImageUrl ?? ""}
+                onChange={(e) =>
+                  mutate((d) => void ((d.theme ??= {}).socialImageUrl = e.target.value || undefined))
+                }
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Must be a public URL (not an uploaded data image) for previews to show it.
+              </p>
+            </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">
