@@ -692,6 +692,32 @@ export function JourneyEditor({
               Extra sections visitors reach by scrolling down on the landing screen. These never change the main
               above-the-fold layout.
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                Show first
+                <select
+                  className={`${controlBase} py-1`}
+                  value={def.theme?.belowFold?.reviewsFirst ? "reviews" : "faq"}
+                  onChange={(e) =>
+                    mutate(
+                      (d) => void (((d.theme ??= {}).belowFold ??= {}).reviewsFirst = e.target.value === "reviews"),
+                    )
+                  }
+                >
+                  <option value="faq">FAQs</option>
+                  <option value="reviews">Reviews</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  className="accent-blue-600"
+                  checked={def.theme?.belowFold?.showCta ?? false}
+                  onChange={(e) => mutate((d) => void (((d.theme ??= {}).belowFold ??= {}).showCta = e.target.checked))}
+                />
+                Repeat the Call / Start buttons at the bottom
+              </label>
+            </div>
 
             {/* FAQs */}
             <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
@@ -771,6 +797,19 @@ export function JourneyEditor({
                 >
                   + Add FAQ
                 </button>
+              </div>
+              <div className="mt-3 border-t border-gray-100 pt-2">
+                <label className="mb-1 block text-xs font-medium text-gray-500">Disclaimer (optional)</label>
+                <textarea
+                  className={input}
+                  rows={2}
+                  placeholder="e.g. The information on this page is for general informational purposes only…"
+                  value={def.theme?.faq?.disclaimer ?? ""}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).faq ??= {}).disclaimer = e.target.value || undefined))
+                  }
+                />
+                <EsBox es={es} k={tk.faqDisclaimer()} placeholder="Disclaimer — Spanish" />
               </div>
             </div>
 

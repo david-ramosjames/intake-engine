@@ -41,6 +41,7 @@ export const tk = {
   faqHeading: () => `faq:heading`,
   faqQuestion: (index: number) => `faq:${index}:q`,
   faqAnswer: (index: number) => `faq:${index}:a`,
+  faqDisclaimer: () => `faq:disclaimer`,
   reviewsHeading: () => `reviews:heading`,
   reviewText: (index: number) => `reviews:${index}:text`,
 };

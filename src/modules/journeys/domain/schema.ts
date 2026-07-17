@@ -270,6 +270,8 @@ export const themeTokensSchema = z
         enabled: z.boolean().optional(),
         heading: z.string().optional(),
         items: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
+        // Small print shown under the questions (e.g. a legal disclaimer).
+        disclaimer: z.string().optional(),
       })
       .optional(),
     reviews: z
@@ -288,6 +290,14 @@ export const themeTokensSchema = z
             }),
           )
           .optional(),
+      })
+      .optional(),
+    // Shared controls for the below-the-fold area: section order and an
+    // optional repeat of the Call / Start buttons at the very bottom.
+    belowFold: z
+      .object({
+        reviewsFirst: z.boolean().optional(),
+        showCta: z.boolean().optional(),
       })
       .optional(),
     // Optional overlay of trust signals on top of the side image.

@@ -659,7 +659,33 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
       {/* Optional below-the-fold content on the landing screen only. Does not
           affect the full-screen above-the-fold layout. */}
-      {isLanding && !terminal && <BelowFold theme={theme} L={L} />}
+      {isLanding && !terminal && (
+        <BelowFold
+          theme={theme}
+          L={L}
+          cta={
+            theme.belowFold?.showCta ? (
+              <>
+                {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
+                {!soleChoice && (
+                  <ActionButton
+                    as="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+                      onContinue();
+                    }}
+                    disabled={busy}
+                    variant={continueSubtitle ? "outline" : "primary"}
+                    icon={continueSubtitle ? <ChatIcon /> : undefined}
+                    title={continueText}
+                    subtitle={continueSubtitle}
+                  />
+                )}
+              </>
+            ) : undefined
+          }
+        />
+      )}
 
       {/* Sticky bottom CTA on phones — the primary action stays a thumb-tap away
           once it scrolls out of view. */}
@@ -998,16 +1024,32 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
 // Optional content shown BELOW the fold on the landing screen: an FAQ accordion
 // and/or an auto-advancing reviews carousel. Only rendered when configured; it
 // never affects the full-screen above-the-fold layout.
-function BelowFold({ theme, L }: { theme: NonNullable<JourneyDefinition["theme"]>; L: Localize }) {
+function BelowFold({
+  theme,
+  L,
+  cta,
+}: {
+  theme: NonNullable<JourneyDefinition["theme"]>;
+  L: Localize;
+  cta?: React.ReactNode;
+}) {
   const faq = theme.faq;
   const reviews = theme.reviews;
   const showFaq = Boolean(faq?.enabled && (faq.items?.length ?? 0) > 0);
   const showReviews = Boolean(reviews?.enabled && (reviews.items?.length ?? 0) > 0);
   if (!showFaq && !showReviews) return null;
+  const faqNode = showFaq ? <FaqSection faq={faq!} L={L} /> : null;
+  const reviewsNode = showReviews ? <ReviewsCarousel reviews={reviews!} L={L} /> : null;
+  const reviewsFirst = theme.belowFold?.reviewsFirst;
   return (
     <div>
-      {showFaq && <FaqSection faq={faq!} L={L} />}
-      {showReviews && <ReviewsCarousel reviews={reviews!} L={L} />}
+      {reviewsFirst ? reviewsNode : faqNode}
+      {reviewsFirst ? faqNode : reviewsNode}
+      {cta && (
+        <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-16">
+          <div className="mx-auto flex w-full max-w-md flex-col gap-3">{cta}</div>
+        </section>
+      )}
     </div>
   );
 }
@@ -1038,10 +1080,11 @@ function PlusToggle({ open }: { open: boolean }) {
 function FaqSection({ faq, L }: { faq: NonNullable<NonNullable<JourneyDefinition["theme"]>["faq"]>; L: Localize }) {
   const items = faq.items ?? [];
   const heading = L(tk.faqHeading(), faq.heading) || "Frequently Asked Questions";
+  const disclaimer = L(tk.faqDisclaimer(), faq.disclaimer) || undefined;
   const [open, setOpen] = useState<number | null>(null);
   const divide = "border-t border-[color:color-mix(in_srgb,var(--text)_12%,transparent)]";
   return (
-    <section className="mx-auto w-full max-w-3xl px-6 py-14 md:py-20">
+    <section className="mx-auto w-full max-w-5xl px-6 py-14 md:py-20">
       <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>
       <div className="mt-6">
         {items.map((it, i) => {
@@ -1058,7 +1101,7 @@ function FaqSection({ faq, L }: { faq: NonNullable<NonNullable<JourneyDefinition
                 <PlusToggle open={isOpen} />
               </button>
               {isOpen && (
-                <p className="animate-fade-up mt-3 max-w-[52ch] pr-10 leading-relaxed opacity-75">
+                <p className="animate-fade-up mt-3 max-w-[70ch] pr-10 leading-relaxed opacity-75">
                   {L(tk.faqAnswer(i), it.a)}
                 </p>
               )}
@@ -1066,6 +1109,9 @@ function FaqSection({ faq, L }: { faq: NonNullable<NonNullable<JourneyDefinition
           );
         })}
       </div>
+      {disclaimer && (
+        <p className={`${divide} mt-4 pt-5 text-sm leading-relaxed opacity-55`}>{disclaimer}</p>
+      )}
     </section>
   );
 }
@@ -1132,7 +1178,7 @@ function ReviewsCarousel({
       className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-20"
     >
       {heading && <h2 className="mb-8 text-center text-2xl font-semibold sm:text-3xl">{heading}</h2>}
-      <div className="mx-auto flex max-w-4xl items-center gap-3 sm:gap-5">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 sm:gap-5">
         {n > 1 && (
           <button
             type="button"
