@@ -1381,7 +1381,6 @@ function Banner({
           ))}
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="shrink-0" compact />
           {banner.phone && (
             <a
               href={`tel:${banner.phone.replace(/[^\d+]/g, "")}`}
@@ -1397,6 +1396,7 @@ function Banner({
               <LogoOrName logoUrl={theme.logoUrl} logoLink={theme.logoLink} firm="" inBar />
             </span>
           )}
+          <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="shrink-0" compact />
         </div>
       </div>
     </div>
