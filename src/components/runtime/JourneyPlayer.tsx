@@ -344,13 +344,24 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const overlaySubtitle = overlay?.subtitle ? L(tk.overlaySubtitle(), overlay.subtitle) : undefined;
   const heroMessage = overlay?.message ? L(tk.overlayMessage(), overlay.message) : undefined;
 
-  // Sticky bottom CTA appears once the primary button scrolls out of view.
-  const [scrolled, setScrolled] = useState(false);
+  // Sticky bottom CTA appears once the primary button scrolls out of view, and
+  // hides again near the very bottom so it never overlaps the real CTAs (e.g.
+  // the repeated Call/Start buttons at the end of the below-the-fold area).
+  const [showSticky, setShowSticky] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const onScroll = () => setScrolled(window.scrollY > 240);
+    const onScroll = () => {
+      const y = window.scrollY;
+      const nearBottom = y + window.innerHeight >= document.documentElement.scrollHeight - 160;
+      setShowSticky(y > 240 && !nearBottom);
+    };
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, []);
 
   // Track viewport so device-scoped fields (e.g. a desktop-only form) aren't
@@ -421,7 +432,6 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const stickyCallLabel = pageCallCta
     ? L(tk.cta(page!.id, callCtaIndex), pageCallCta.label)
     : theme.banner?.phoneLabel || (locale === "es" ? "Llamar ahora" : "Call Now");
-  const stickyCallPhone = (pageCallCta?.value ?? bannerPhone) || undefined;
 
   return (
     <main
@@ -705,7 +715,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       {/* Sticky bottom call bar on phones — a tap-to-call button stays a thumb
           away once the top actions scroll off. Pinned flush to the bottom edge
           (only the device safe-area is added below the button). */}
-      {!terminal && scrolled && stickyCallHref && (
+      {!terminal && showSticky && stickyCallHref && (
         <div
           className="animate-bar-up fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[color:color-mix(in_srgb,var(--bg)_92%,transparent)] px-4 py-3 backdrop-blur md:hidden"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
@@ -717,7 +727,6 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           >
             <PhoneIcon />
             {stickyCallLabel}
-            {stickyCallPhone && <span className="font-bold">{formatPhone(stickyCallPhone)}</span>}
           </a>
         </div>
       )}
