@@ -1,11 +1,25 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
+import { journeyMetadata } from "@/modules/journeys/og";
 import { getAdminOrg } from "@/server/currentOrg";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store } from "@/server/store";
 import { resolveCustomDomain } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  // On a connected custom domain, the link preview is about that firm/journey.
+  const custom = await resolveCustomDomain();
+  if (custom?.journeySlug) {
+    const journey = await getPublishedJourneyCached(custom.org.id, custom.journeySlug);
+    if (journey && journey.status === "PUBLISHED") {
+      return journeyMetadata(journey.definition, custom.org.name);
+    }
+  }
+  return {};
+}
 
 export default async function Home({
   searchParams,

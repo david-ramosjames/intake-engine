@@ -2,12 +2,31 @@
 // loads the published journey by slug, and hands the definition to the client
 // player. Attribution params (utm_*) are captured for lead source analytics.
 
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
+import { journeyMetadata } from "@/modules/journeys/og";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { resolvePublicOrg } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const sp = await searchParams;
+  const orgParam = typeof sp.org === "string" ? sp.org : undefined;
+  const org = await resolvePublicOrg(orgParam);
+  if (!org) return {};
+  const journey = await getPublishedJourneyCached(org.id, slug);
+  if (!journey || journey.status !== "PUBLISHED") return {};
+  return journeyMetadata(journey.definition, org.name);
+}
 
 export default async function JourneyRuntimePage({
   params,
