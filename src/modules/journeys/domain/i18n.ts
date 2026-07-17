@@ -32,6 +32,11 @@ export const tk = {
   callbackButton: () => `callback:button`,
   callbackButtonSub: () => `callback:button:sub`,
   callbackSecure: () => `callback:secure`,
+  // Side-image overlay (theme-level text over the photo).
+  overlayTitle: () => `overlay:title`,
+  overlaySubtitle: () => `overlay:subtitle`,
+  overlayMessage: () => `overlay:message`,
+  overlayBullet: (index: number) => `overlay:bullet:${index}`,
 };
 
 /** Resolve a piece of text for a locale, falling back to the base value. */

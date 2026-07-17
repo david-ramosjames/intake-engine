@@ -535,22 +535,28 @@ export function JourneyEditor({
               </div>
             </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <input
-                className={input}
-                placeholder="Title (e.g. Injured in an accident?)"
-                value={def.theme?.sideOverlay?.title ?? ""}
-                onChange={(e) =>
-                  mutate((d) => void (((d.theme ??= {}).sideOverlay ??= {}).title = e.target.value || undefined))
-                }
-              />
-              <input
-                className={input}
-                placeholder="Subtitle (e.g. No Win, No Fee.)"
-                value={def.theme?.sideOverlay?.subtitle ?? ""}
-                onChange={(e) =>
-                  mutate((d) => void (((d.theme ??= {}).sideOverlay ??= {}).subtitle = e.target.value || undefined))
-                }
-              />
+              <div>
+                <input
+                  className={input}
+                  placeholder="Title (e.g. Injured in an accident?)"
+                  value={def.theme?.sideOverlay?.title ?? ""}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).sideOverlay ??= {}).title = e.target.value || undefined))
+                  }
+                />
+                <EsBox es={es} k={tk.overlayTitle()} placeholder="Title — Spanish" />
+              </div>
+              <div>
+                <input
+                  className={input}
+                  placeholder="Subtitle (e.g. No Win, No Fee.)"
+                  value={def.theme?.sideOverlay?.subtitle ?? ""}
+                  onChange={(e) =>
+                    mutate((d) => void (((d.theme ??= {}).sideOverlay ??= {}).subtitle = e.target.value || undefined))
+                  }
+                />
+                <EsBox es={es} k={tk.overlaySubtitle()} placeholder="Subtitle — Spanish" />
+              </div>
             </div>
             <input
               className={`${input} mt-2`}
@@ -560,33 +566,39 @@ export function JourneyEditor({
                 mutate((d) => void (((d.theme ??= {}).sideOverlay ??= {}).message = e.target.value || undefined))
               }
             />
+            <EsBox es={es} k={tk.overlayMessage()} placeholder="Extra message — Spanish" />
             <div className="mt-2 space-y-2">
               {(def.theme?.sideOverlay?.bullets ?? []).map((b, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-amber-500">★</span>
-                  <input
-                    className={`${controlBase} min-w-0 flex-1`}
-                    placeholder="No Fee Unless We Win Your Case"
-                    value={b}
-                    onChange={(e) =>
-                      mutate((d) => {
-                        const ov = ((d.theme ??= {}).sideOverlay ??= {});
-                        ov.bullets = (ov.bullets ?? []).map((x, j) => (j === i ? e.target.value : x));
-                      })
-                    }
-                  />
-                  <button
-                    onClick={() =>
-                      mutate((d) => {
-                        const ov = ((d.theme ??= {}).sideOverlay ??= {});
-                        ov.bullets = (ov.bullets ?? []).filter((_, j) => j !== i);
-                      })
-                    }
-                    className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                    aria-label="Remove bullet"
-                  >
-                    ✕
-                  </button>
+                <div key={i}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-500">★</span>
+                    <input
+                      className={`${controlBase} min-w-0 flex-1`}
+                      placeholder="No Fee Unless We Win Your Case"
+                      value={b}
+                      onChange={(e) =>
+                        mutate((d) => {
+                          const ov = ((d.theme ??= {}).sideOverlay ??= {});
+                          ov.bullets = (ov.bullets ?? []).map((x, j) => (j === i ? e.target.value : x));
+                        })
+                      }
+                    />
+                    <button
+                      onClick={() =>
+                        mutate((d) => {
+                          const ov = ((d.theme ??= {}).sideOverlay ??= {});
+                          ov.bullets = (ov.bullets ?? []).filter((_, j) => j !== i);
+                        })
+                      }
+                      className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                      aria-label="Remove bullet"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="pl-6">
+                    <EsBox es={es} k={tk.overlayBullet(i)} placeholder="Trust signal — Spanish" />
+                  </div>
                 </div>
               ))}
               <button

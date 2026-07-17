@@ -314,7 +314,11 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
     backgroundSize:
       theme.heroScaleDesktop && theme.heroScaleDesktop > 1 ? `${theme.heroScaleDesktop * 100}%` : "cover",
   };
-  const heroMessage = theme.sideOverlay?.message;
+  // Side-image overlay text, localized (theme-level, keyed for i18n).
+  const overlay = theme.sideOverlay;
+  const overlayTitle = overlay?.title ? L(tk.overlayTitle(), overlay.title) : undefined;
+  const overlaySubtitle = overlay?.subtitle ? L(tk.overlaySubtitle(), overlay.subtitle) : undefined;
+  const heroMessage = overlay?.message ? L(tk.overlayMessage(), overlay.message) : undefined;
 
   // Sticky bottom CTA appears once the primary button scrolls out of view.
   const [scrolled, setScrolled] = useState(false);
@@ -412,31 +416,28 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                 "linear-gradient(to right, transparent 82%, color-mix(in srgb, var(--bg) 60%, transparent) 93%, var(--bg) 100%)",
             }}
           />
-          {theme.sideOverlay &&
-            (theme.sideOverlay.title ||
-              theme.sideOverlay.subtitle ||
-              heroMessage ||
-              theme.sideOverlay.bullets?.length) && (
+          {overlay &&
+            (overlayTitle || overlaySubtitle || heroMessage || overlay.bullets?.length) && (
               <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/40 to-transparent p-8 text-white lg:p-10">
-                {theme.sideOverlay.title && (
-                  <div className="text-[1.65rem] font-semibold lg:text-[2.05rem]">{theme.sideOverlay.title}</div>
+                {overlayTitle && (
+                  <div className="text-[1.65rem] font-semibold lg:text-[2.05rem]">{overlayTitle}</div>
                 )}
-                {theme.sideOverlay.subtitle && (
-                  <div className="mt-1 text-[1.1rem] text-white/80">{theme.sideOverlay.subtitle}</div>
+                {overlaySubtitle && (
+                  <div className="mt-1 text-[1.1rem] text-white/80">{overlaySubtitle}</div>
                 )}
                 {heroMessage && (
                   <div className="mt-3 border-l-2 border-[color:var(--acc)] pl-3 text-[0.95rem] leading-snug text-white/90">
                     {heroMessage}
                   </div>
                 )}
-                {theme.sideOverlay.bullets && theme.sideOverlay.bullets.length > 0 && (
+                {overlay.bullets && overlay.bullets.length > 0 && (
                   <ul className="mt-4 space-y-2">
-                    {theme.sideOverlay.bullets.map((b, i) => (
+                    {overlay.bullets.map((b, i) => (
                       <li key={i} className="flex items-start gap-2.5 text-[0.95rem] text-white/90">
                         <span className="mt-0.5 text-amber-400" aria-hidden>
                           ★
                         </span>
-                        {b}
+                        {L(tk.overlayBullet(i), b)}
                       </li>
                     ))}
                   </ul>
@@ -482,17 +483,15 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
             </div>
           )}
           {/* Attorney name/details — upper-left, below the logo, ~1/3 wide. */}
-          {(theme.sideOverlay?.title || theme.sideOverlay?.subtitle) && (
+          {(overlayTitle || overlaySubtitle) && (
             <div
               className="absolute left-6 max-w-[42%] text-white drop-shadow"
               style={{ top: `${theme.heroNameYMobile ?? 22}%` }}
             >
-              {theme.sideOverlay?.title && (
-                <div className="text-2xl font-bold leading-tight">{theme.sideOverlay.title}</div>
-              )}
-              {theme.sideOverlay?.subtitle && (
+              {overlayTitle && <div className="text-2xl font-bold leading-tight">{overlayTitle}</div>}
+              {overlaySubtitle && (
                 <div className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-white/80">
-                  {theme.sideOverlay.subtitle}
+                  {overlaySubtitle}
                 </div>
               )}
             </div>
