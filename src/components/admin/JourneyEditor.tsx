@@ -685,6 +685,218 @@ export function JourneyEditor({
             </div>
           </div>
 
+          {/* Below-the-fold optional sections (FAQ + reviews) */}
+          <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+            <div className="text-xs font-medium text-gray-500">Below the fold (optional)</div>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Extra sections visitors reach by scrolling down on the landing screen. These never change the main
+              above-the-fold layout.
+            </p>
+
+            {/* FAQs */}
+            <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
+              <label className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-600">FAQs</span>
+                <span className="flex items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    className="accent-blue-600"
+                    checked={def.theme?.faq?.enabled ?? false}
+                    onChange={(e) => mutate((d) => void (((d.theme ??= {}).faq ??= {}).enabled = e.target.checked))}
+                  />
+                  Show
+                </span>
+              </label>
+              <input
+                className={`${input} mt-2`}
+                placeholder="Section heading (e.g. Frequently Asked Questions)"
+                value={def.theme?.faq?.heading ?? ""}
+                onChange={(e) =>
+                  mutate((d) => void (((d.theme ??= {}).faq ??= {}).heading = e.target.value || undefined))
+                }
+              />
+              <EsBox es={es} k={tk.faqHeading()} placeholder="Heading — Spanish" />
+              <div className="mt-2 space-y-2">
+                {(def.theme?.faq?.items ?? []).map((it, i) => (
+                  <div key={i} className="rounded border border-gray-100 bg-gray-50/50 p-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        className={`${controlBase} min-w-0 flex-1`}
+                        placeholder="Question"
+                        value={it.q}
+                        onChange={(e) =>
+                          mutate((d) => {
+                            const f = ((d.theme ??= {}).faq ??= {});
+                            f.items = (f.items ?? []).map((x, j) => (j === i ? { ...x, q: e.target.value } : x));
+                          })
+                        }
+                      />
+                      <button
+                        onClick={() =>
+                          mutate((d) => {
+                            const f = ((d.theme ??= {}).faq ??= {});
+                            f.items = (f.items ?? []).filter((_, j) => j !== i);
+                          })
+                        }
+                        className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                        aria-label="Remove FAQ"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <EsBox es={es} k={tk.faqQuestion(i)} placeholder="Question — Spanish" />
+                    <textarea
+                      className={`${input} mt-1`}
+                      rows={2}
+                      placeholder="Answer"
+                      value={it.a}
+                      onChange={(e) =>
+                        mutate((d) => {
+                          const f = ((d.theme ??= {}).faq ??= {});
+                          f.items = (f.items ?? []).map((x, j) => (j === i ? { ...x, a: e.target.value } : x));
+                        })
+                      }
+                    />
+                    <EsBox es={es} k={tk.faqAnswer(i)} placeholder="Answer — Spanish" />
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    mutate((d) => {
+                      const f = ((d.theme ??= {}).faq ??= {});
+                      f.items = [...(f.items ?? []), { q: "New question?", a: "Answer here." }];
+                    })
+                  }
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  + Add FAQ
+                </button>
+              </div>
+            </div>
+
+            {/* Reviews */}
+            <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
+              <label className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-600">Reviews (auto-scroll)</span>
+                <span className="flex items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    className="accent-blue-600"
+                    checked={def.theme?.reviews?.enabled ?? false}
+                    onChange={(e) =>
+                      mutate((d) => void (((d.theme ??= {}).reviews ??= {}).enabled = e.target.checked))
+                    }
+                  />
+                  Show
+                </span>
+              </label>
+              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                <div>
+                  <input
+                    className={input}
+                    placeholder="Section heading (optional)"
+                    value={def.theme?.reviews?.heading ?? ""}
+                    onChange={(e) =>
+                      mutate((d) => void (((d.theme ??= {}).reviews ??= {}).heading = e.target.value || undefined))
+                    }
+                  />
+                  <EsBox es={es} k={tk.reviewsHeading()} placeholder="Heading — Spanish" />
+                </div>
+                <label className="text-xs text-gray-500">
+                  Rotate every
+                  <input
+                    type="number"
+                    min="3"
+                    max="60"
+                    className={`${controlBase} ml-2 w-16`}
+                    placeholder="10"
+                    value={def.theme?.reviews?.intervalSeconds ?? ""}
+                    onChange={(e) =>
+                      mutate(
+                        (d) =>
+                          void (((d.theme ??= {}).reviews ??= {}).intervalSeconds = e.target.value
+                            ? Number(e.target.value)
+                            : undefined),
+                      )
+                    }
+                  />{" "}
+                  s
+                </label>
+              </div>
+              <div className="mt-2 space-y-2">
+                {(def.theme?.reviews?.items ?? []).map((r, i) => (
+                  <div key={i} className="rounded border border-gray-100 bg-gray-50/50 p-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        className={`${controlBase} min-w-0 flex-1`}
+                        placeholder="Reviewer name (e.g. L. G.)"
+                        value={r.name}
+                        onChange={(e) =>
+                          mutate((d) => {
+                            const rv = ((d.theme ??= {}).reviews ??= {});
+                            rv.items = (rv.items ?? []).map((x, j) => (j === i ? { ...x, name: e.target.value } : x));
+                          })
+                        }
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        className={`${controlBase} w-16 shrink-0`}
+                        placeholder="5★"
+                        value={r.rating ?? ""}
+                        onChange={(e) =>
+                          mutate((d) => {
+                            const rv = ((d.theme ??= {}).reviews ??= {});
+                            rv.items = (rv.items ?? []).map((x, j) =>
+                              j === i ? { ...x, rating: e.target.value ? Number(e.target.value) : undefined } : x,
+                            );
+                          })
+                        }
+                      />
+                      <button
+                        onClick={() =>
+                          mutate((d) => {
+                            const rv = ((d.theme ??= {}).reviews ??= {});
+                            rv.items = (rv.items ?? []).filter((_, j) => j !== i);
+                          })
+                        }
+                        className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                        aria-label="Remove review"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <textarea
+                      className={`${input} mt-1`}
+                      rows={2}
+                      placeholder="Review text"
+                      value={r.text}
+                      onChange={(e) =>
+                        mutate((d) => {
+                          const rv = ((d.theme ??= {}).reviews ??= {});
+                          rv.items = (rv.items ?? []).map((x, j) => (j === i ? { ...x, text: e.target.value } : x));
+                        })
+                      }
+                    />
+                    <EsBox es={es} k={tk.reviewText(i)} placeholder="Review — Spanish" />
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    mutate((d) => {
+                      const rv = ((d.theme ??= {}).reviews ??= {});
+                      rv.items = [...(rv.items ?? []), { name: "A. B.", text: "Great experience!", rating: 5, source: "Google" }];
+                    })
+                  }
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  + Add review
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Top banner (slides down across the whole screen) */}
           <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
             <div className="flex items-center justify-between">

@@ -107,10 +107,23 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const sessionRef = useRef<string>("");
   const startedRef = useRef(false);
 
-  // Fire-and-forget funnel event.
+  // Fire-and-forget funnel event — recorded server-side AND pushed to the GTM
+  // dataLayer so Tag Manager can trigger GA4 / Google Ads tags. A completed
+  // lead fires the `lead_submitted` event (use it for conversion tracking).
   const emit = useCallback(
     (type: "opened" | "started" | "completed" | "cta_click", extra?: Record<string, string>) => {
       if (typeof window === "undefined" || !sessionRef.current) return;
+      try {
+        const w = window as unknown as { dataLayer?: Record<string, unknown>[] };
+        w.dataLayer = w.dataLayer || [];
+        w.dataLayer.push({
+          event: type === "completed" ? "lead_submitted" : `journey_${type}`,
+          journey: slug,
+          ...extra,
+        });
+      } catch {
+        /* dataLayer optional */
+      }
       try {
         void fetch("/api/events", {
           method: "POST",
@@ -403,8 +416,11 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         color: theme.colorText ?? "#0b1f3a",
         fontFamily: theme.fontFamily,
       }}
-      className="flex min-h-dvh flex-col"
+      className="flex flex-col"
     >
+      {/* Above-the-fold fills the screen exactly as before; optional sections
+          (FAQ / reviews) append below this wrapper on the landing screen. */}
+      <div className="flex min-h-dvh flex-col">
       <Banner
         theme={theme}
         L={L}
@@ -639,6 +655,11 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         </div>
       </section>
       </div>
+      </div>
+
+      {/* Optional below-the-fold content on the landing screen only. Does not
+          affect the full-screen above-the-fold layout. */}
+      {isLanding && !terminal && <BelowFold theme={theme} L={L} />}
 
       {/* Sticky bottom CTA on phones — the primary action stays a thumb-tap away
           once it scrolls out of view. */}
@@ -971,6 +992,179 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// Optional content shown BELOW the fold on the landing screen: an FAQ accordion
+// and/or an auto-advancing reviews carousel. Only rendered when configured; it
+// never affects the full-screen above-the-fold layout.
+function BelowFold({ theme, L }: { theme: NonNullable<JourneyDefinition["theme"]>; L: Localize }) {
+  const faq = theme.faq;
+  const reviews = theme.reviews;
+  const showFaq = Boolean(faq?.enabled && (faq.items?.length ?? 0) > 0);
+  const showReviews = Boolean(reviews?.enabled && (reviews.items?.length ?? 0) > 0);
+  if (!showFaq && !showReviews) return null;
+  return (
+    <div>
+      {showFaq && <FaqSection faq={faq!} L={L} />}
+      {showReviews && <ReviewsCarousel reviews={reviews!} L={L} />}
+    </div>
+  );
+}
+
+function PlusToggle({ open }: { open: boolean }) {
+  return (
+    <span
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2"
+      style={{ borderColor: "var(--acc)", color: "var(--acc)" }}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="18"
+        height="18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        className={`transition-transform duration-200 ${open ? "rotate-45" : ""}`}
+        aria-hidden
+      >
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+    </span>
+  );
+}
+
+function FaqSection({ faq, L }: { faq: NonNullable<NonNullable<JourneyDefinition["theme"]>["faq"]>; L: Localize }) {
+  const items = faq.items ?? [];
+  const heading = L(tk.faqHeading(), faq.heading) || "Frequently Asked Questions";
+  const [open, setOpen] = useState<number | null>(null);
+  const divide = "border-t border-[color:color-mix(in_srgb,var(--text)_12%,transparent)]";
+  return (
+    <section className="mx-auto w-full max-w-3xl px-6 py-14 md:py-20">
+      <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>
+      <div className="mt-6">
+        {items.map((it, i) => {
+          const isOpen = open === i;
+          return (
+            <div key={i} className={`${i === 0 ? "" : divide} py-4`}>
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : i)}
+                aria-expanded={isOpen}
+                className="flex w-full items-center justify-between gap-5 text-left focus-ring"
+              >
+                <span className="text-lg font-medium leading-snug sm:text-xl">{L(tk.faqQuestion(i), it.q)}</span>
+                <PlusToggle open={isOpen} />
+              </button>
+              {isOpen && (
+                <p className="animate-fade-up mt-3 max-w-[52ch] pr-10 leading-relaxed opacity-75">
+                  {L(tk.faqAnswer(i), it.a)}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function GoogleG() {
+  return (
+    <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden className="shrink-0">
+      <path fill="#4285F4" d="M45 24c0-1.5-.1-3-.4-4.4H24v8.4h11.8c-.5 2.8-2 5.1-4.4 6.7v5.6h7.1C42.7 36.4 45 30.7 45 24z" />
+      <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-7.1-5.6c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41.1 15.4 46 24 46z" />
+      <path fill="#FBBC05" d="M11.8 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 9.9l7.3-5.7z" />
+      <path fill="#EA4335" d="M24 10.7c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.1 29.9 2 24 2 15.4 2 8.1 6.9 4.5 14.1l7.3 5.7c1.7-5.2 6.5-9.1 12.2-9.1z" />
+    </svg>
+  );
+}
+
+function Stars({ rating }: { rating: number }) {
+  const full = Math.max(0, Math.min(5, Math.round(rating || 5)));
+  return (
+    <div className="mt-0.5 text-[15px] tracking-wide text-amber-400" aria-label={`${full} out of 5 stars`}>
+      {"★".repeat(full)}
+      <span className="text-black/15">{"★".repeat(5 - full)}</span>
+    </div>
+  );
+}
+
+function ReviewCard({ review, index, L }: { review: { name: string; text: string; rating?: number; source?: string }; index: number; L: Localize }) {
+  return (
+    <div className="animate-fade-up flex h-full min-h-[200px] flex-col rounded-2xl bg-white p-6 text-[#0b1f3a] shadow-xl">
+      <p className="flex-1 text-[15px] leading-relaxed">{L(tk.reviewText(index), review.text)}</p>
+      <div className="mt-4 flex items-center gap-3 border-t border-black/10 pt-4">
+        {(review.source ?? "Google").toLowerCase() === "google" && <GoogleG />}
+        <div>
+          <div className="text-sm font-semibold">{review.name}</div>
+          <Stars rating={review.rating ?? 5} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewsCarousel({
+  reviews,
+  L,
+}: {
+  reviews: NonNullable<NonNullable<JourneyDefinition["theme"]>["reviews"]>;
+  L: Localize;
+}) {
+  const items = reviews.items ?? [];
+  const n = items.length;
+  const heading = L(tk.reviewsHeading(), reviews.heading) || undefined;
+  const intervalMs = Math.max(2, reviews.intervalSeconds ?? 10) * 1000;
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (n <= 1) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % n), intervalMs);
+    return () => clearInterval(id);
+  }, [n, intervalMs]);
+  if (n === 0) return null;
+  const aIdx = index % n;
+  const bIdx = (index + 1) % n;
+  const arrow = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-lg transition hover:brightness-110";
+  return (
+    <section
+      className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-20"
+    >
+      {heading && <h2 className="mb-8 text-center text-2xl font-semibold sm:text-3xl">{heading}</h2>}
+      <div className="mx-auto flex max-w-4xl items-center gap-3 sm:gap-5">
+        {n > 1 && (
+          <button
+            type="button"
+            aria-label="Previous review"
+            onClick={() => setIndex((i) => (i - 1 + n) % n)}
+            className={arrow}
+            style={{ background: "var(--acc)" }}
+          >
+            <ChevronIcon className="rotate-180" />
+          </button>
+        )}
+        <div className="grid flex-1 gap-5 md:grid-cols-2">
+          <ReviewCard key={`a${aIdx}`} review={items[aIdx]!} index={aIdx} L={L} />
+          {n > 1 && (
+            <div className="hidden md:block">
+              <ReviewCard key={`b${bIdx}`} review={items[bIdx]!} index={bIdx} L={L} />
+            </div>
+          )}
+        </div>
+        {n > 1 && (
+          <button
+            type="button"
+            aria-label="Next review"
+            onClick={() => setIndex((i) => (i + 1) % n)}
+            className={arrow}
+            style={{ background: "var(--acc)" }}
+          >
+            <ChevronIcon />
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 

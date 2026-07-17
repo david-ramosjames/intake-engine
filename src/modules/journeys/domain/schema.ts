@@ -262,6 +262,34 @@ export const themeTokensSchema = z
         secureText: z.string().optional(),
       })
       .optional(),
+    // Optional content BELOW the fold on the landing screen. It does not affect
+    // the above-the-fold layout (which is sized to fill the screen); visitors
+    // scroll down to reach it.
+    faq: z
+      .object({
+        enabled: z.boolean().optional(),
+        heading: z.string().optional(),
+        items: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
+      })
+      .optional(),
+    reviews: z
+      .object({
+        enabled: z.boolean().optional(),
+        heading: z.string().optional(),
+        // Auto-advance interval in seconds (default 10).
+        intervalSeconds: z.number().optional(),
+        items: z
+          .array(
+            z.object({
+              name: z.string(),
+              text: z.string(),
+              rating: z.number().optional(),
+              source: z.string().optional(), // e.g. "Google"
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
     // Optional overlay of trust signals on top of the side image.
     sideOverlay: z
       .object({

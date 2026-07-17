@@ -37,6 +37,12 @@ export const tk = {
   overlaySubtitle: () => `overlay:subtitle`,
   overlayMessage: () => `overlay:message`,
   overlayBullet: (index: number) => `overlay:bullet:${index}`,
+  // Below-the-fold optional sections (theme-level).
+  faqHeading: () => `faq:heading`,
+  faqQuestion: (index: number) => `faq:${index}:q`,
+  faqAnswer: (index: number) => `faq:${index}:a`,
+  reviewsHeading: () => `reviews:heading`,
+  reviewText: (index: number) => `reviews:${index}:text`,
 };
 
 /** Resolve a piece of text for a locale, falling back to the base value. */
