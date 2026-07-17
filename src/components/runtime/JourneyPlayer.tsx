@@ -408,6 +408,21 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       : L(tk.continue(page?.id ?? ""), page?.continueLabel) || (locale === "es" ? "Continuar" : "Continue");
   const continueSubtitle = L(tk.continueSubtitle(page?.id ?? ""), page?.continueSubtitle) || undefined;
 
+  // The page's call CTA powers the sticky mobile bar (tap-to-call). Falls back
+  // to the banner phone when the page has no explicit call button.
+  const callCtaIndex = page?.cta?.findIndex((c) => isCallCta(c)) ?? -1;
+  const pageCallCta = callCtaIndex >= 0 ? page!.cta![callCtaIndex] : undefined;
+  const bannerPhone = theme.banner?.phone;
+  const stickyCallHref = pageCallCta
+    ? ctaHref(pageCallCta)
+    : bannerPhone
+      ? `tel:${bannerPhone.replace(/[^\d+]/g, "")}`
+      : undefined;
+  const stickyCallLabel = pageCallCta
+    ? L(tk.cta(page!.id, callCtaIndex), pageCallCta.label)
+    : theme.banner?.phoneLabel || (locale === "es" ? "Llamar ahora" : "Call Now");
+  const stickyCallPhone = (pageCallCta?.value ?? bannerPhone) || undefined;
+
   return (
     <main
       style={{
@@ -687,21 +702,23 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         />
       )}
 
-      {/* Sticky bottom CTA on phones — the primary action stays a thumb-tap away
-          once it scrolls out of view. */}
-      {!terminal && !soleChoice && scrolled && (
+      {/* Sticky bottom call bar on phones — a tap-to-call button stays a thumb
+          away once the top actions scroll off. Pinned flush to the bottom edge
+          (only the device safe-area is added below the button). */}
+      {!terminal && scrolled && stickyCallHref && (
         <div
-          className="animate-bar-up fixed inset-x-0 bottom-0 z-30 border-t border-black/5 bg-[color:color-mix(in_srgb,var(--surface)_92%,transparent)] px-4 pt-3 backdrop-blur md:hidden"
+          className="animate-bar-up fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[color:color-mix(in_srgb,var(--bg)_92%,transparent)] px-4 py-3 backdrop-blur md:hidden"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
         >
-          <button
-            type="button"
-            onClick={onContinue}
-            disabled={busy}
-            className="j-cta j-cta-primary min-h-[3.5rem] w-full rounded-[var(--radius)] text-lg font-semibold focus-ring disabled:opacity-50"
+          <a
+            href={stickyCallHref}
+            onClick={() => emit("cta_click")}
+            className="j-cta j-cta-primary flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-[var(--radius)] text-lg font-semibold focus-ring"
           >
-            {continueText}
-          </button>
+            <PhoneIcon />
+            {stickyCallLabel}
+            {stickyCallPhone && <span className="font-bold">{formatPhone(stickyCallPhone)}</span>}
+          </a>
         </div>
       )}
     </main>
