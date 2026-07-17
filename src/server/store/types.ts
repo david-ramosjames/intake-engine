@@ -9,6 +9,9 @@ export interface StoredOrg {
   slug: string;
   name: string;
   industry?: string;
+  // Server-only settings blob (integration credentials, etc.). Never sent to
+  // the public runtime — only name/slug/id are used for attribution.
+  settings?: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -175,6 +178,8 @@ export interface RecordEventInput {
 export interface PlatformStore {
   listOrganizations(): Promise<StoredOrg[]>;
   getOrganization(id: string): Promise<StoredOrg | null>;
+  getOrgSettings(orgId: string): Promise<Record<string, unknown>>;
+  saveOrgSettings(orgId: string, settings: Record<string, unknown>): Promise<void>;
   getOrganizationBySlug(slug: string): Promise<StoredOrg | null>;
   createOrganization(input: CreateOrgInput): Promise<StoredOrg>;
 

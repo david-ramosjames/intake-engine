@@ -74,7 +74,18 @@ function collectContext(): Record<string, string> {
     userAgent: navigator.userAgent,
   };
   const params = new URL(window.location.href).searchParams;
-  for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) {
+  // Ad attribution: UTMs plus click ids (gclid for Google Ads, etc.). These
+  // flow through to integrations like CallRail for conversion attribution.
+  for (const k of [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "gclid",
+    "fbclid",
+    "msclkid",
+  ]) {
     const v = params.get(k);
     if (v) ctx[k] = v;
   }

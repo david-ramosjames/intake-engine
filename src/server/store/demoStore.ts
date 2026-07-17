@@ -101,6 +101,19 @@ export const demoStore: PlatformStore = {
     return db.organizations.find((o) => o.slug === slug) ?? null;
   },
 
+  async getOrgSettings(orgId) {
+    const db = await load();
+    return db.organizations.find((o) => o.id === orgId)?.settings ?? {};
+  },
+
+  async saveOrgSettings(orgId, settings) {
+    const db = await load();
+    const org = db.organizations.find((o) => o.id === orgId);
+    if (!org) throw new Error("Organization not found.");
+    org.settings = settings;
+    await persist();
+  },
+
   async createOrganization(input: CreateOrgInput) {
     const db = await load();
     if (db.organizations.some((o) => o.slug === input.slug)) {

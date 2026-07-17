@@ -1,0 +1,143 @@
+"use client";
+
+// CallRail Form Capture settings. Completed leads are forwarded into CallRail
+// as form submissions so they appear alongside calls and stay attributed
+// (GCLID, UTM, landing page) for Google Ads conversions. The API key is
+// write-only from the browser's perspective — we only learn whether one is set.
+
+import { useState } from "react";
+
+type Config = {
+  enabled: boolean;
+  accountId: string;
+  companyId: string;
+  formId: string;
+  hasKey: boolean;
+};
+
+const input =
+  "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+
+export function CallRailSettings({ initial }: { initial: Config }) {
+  const [enabled, setEnabled] = useState(initial.enabled);
+  const [accountId, setAccountId] = useState(initial.accountId);
+  const [companyId, setCompanyId] = useState(initial.companyId);
+  const [formId, setFormId] = useState(initial.formId);
+  const [apiKey, setApiKey] = useState(""); // blank = keep existing
+  const [hasKey, setHasKey] = useState(initial.hasKey);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/admin/integrations/callrail", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled, accountId, companyId, formId, apiKey: apiKey || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Could not save.");
+      setHasKey(data.config.hasKey);
+      setApiKey("");
+      setStatus({ kind: "ok", msg: "Saved." });
+    } catch (err) {
+      setStatus({ kind: "err", msg: err instanceof Error ? err.message : "Could not save." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const field = (
+    label: string,
+    node: React.ReactNode,
+    hint?: React.ReactNode,
+    howHref?: string,
+  ) => (
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <label className="text-xs font-medium text-gray-500">{label}</label>
+        {howHref && (
+          <a href={howHref} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+            How? ↗
+          </a>
+        )}
+      </div>
+      {node}
+      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+    </div>
+  );
+
+  return (
+    <form onSubmit={save} className="space-y-4">
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" className="accent-blue-600" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        Forward completed leads into CallRail as form submissions
+      </label>
+
+      {field(
+        "CallRail Account ID",
+        <input
+          className={`${input} w-full`}
+          placeholder="e.g. 250446909"
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
+        />,
+        <>Find it in the CallRail dashboard URL after <code>/a/</code>, or via Settings → Account.</>,
+        "https://apidocs.callrail.com/",
+      )}
+
+      {field(
+        "CallRail Company ID",
+        <input
+          className={`${input} w-full`}
+          placeholder="e.g. 984308652"
+          value={companyId}
+          onChange={(e) => setCompanyId(e.target.value)}
+        />,
+        <>Numeric ID from your swap.js URL — the part after <code>/companies/</code>.</>,
+        "https://apidocs.callrail.com/",
+      )}
+
+      {field(
+        "CallRail API key",
+        <input
+          className={`${input} w-full`}
+          type="password"
+          placeholder={hasKey ? "•••••••••• (leave blank to keep)" : "Paste your API key"}
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          autoComplete="off"
+        />,
+        <>Generate at CallRail → Settings → Integrations → API Keys → Create API Key. Stored securely; never shown again.</>,
+        "https://apidocs.callrail.com/",
+      )}
+
+      {field(
+        "Form ID (optional)",
+        <input
+          className={`${input} w-full`}
+          placeholder="e.g. rjl-chat-leads"
+          value={formId}
+          onChange={(e) => setFormId(e.target.value)}
+        />,
+        <>Optional label to group these submissions in CallRail&apos;s UI.</>,
+      )}
+
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Save CallRail settings"}
+        </button>
+        {status && (
+          <span className={`text-sm ${status.kind === "ok" ? "text-green-600" : "text-red-600"}`}>{status.msg}</span>
+        )}
+      </div>
+    </form>
+  );
+}

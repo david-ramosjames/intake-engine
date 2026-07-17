@@ -1,4 +1,7 @@
+import { CallRailSettings } from "@/components/admin/CallRailSettings";
+import { callRailConfig } from "@/modules/integrations/callrail";
 import { getAdminOrg } from "@/server/currentOrg";
+import { store } from "@/server/store";
 import { industryLabel } from "@/server/store/types";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +18,8 @@ function Row({ label, value }: { label: string; value: string }) {
 export default async function Settings() {
   const org = await getAdminOrg();
   if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
+
+  const cr = callRailConfig(await store.getOrgSettings(org.id));
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -47,10 +52,37 @@ export default async function Settings() {
       </div>
 
       <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-medium text-gray-700">Branding, users & roles, integrations, AI</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">CallRail Form Capture</h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              cr?.enabled && cr?.apiKey ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {cr?.enabled && cr?.apiKey ? "Connected" : "Off"}
+          </span>
+        </div>
         <p className="mt-1 text-sm text-gray-400">
-          Modeled in the schema (themes, memberships/roles, integrations, AI config). Editing UI is on
-          the roadmap.
+          Forward completed leads into CallRail as form submissions so they show up alongside calls and are
+          attributed (GCLID, UTM, landing page) for Google Ads conversions.
+        </p>
+        <div className="mt-5">
+          <CallRailSettings
+            initial={{
+              enabled: cr?.enabled ?? false,
+              accountId: cr?.accountId ?? "",
+              companyId: cr?.companyId ?? "",
+              formId: cr?.formId ?? "",
+              hasKey: Boolean(cr?.apiKey),
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-medium text-gray-700">Branding, users & roles, AI</h2>
+        <p className="mt-1 text-sm text-gray-400">
+          Modeled in the schema (themes, memberships/roles, AI config). Editing UI is on the roadmap.
         </p>
       </div>
     </div>

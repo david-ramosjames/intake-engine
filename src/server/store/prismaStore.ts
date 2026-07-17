@@ -110,6 +110,18 @@ export const prismaStore: PlatformStore = {
     return o ? orgRow(o) : null;
   },
 
+  async getOrgSettings(orgId) {
+    const prisma = await getPrisma();
+    const o = await prisma.organization.findUnique({ where: { id: orgId } });
+    const settings = o?.settings;
+    return settings && typeof settings === "object" ? (settings as Record<string, unknown>) : {};
+  },
+
+  async saveOrgSettings(orgId, settings) {
+    const prisma = await getPrisma();
+    await prisma.organization.update({ where: { id: orgId }, data: { settings } });
+  },
+
   async createOrganization(input: CreateOrgInput) {
     const prisma = await getPrisma();
     const o = await prisma.organization.create({

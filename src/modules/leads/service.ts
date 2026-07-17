@@ -6,6 +6,7 @@
 import { extractContact, scoreLead, type Answers } from "@/modules/journeys/runtime/engine";
 import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/schema";
 import { runLeadAutomations } from "@/modules/automations/run";
+import { callRailConfig, forwardLeadToCallRail } from "@/modules/integrations/callrail";
 import { store, type LeadOutcome, type StoredJourney } from "@/server/store";
 
 export interface SubmitResult {
@@ -62,6 +63,15 @@ export async function submitLead(
     await runLeadAutomations(journey, lead);
   } catch (e) {
     console.error("[automation] runLeadAutomations threw", e);
+  }
+
+  // Forward to CallRail as a form submission (attribution for Google Ads), when
+  // the org has configured the integration. Best-effort.
+  try {
+    const cfg = callRailConfig(await store.getOrgSettings(journey.orgId));
+    if (cfg) await forwardLeadToCallRail(cfg, lead, context);
+  } catch (e) {
+    console.error("[callrail] forward failed", e);
   }
 
   return { leadId: lead.id, score, qualified: outcome === "lead", outcome };
