@@ -1228,10 +1228,21 @@ function SlidingReviews({
   const clones = 2;
   const tagged = items.map((r, i) => ({ ...r, _i: i }));
   const slides = [...tagged.slice(-clones), ...tagged, ...tagged.slice(0, clones)];
-  const total = slides.length;
   const start = clones; // index of the first real card in `slides`
   const [index, setIndex] = useState(start);
   const [animate, setAnimate] = useState(true);
+  // Cards per view: 1 on phones, 2 on wider screens. The translate step is one
+  // card = 100/perView % of the container (the track's own width), so the slide
+  // always lands on a whole card.
+  const [perView, setPerView] = useState(2);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setPerView(mq.matches ? 1 : 2);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setIndex((i) => i + 1), intervalMs);
@@ -1273,7 +1284,7 @@ function SlidingReviews({
           <div
             className="flex"
             style={{
-              transform: `translateX(-${(index * 100) / total}%)`,
+              transform: `translateX(-${(index * 100) / perView}%)`,
               transition: animate ? "transform 650ms cubic-bezier(0.22,1,0.36,1)" : "none",
             }}
             onTransitionEnd={onEnd}
