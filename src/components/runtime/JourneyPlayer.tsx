@@ -1165,7 +1165,7 @@ function Stars({ rating }: { rating: number }) {
 
 function ReviewCard({ review, index, L }: { review: { name: string; text: string; rating?: number; source?: string }; index: number; L: Localize }) {
   return (
-    <div className="animate-fade-up flex h-full min-h-[200px] flex-col rounded-2xl bg-white p-6 text-[#0b1f3a] shadow-xl">
+    <div className="flex h-full min-h-[200px] flex-col rounded-2xl bg-white p-6 text-[#0b1f3a] shadow-xl">
       <p className="flex-1 text-[15px] leading-relaxed">{L(tk.reviewText(index), review.text)}</p>
       <div className="mt-4 flex items-center gap-3 border-t border-black/10 pt-4">
         {(review.source ?? "Google").toLowerCase() === "google" && <GoogleG />}
@@ -1189,52 +1189,111 @@ function ReviewsCarousel({
   const n = items.length;
   const heading = L(tk.reviewsHeading(), reviews.heading) || undefined;
   const intervalMs = Math.max(2, reviews.intervalSeconds ?? 10) * 1000;
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    if (n <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % n), intervalMs);
-    return () => clearInterval(id);
-  }, [n, intervalMs]);
+  const arrow =
+    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-lg transition hover:brightness-110";
+
+  // Single review — no track/arrows needed.
   if (n === 0) return null;
-  const aIdx = index % n;
-  const bIdx = (index + 1) % n;
-  const arrow = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-lg transition hover:brightness-110";
-  return (
-    <section
-      className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-20"
-    >
-      {heading && <h2 className="mb-8 text-center text-2xl font-semibold sm:text-3xl">{heading}</h2>}
-      <div className="mx-auto flex max-w-5xl items-center gap-3 sm:gap-5">
-        {n > 1 && (
-          <button
-            type="button"
-            aria-label="Previous review"
-            onClick={() => setIndex((i) => (i - 1 + n) % n)}
-            className={arrow}
-            style={{ background: "var(--acc)" }}
-          >
-            <ChevronIcon className="rotate-180" />
-          </button>
-        )}
-        <div className="grid flex-1 gap-5 md:grid-cols-2">
-          <ReviewCard key={`a${aIdx}`} review={items[aIdx]!} index={aIdx} L={L} />
-          {n > 1 && (
-            <div className="hidden md:block">
-              <ReviewCard key={`b${bIdx}`} review={items[bIdx]!} index={bIdx} L={L} />
-            </div>
-          )}
+  if (n === 1) {
+    return (
+      <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-20">
+        {heading && <h2 className="mb-8 text-center text-2xl font-semibold sm:text-3xl">{heading}</h2>}
+        <div className="mx-auto max-w-md">
+          <ReviewCard review={items[0]!} index={0} L={L} />
         </div>
-        {n > 1 && (
-          <button
-            type="button"
-            aria-label="Next review"
-            onClick={() => setIndex((i) => (i + 1) % n)}
-            className={arrow}
-            style={{ background: "var(--acc)" }}
+      </section>
+    );
+  }
+
+  return <SlidingReviews items={items} heading={heading} intervalMs={intervalMs} arrow={arrow} L={L} />;
+}
+
+// A horizontally-sliding, infinitely-looping reviews track. Clones a couple of
+// cards on each end so advancing/rewinding across the boundary slides smoothly,
+// then silently snaps back into the real range once the transition finishes.
+function SlidingReviews({
+  items,
+  heading,
+  intervalMs,
+  arrow,
+  L,
+}: {
+  items: { name: string; text: string; rating?: number; source?: string }[];
+  heading?: string;
+  intervalMs: number;
+  arrow: string;
+  L: Localize;
+}) {
+  const n = items.length;
+  const clones = 2;
+  const tagged = items.map((r, i) => ({ ...r, _i: i }));
+  const slides = [...tagged.slice(-clones), ...tagged, ...tagged.slice(0, clones)];
+  const total = slides.length;
+  const start = clones; // index of the first real card in `slides`
+  const [index, setIndex] = useState(start);
+  const [animate, setAnimate] = useState(true);
+
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => i + 1), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+
+  // After a slide lands in the cloned region, jump (without animation) to the
+  // matching real card so the loop is seamless.
+  const onEnd = () => {
+    if (index >= n + clones) {
+      setAnimate(false);
+      setIndex(index - n);
+    } else if (index < clones) {
+      setAnimate(false);
+      setIndex(index + n);
+    }
+  };
+  useEffect(() => {
+    if (!animate) {
+      const r = requestAnimationFrame(() => setAnimate(true));
+      return () => cancelAnimationFrame(r);
+    }
+  }, [animate]);
+
+  return (
+    <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-20">
+      {heading && <h2 className="mb-8 text-center text-2xl font-semibold sm:text-3xl">{heading}</h2>}
+      <div className="mx-auto flex max-w-5xl items-center gap-2 sm:gap-4">
+        <button
+          type="button"
+          aria-label="Previous review"
+          onClick={() => setIndex((i) => i - 1)}
+          className={arrow}
+          style={{ background: "var(--acc)" }}
+        >
+          <ChevronIcon className="rotate-180" />
+        </button>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div
+            className="flex"
+            style={{
+              transform: `translateX(-${(index * 100) / total}%)`,
+              transition: animate ? "transform 650ms cubic-bezier(0.22,1,0.36,1)" : "none",
+            }}
+            onTransitionEnd={onEnd}
           >
-            <ChevronIcon />
-          </button>
-        )}
+            {slides.map((s, i) => (
+              <div key={i} className="w-full shrink-0 px-2 md:w-1/2">
+                <ReviewCard review={s} index={s._i} L={L} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <button
+          type="button"
+          aria-label="Next review"
+          onClick={() => setIndex((i) => i + 1)}
+          className={arrow}
+          style={{ background: "var(--acc)" }}
+        >
+          <ChevronIcon />
+        </button>
       </div>
     </section>
   );
