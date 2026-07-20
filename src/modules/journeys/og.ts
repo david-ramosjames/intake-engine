@@ -35,24 +35,29 @@ export function preloadHero(def: JourneyDefinition): void {
 
 export function journeyMetadata(def: JourneyDefinition, firmName: string): Metadata {
   const theme = def.theme ?? {};
-  const title = firmName || def.name;
+  const firm = firmName || def.name;
+  // The document <title> is what GA4 reports as page_title. Make it distinct per
+  // journey — "Firm Name — Journey Name" — so journeys don't collapse into one
+  // row in Analytics. The link/social preview keeps just the firm name.
+  const journeyName = def.name?.trim();
+  const docTitle = journeyName && journeyName !== firm ? `${firm} — ${journeyName}` : firm;
   const description = journeyHeadline(def) ?? def.name;
   const image = publicUrl(theme.socialImageUrl, theme.sideImageUrl, theme.logoUrl);
   const images = image ? [{ url: image }] : undefined;
 
   return {
-    title,
+    title: docTitle,
     description,
     openGraph: {
       type: "website",
-      title,
+      title: firm,
       description,
-      siteName: firmName || undefined,
+      siteName: firm || undefined,
       images,
     },
     twitter: {
       card: image ? "summary_large_image" : "summary",
-      title,
+      title: firm,
       description,
       images: image ? [image] : undefined,
     },
