@@ -682,6 +682,45 @@ export function JourneyEditor({
                 }
               />
               <EsBox es={es} k={tk.callbackSecure()} placeholder="Secure footer — Spanish" />
+
+              <div className="mt-1 flex flex-wrap items-start gap-6 border-t border-gray-200 pt-3">
+                <ColorField
+                  label="Callback button (fill)"
+                  value={def.theme?.callback?.buttonBg ?? def.theme?.colorAccent ?? "#e63946"}
+                  onChange={(v) => mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonBg = v))}
+                />
+                <ColorField
+                  label="Callback button text"
+                  value={def.theme?.callback?.buttonText ?? "#ffffff"}
+                  onChange={(v) => mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonText = v))}
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(def.theme?.callback?.buttonBorderColor)}
+                      onChange={(e) =>
+                        mutate(
+                          (d) =>
+                            void (((d.theme ??= {}).callback ??= {}).buttonBorderColor = e.target.checked
+                              ? (d.theme?.callback?.buttonBorderColor ?? d.theme?.colorText ?? "#ffffff")
+                              : undefined),
+                        )
+                      }
+                    />
+                    Border
+                  </label>
+                  {def.theme?.callback?.buttonBorderColor && (
+                    <ColorField
+                      label="Border color"
+                      value={def.theme.callback.buttonBorderColor}
+                      onChange={(v) =>
+                        mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonBorderColor = v))
+                      }
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

@@ -260,6 +260,11 @@ export const themeTokensSchema = z
         buttonLabel: z.string().optional(),
         buttonSubtitle: z.string().optional(),
         secureText: z.string().optional(),
+        // "Request callback" button styling. Defaults: accent background, white
+        // text, no border.
+        buttonBg: z.string().optional(),
+        buttonText: z.string().optional(),
+        buttonBorderColor: z.string().optional(),
       })
       .optional(),
     // Optional content BELOW the fold on the landing screen. It does not affect

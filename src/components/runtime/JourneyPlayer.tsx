@@ -705,6 +705,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   definition={definition}
                   theme={theme}
                   L={L}
+                  error={error}
                   onField={(key, v) => set(key, v)}
                   onSubmit={() => {
                     // "Request callback" is an explicit completion: validate the
@@ -1387,6 +1388,7 @@ function CallbackCard({
   onField,
   onSubmit,
   busy,
+  error,
 }: {
   fields: Component[];
   answers: Answers;
@@ -1396,6 +1398,7 @@ function CallbackCard({
   onField: (key: string, value: unknown) => void;
   onSubmit: () => void;
   busy: boolean;
+  error?: string | null;
 }) {
   const heading =
     L(tk.callbackHeading(), theme.callback?.heading) || "Prefer a quick callback? Leave your information.";
@@ -1406,6 +1409,11 @@ function CallbackCard({
   const shortFields = fields.filter((f) => f.type !== "longText");
   const longField = fields.find((f) => f.type === "longText");
   const rule = "h-px flex-1 bg-[color:color-mix(in_srgb,var(--text)_16%,transparent)]";
+  // "Request callback" button styling — accent bg, white text, no border by
+  // default; each is overridable in the theme.
+  const btnBg = theme.callback?.buttonBg || "var(--acc)";
+  const btnText = theme.callback?.buttonText || "#ffffff";
+  const btnBorder = theme.callback?.buttonBorderColor;
   return (
     <div className="hidden md:block">
       {/* Labeled divider — the "top border" of the callback section. */}
@@ -1448,13 +1456,21 @@ function CallbackCard({
           type="button"
           onClick={onSubmit}
           disabled={busy}
-          className="flex flex-col items-center justify-center rounded-xl px-5 py-3 font-bold leading-tight text-white shadow-md transition hover:brightness-110 active:scale-[0.98] focus-ring disabled:opacity-50"
-          style={{ background: "var(--acc)" }}
+          className="flex flex-col items-center justify-center rounded-xl px-5 py-3 font-bold leading-tight shadow-md transition hover:brightness-110 active:scale-[0.98] focus-ring disabled:opacity-50"
+          style={{
+            background: btnBg,
+            color: btnText,
+            border: btnBorder ? `2px solid ${btnBorder}` : undefined,
+          }}
         >
           <span className="text-sm uppercase tracking-wide">{buttonLabel}</span>
           {buttonSub && <span className="mt-0.5 text-[12px] font-medium normal-case opacity-85">{buttonSub}</span>}
         </button>
       </div>
+
+      {/* Validation feedback for the card's own fields, shown right here so it's
+          visible next to the button rather than up by the main CTA. */}
+      {error && <p className="mt-2 text-sm font-medium text-[color:var(--acc)]">{error}</p>}
 
       {/* Secure footer — the lock line. */}
       <div className="mt-2.5 flex items-center justify-center gap-1.5 text-xs opacity-55">
