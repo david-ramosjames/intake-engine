@@ -288,6 +288,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
   function onContinue() {
     if (!page) return;
+    // Clicking Start / Continue counts as starting the flow (fires
+    // consult_flow_start once), even if the visitor typed nothing first.
+    markStarted();
     for (const c of page.components) {
       if (
         c.key &&
