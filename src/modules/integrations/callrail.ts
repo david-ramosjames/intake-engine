@@ -81,12 +81,22 @@ export async function forwardLeadToCallRail(
     form_id: config.formId,
   });
 
+  // CallRail requires either a session_id (which only exists when its swap.js
+  // has tracked the visitor's session client-side) or ALL THREE of referrer,
+  // referring_url and landing_page_url. We forward server-side without a session,
+  // so send the full trio and fall back so none are empty — a direct visit has
+  // no external referrer, which would otherwise get dropped and 400 the request.
+  const pageUrl = context.pageUrl || context.landingPage || "";
+  const landingPageUrl = context.landingPage || pageUrl;
+  const referrer = context.referrer || landingPageUrl;
+
   const body = compact({
     company_id: config.companyId,
     form_data: formData,
-    form_url: context.pageUrl,
-    landing_page_url: context.landingPage ?? context.pageUrl,
-    referrer: context.referrer,
+    form_url: pageUrl,
+    referring_url: pageUrl,
+    landing_page_url: landingPageUrl,
+    referrer,
     utm_source: context.utm_source ?? lead.source,
     utm_medium: context.utm_medium ?? lead.medium,
     utm_campaign: context.utm_campaign ?? lead.campaign,
