@@ -437,9 +437,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   // which case a default name / phone / email / message set is used.
   const es = locale === "es";
   const defaultCallbackFields: Component[] = [
-    { id: "cb-name", type: "shortText", key: "full_name", label: es ? "Tu nombre" : "Your name" },
-    { id: "cb-phone", type: "phone", key: "phone", label: es ? "Número de teléfono" : "Phone number" },
-    { id: "cb-email", type: "email", key: "email", label: es ? "Correo electrónico" : "Email address" },
+    { id: "cb-name", type: "shortText", key: "full_name", label: es ? "Tu nombre" : "Your name", validation: { required: true } },
+    { id: "cb-phone", type: "phone", key: "phone", label: es ? "Número de teléfono" : "Phone number", validation: { required: true } },
+    { id: "cb-email", type: "email", key: "email", label: es ? "Correo electrónico (opcional)" : "Email address (optional)" },
     { id: "cb-msg", type: "longText", key: "description", label: es ? "¿Cómo podemos ayudarte?" : "How can we help?" },
   ];
   const callbackFields =
@@ -713,7 +713,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                     // the thank-you — never route into further journey steps.
                     markStarted();
                     for (const c of callbackFields) {
-                      if (!c.key || c.type === "longText") continue;
+                      if (!c.key || !c.validation?.required) continue;
                       const v = answers[c.key];
                       if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) {
                         setError(`Please answer: ${L(tk.label(c.id), c.label) || c.key}`);
