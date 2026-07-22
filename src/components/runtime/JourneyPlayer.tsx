@@ -250,26 +250,35 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
     [pageById, submit],
   );
 
+  // Submit the lead and land on the journey's ending screen; if the journey
+  // defines none, force a built-in thank-you rather than dropping the visitor
+  // back on a form. Returns false when the submit itself failed.
+  const finishLead = useCallback(
+    async (ans: Answers): Promise<boolean> => {
+      const outcome = await submit(ans);
+      if (!outcome) return false;
+      const wantType = outcome === "referral" ? "referral" : outcome === "declined" ? "decline" : "success";
+      const end =
+        pages.find((p) => p.type === wantType) ??
+        pages.find((p) => p.type === "end") ??
+        pages.find((p) => isTerminalType(p.type));
+      if (end) setHistory((h) => [...h, end.id]);
+      else setForcedDone(true);
+      return true;
+    },
+    [submit, pages],
+  );
+
   const advance = useCallback(
     async (from: Page, ans: Answers, optionGoTo?: string) => {
       const target = resolveNext(definition, from.id, ans, optionGoTo);
       if (target == null) {
-        const outcome = await submit(ans);
-        if (!outcome) return;
-        const wantType = outcome === "referral" ? "referral" : outcome === "declined" ? "decline" : "success";
-        const end =
-          pages.find((p) => p.type === wantType) ??
-          pages.find((p) => p.type === "end") ??
-          pages.find((p) => isTerminalType(p.type));
-        // Land on the journey's ending screen; if it defines none, force a
-        // built-in thank-you rather than falling back to the start form.
-        if (end) setHistory((h) => [...h, end.id]);
-        else setForcedDone(true);
+        await finishLead(ans);
         return;
       }
       goTo(target, ans);
     },
-    [definition, pages, submit, goTo],
+    [definition, finishLead, goTo],
   );
 
   const back = () => {
@@ -698,8 +707,21 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   L={L}
                   onField={(key, v) => set(key, v)}
                   onSubmit={() => {
+                    // "Request callback" is an explicit completion: validate the
+                    // card's own fields, then submit the lead and go straight to
+                    // the thank-you — never route into further journey steps.
+                    markStarted();
+                    for (const c of callbackFields) {
+                      if (!c.key || c.type === "longText") continue;
+                      const v = answers[c.key];
+                      if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) {
+                        setError(`Please answer: ${L(tk.label(c.id), c.label) || c.key}`);
+                        return;
+                      }
+                    }
+                    setError(null);
                     trackFormSubmit();
-                    onContinue();
+                    void finishLead(answers);
                   }}
                   busy={busy}
                 />
