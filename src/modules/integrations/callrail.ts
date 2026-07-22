@@ -108,6 +108,15 @@ export async function forwardLeadToCallRail(
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(`CallRail ${res.status}: ${await res.text().catch(() => "")}`);
+    const body = (await res.text().catch(() => "")).slice(0, 300);
+    const hint =
+      res.status === 401
+        ? " (check the API key)"
+        : res.status === 404
+          ? " (check the Account ID)"
+          : res.status === 400 || res.status === 422
+            ? " (CallRail rejected a field — check the Company ID)"
+            : "";
+    throw new Error(`CallRail returned ${res.status}${hint}. ${body}`.trim());
   }
 }

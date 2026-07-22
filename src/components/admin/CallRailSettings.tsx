@@ -28,7 +28,23 @@ export function CallRailSettings({ initial }: { initial: Config }) {
   const [apiKey, setApiKey] = useState(""); // blank = keep existing
   const [hasKey, setHasKey] = useState(initial.hasKey);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+
+  async function sendTest() {
+    setTesting(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/admin/integrations/callrail/test", { method: "POST" });
+      const data = await res.json();
+      if (data.ok) setStatus({ kind: "ok", msg: data.message ?? "CallRail accepted the test." });
+      else setStatus({ kind: "err", msg: data.error ?? "CallRail rejected the test." });
+    } catch (err) {
+      setStatus({ kind: "err", msg: err instanceof Error ? err.message : "Could not reach the server." });
+    } finally {
+      setTesting(false);
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -154,7 +170,7 @@ export function CallRailSettings({ initial }: { initial: Config }) {
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={busy}
@@ -162,10 +178,23 @@ export function CallRailSettings({ initial }: { initial: Config }) {
         >
           {busy ? "Saving…" : "Save CallRail settings"}
         </button>
-        {status && (
-          <span className={`text-sm ${status.kind === "ok" ? "text-green-600" : "text-red-600"}`}>{status.msg}</span>
-        )}
+        <button
+          type="button"
+          onClick={sendTest}
+          disabled={testing}
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+        >
+          {testing ? "Sending…" : "Send test to CallRail"}
+        </button>
       </div>
+      {status && (
+        <p className={`text-sm ${status.kind === "ok" ? "text-green-600" : "text-red-600"}`}>{status.msg}</p>
+      )}
+      <p className="text-xs text-gray-400">
+        Save first, then <strong>Send test</strong> posts a sample form submission using your saved credentials and
+        shows CallRail&apos;s exact response — so a bad key or wrong ID is obvious. A real completed lead forwards the
+        same way automatically.
+      </p>
     </form>
   );
 }
