@@ -1414,10 +1414,21 @@ function CallbackCard({
   const longField = fields.find((f) => f.type === "longText");
   const rule = "h-px flex-1 bg-[color:color-mix(in_srgb,var(--text)_16%,transparent)]";
   // "Request callback" button styling — accent bg, white text, no border by
-  // default; each is overridable in the theme.
-  const btnBg = theme.callback?.buttonBg || "var(--acc)";
-  const btnText = theme.callback?.buttonText || "#ffffff";
-  const btnBorder = theme.callback?.buttonBorderColor;
+  // default; each is overridable in the theme. Once any field has text, the
+  // button switches to its "active" colors (falling back to the resting ones)
+  // as a cue that the visitor has started.
+  const anyFilled = fields.some((f) => {
+    if (!f.key) return false;
+    const v = answers[f.key];
+    return Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && String(v).trim() !== "";
+  });
+  const restBg = theme.callback?.buttonBg || "var(--acc)";
+  const restText = theme.callback?.buttonText || "#ffffff";
+  const btnBg = anyFilled ? theme.callback?.buttonActiveBg || restBg : restBg;
+  const btnText = anyFilled ? theme.callback?.buttonActiveText || restText : restText;
+  const btnBorder = anyFilled
+    ? (theme.callback?.buttonActiveBorderColor ?? theme.callback?.buttonBorderColor)
+    : theme.callback?.buttonBorderColor;
   return (
     <div className="hidden md:block">
       {/* Labeled divider — the "top border" of the callback section. */}

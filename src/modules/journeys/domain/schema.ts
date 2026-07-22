@@ -265,6 +265,11 @@ export const themeTokensSchema = z
         buttonBg: z.string().optional(),
         buttonText: z.string().optional(),
         buttonBorderColor: z.string().optional(),
+        // "Active" styling applied once any callback field has text — a cue that
+        // the visitor has started. Each falls back to its resting counterpart.
+        buttonActiveBg: z.string().optional(),
+        buttonActiveText: z.string().optional(),
+        buttonActiveBorderColor: z.string().optional(),
       })
       .optional(),
     // Optional content BELOW the fold on the landing screen. It does not affect

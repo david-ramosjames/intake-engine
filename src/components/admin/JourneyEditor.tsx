@@ -721,6 +721,74 @@ export function JourneyEditor({
                   )}
                 </div>
               </div>
+
+              <div className="mt-3">
+                <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(
+                      def.theme?.callback?.buttonActiveBg ||
+                        def.theme?.callback?.buttonActiveText ||
+                        def.theme?.callback?.buttonActiveBorderColor,
+                    )}
+                    onChange={(e) =>
+                      mutate((d) => {
+                        const cb = ((d.theme ??= {}).callback ??= {});
+                        if (e.target.checked) {
+                          cb.buttonActiveBg = cb.buttonActiveBg ?? d.theme?.colorAccent ?? "#16a34a";
+                        } else {
+                          cb.buttonActiveBg = undefined;
+                          cb.buttonActiveText = undefined;
+                          cb.buttonActiveBorderColor = undefined;
+                        }
+                      })
+                    }
+                  />
+                  Light up the button once a field is filled
+                </label>
+                {(def.theme?.callback?.buttonActiveBg ||
+                  def.theme?.callback?.buttonActiveText ||
+                  def.theme?.callback?.buttonActiveBorderColor) && (
+                  <div className="mt-2 flex flex-wrap items-start gap-6">
+                    <ColorField
+                      label="Active fill"
+                      value={def.theme?.callback?.buttonActiveBg ?? def.theme?.colorAccent ?? "#16a34a"}
+                      onChange={(v) => mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonActiveBg = v))}
+                    />
+                    <ColorField
+                      label="Active text"
+                      value={def.theme?.callback?.buttonActiveText ?? def.theme?.callback?.buttonText ?? "#ffffff"}
+                      onChange={(v) => mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonActiveText = v))}
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(def.theme?.callback?.buttonActiveBorderColor)}
+                          onChange={(e) =>
+                            mutate(
+                              (d) =>
+                                void (((d.theme ??= {}).callback ??= {}).buttonActiveBorderColor = e.target.checked
+                                  ? (d.theme?.callback?.buttonActiveBorderColor ?? d.theme?.colorText ?? "#ffffff")
+                                  : undefined),
+                            )
+                          }
+                        />
+                        Active border
+                      </label>
+                      {def.theme?.callback?.buttonActiveBorderColor && (
+                        <ColorField
+                          label="Active border color"
+                          value={def.theme.callback.buttonActiveBorderColor}
+                          onChange={(v) =>
+                            mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonActiveBorderColor = v))
+                          }
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
