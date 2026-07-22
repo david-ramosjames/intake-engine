@@ -110,7 +110,7 @@ export default async function Settings() {
               ["consult_flow_start", "Visitor started interacting with the flow"],
               ["form_submission", "Landing-page callback form submitted"],
               ["consult_flow_complete", "Lead completed (form or guided flow)"],
-              ["consult_flow_phone_click", "A call button was tapped"],
+              ["consult_flow_phone_click", "Call button on the ending screen tapped"],
             ].map(([ev, desc]) => (
               <div key={ev} className="flex flex-wrap items-center gap-2">
                 <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-800">{ev}</code>

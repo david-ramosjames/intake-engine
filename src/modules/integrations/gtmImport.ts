@@ -8,7 +8,7 @@ export const GTM_EVENTS: { event: string; label: string; desc: string }[] = [
   { event: "consult_flow_start", label: "Consult Flow Start", desc: "Visitor started interacting with the flow" },
   { event: "form_submission", label: "Form Submission", desc: "Landing-page callback form submitted" },
   { event: "consult_flow_complete", label: "Consult Flow Complete", desc: "Lead completed (form or guided flow)" },
-  { event: "consult_flow_phone_click", label: "Consult Flow Phone Click", desc: "A call button was tapped" },
+  { event: "consult_flow_phone_click", label: "Consult Flow Phone Click", desc: "Call button on the ending screen tapped" },
 ];
 
 export function buildGtmContainerImport(opts: {

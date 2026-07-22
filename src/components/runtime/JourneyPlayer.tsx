@@ -160,7 +160,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
     [slug, attribution, pushDataLayer],
   );
 
-  // A tap on any call button (banner, CTA, sticky bar, ending screen).
+  // A tap on the call button on the ending / thank-you screen only. In-flow
+  // call buttons (banner, landing CTA, sticky bar) record the server beacon but
+  // do NOT fire consult_flow_phone_click, so it stays an end-of-journey signal.
   const trackPhoneClick = useCallback(() => {
     pushDataLayer("consult_flow_phone_click");
     emit("cta_click");
@@ -476,7 +478,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       <Banner
         theme={theme}
         L={L}
-        onCtaClick={trackPhoneClick}
+        onCtaClick={() => emit("cta_click")}
         languages={languages}
         locale={locale}
         setLocale={setLocale}
@@ -649,7 +651,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   screen. */}
               <div className="space-y-3">
                 <div className="flex flex-col gap-3">
-                  {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} onPhoneClick={trackPhoneClick} />}
+                  {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
                   {!soleChoice && (
                     <ActionButton
                       as="button"
@@ -721,7 +723,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           cta={
             theme.belowFold?.showCta ? (
               <>
-                {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} onPhoneClick={trackPhoneClick} />}
+                {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
                 {!soleChoice && (
                   <ActionButton
                     as="button"
@@ -752,7 +754,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         >
           <a
             href={stickyCallHref}
-            onClick={trackPhoneClick}
+            onClick={() => emit("cta_click")}
             className="j-cta j-cta-primary flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-[var(--radius)] text-lg font-semibold focus-ring"
           >
             <PhoneIcon />
@@ -1691,7 +1693,7 @@ function CtaButtons({
             key={i}
             as="a"
             href={ctaHref(cta)}
-            onClick={call ? onPhoneClick : onCtaClick}
+            onClick={call ? (onPhoneClick ?? onCtaClick) : onCtaClick}
             variant={cta.style === "secondary" ? "outline" : "primary"}
             icon={call ? <PhoneIcon /> : undefined}
             title={title}
