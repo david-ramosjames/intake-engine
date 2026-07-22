@@ -73,6 +73,32 @@ export default async function Settings() {
         <div className="mt-5">
           <GtmSettings initialContainerId={gtmContainerId} />
         </div>
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            dataLayer events (build Custom Event triggers on these)
+          </div>
+          <p className="mt-1 text-xs text-gray-400">
+            The journey pages push these to the dataLayer. In each business&apos;s GTM container, add a Custom Event
+            trigger with the matching Event name, then attach your GA4 event / Google Ads conversion tag.
+          </p>
+          <dl className="mt-3 space-y-1.5 text-sm">
+            {[
+              ["consult_flow_open", "Consult flow opened (landing page viewed)"],
+              ["form_submission", "Landing-page callback form submitted"],
+              ["consult_flow_complete", "Lead completed (form or guided flow)"],
+              ["consult_flow_phone_click", "A call button was tapped"],
+            ].map(([ev, desc]) => (
+              <div key={ev} className="flex flex-wrap items-center gap-2">
+                <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-800">{ev}</code>
+                <span className="text-gray-500">{desc}</span>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-2 text-xs text-gray-400">
+            Each event also carries a <code>journey</code> parameter (the journey slug), and{" "}
+            <code>consult_flow_complete</code> includes the <code>outcome</code>.
+          </p>
+        </div>
       </div>
 
       <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

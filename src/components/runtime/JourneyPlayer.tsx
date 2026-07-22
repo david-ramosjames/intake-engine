@@ -107,23 +107,37 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const sessionRef = useRef<string>("");
   const startedRef = useRef(false);
 
-  // Fire-and-forget funnel event — recorded server-side AND pushed to the GTM
-  // dataLayer so Tag Manager can trigger GA4 / Google Ads tags. A completed
-  // lead fires the `lead_submitted` event (use it for conversion tracking).
-  const emit = useCallback(
-    (type: "opened" | "started" | "completed" | "cta_click", extra?: Record<string, string>) => {
-      if (typeof window === "undefined" || !sessionRef.current) return;
+  // Push a Google Tag Manager dataLayer event. These are the stable event names
+  // a firm's GTM container triggers on (see the Settings → Tag Manager list):
+  //   consult_flow_open, consult_flow_complete, consult_flow_phone_click,
+  //   form_submission (plus consult_flow_start).
+  const pushDataLayer = useCallback(
+    (event: string, extra?: Record<string, unknown>) => {
+      if (typeof window === "undefined") return;
       try {
         const w = window as unknown as { dataLayer?: Record<string, unknown>[] };
         w.dataLayer = w.dataLayer || [];
-        w.dataLayer.push({
-          event: type === "completed" ? "lead_submitted" : `journey_${type}`,
-          journey: slug,
-          ...extra,
-        });
+        w.dataLayer.push({ event, journey: slug, ...extra });
       } catch {
         /* dataLayer optional */
       }
+    },
+    [slug],
+  );
+
+  // Fire-and-forget funnel event — recorded server-side AND surfaced to GTM.
+  const emit = useCallback(
+    (type: "opened" | "started" | "completed" | "cta_click", extra?: Record<string, string>) => {
+      if (typeof window === "undefined" || !sessionRef.current) return;
+      const gtmEvent =
+        type === "opened"
+          ? "consult_flow_open"
+          : type === "started"
+            ? "consult_flow_start"
+            : type === "completed"
+              ? "consult_flow_complete"
+              : null;
+      if (gtmEvent) pushDataLayer(gtmEvent, extra);
       try {
         void fetch("/api/events", {
           method: "POST",
@@ -143,8 +157,18 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         /* best-effort */
       }
     },
-    [slug, attribution],
+    [slug, attribution, pushDataLayer],
   );
+
+  // A tap on any call button (banner, CTA, sticky bar, ending screen).
+  const trackPhoneClick = useCallback(() => {
+    pushDataLayer("consult_flow_phone_click");
+    emit("cta_click");
+  }, [pushDataLayer, emit]);
+  // A submit of the landing-page quick callback form.
+  const trackFormSubmit = useCallback(() => {
+    pushDataLayer("form_submission");
+  }, [pushDataLayer]);
 
   // One session id per visitor+journey; record "opened" once on mount.
   useEffect(() => {
@@ -449,7 +473,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       <Banner
         theme={theme}
         L={L}
-        onCtaClick={() => emit("cta_click")}
+        onCtaClick={trackPhoneClick}
         languages={languages}
         locale={locale}
         setLocale={setLocale}
@@ -586,7 +610,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           }`}
         >
           {terminal ? (
-            <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} />
+            <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} onPhoneClick={trackPhoneClick} />
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-5 md:space-y-3">
               <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 md:gap-y-3">
@@ -622,7 +646,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   screen. */}
               <div className="space-y-3">
                 <div className="flex flex-col gap-3">
-                  {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
+                  {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} onPhoneClick={trackPhoneClick} />}
                   {!soleChoice && (
                     <ActionButton
                       as="button"
@@ -657,7 +681,10 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   theme={theme}
                   L={L}
                   onField={(key, v) => set(key, v)}
-                  onSubmit={onContinue}
+                  onSubmit={() => {
+                    trackFormSubmit();
+                    onContinue();
+                  }}
                   busy={busy}
                 />
               )}
@@ -691,7 +718,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           cta={
             theme.belowFold?.showCta ? (
               <>
-                {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
+                {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} onPhoneClick={trackPhoneClick} />}
                 {!soleChoice && (
                   <ActionButton
                     as="button"
@@ -722,7 +749,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
         >
           <a
             href={stickyCallHref}
-            onClick={() => emit("cta_click")}
+            onClick={trackPhoneClick}
             className="j-cta j-cta-primary flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-[var(--radius)] text-lg font-semibold focus-ring"
           >
             <PhoneIcon />
@@ -1604,18 +1631,38 @@ function isCallCta(c: { type?: string; href?: string }) {
 // Call-to-action buttons. Call buttons show on every size (tappable to dial);
 // the phone number is appended inside the button on desktop only, so the mobile
 // button stays compact. Non-call CTAs (links) show on all sizes.
-function CtaBlock({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
+function CtaBlock({
+  page,
+  L,
+  onCtaClick,
+  onPhoneClick,
+}: {
+  page: Page;
+  L: Localize;
+  onCtaClick?: () => void;
+  onPhoneClick?: () => void;
+}) {
   if (!page.cta || page.cta.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-3 pt-1">
-      <CtaButtons page={page} L={L} onCtaClick={onCtaClick} />
+      <CtaButtons page={page} L={L} onCtaClick={onCtaClick} onPhoneClick={onPhoneClick} />
     </div>
   );
 }
 
 // The CTA buttons themselves — reused on ending screens and inline with the
 // Continue button on form screens.
-function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
+function CtaButtons({
+  page,
+  L,
+  onCtaClick,
+  onPhoneClick,
+}: {
+  page: Page;
+  L: Localize;
+  onCtaClick?: () => void;
+  onPhoneClick?: () => void;
+}) {
   if (!page.cta || page.cta.length === 0) return null;
   return (
     <>
@@ -1641,7 +1688,7 @@ function CtaButtons({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
             key={i}
             as="a"
             href={ctaHref(cta)}
-            onClick={onCtaClick}
+            onClick={call ? onPhoneClick : onCtaClick}
             variant={cta.style === "secondary" ? "outline" : "primary"}
             icon={call ? <PhoneIcon /> : undefined}
             title={title}
@@ -1749,7 +1796,17 @@ function Banner({
   );
 }
 
-function EndingView({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaClick?: () => void }) {
+function EndingView({
+  page,
+  L,
+  onCtaClick,
+  onPhoneClick,
+}: {
+  page: Page;
+  L: Localize;
+  onCtaClick?: () => void;
+  onPhoneClick?: () => void;
+}) {
   return (
     <div className="animate-fade-up space-y-6">
       {page.components.map((c) =>
@@ -1765,7 +1822,7 @@ function EndingView({ page, L, onCtaClick }: { page: Page; L: Localize; onCtaCli
           </p>
         ),
       )}
-      <CtaBlock page={page} L={L} onCtaClick={onCtaClick} />
+      <CtaBlock page={page} L={L} onCtaClick={onCtaClick} onPhoneClick={onPhoneClick} />
     </div>
   );
 }
