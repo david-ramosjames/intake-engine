@@ -43,10 +43,28 @@ export function resolveNext(
   if (current?.advanceTo && def.pages.some((p) => p.id === current.advanceTo)) {
     return current.advanceTo;
   }
-  const pages = visiblePages(def, answers);
-  const idx = pages.findIndex((p) => p.id === currentPageId);
-  if (idx === -1) return pages[0]?.id ?? null;
-  return pages[idx + 1]?.id ?? null;
+  return nextVisibleInOrder(def, currentPageId, answers);
+}
+
+/**
+ * The next visible page after `currentPageId` in document order.
+ *
+ * Normally this is the following entry in the visible-pages list. But a page can
+ * hide *itself* once answered — e.g. a contact page shown only `{ empty: full_name }`
+ * disappears from the visible set the moment its own name field is filled. When
+ * that happens the current page is no longer in the visible list, so we fall back
+ * to the full page order and return the first still-visible page after it (rather
+ * than restarting at the first page, which would bounce the visitor to the start).
+ */
+function nextVisibleInOrder(def: JourneyDefinition, currentPageId: string, answers: Answers): string | null {
+  const visible = visiblePages(def, answers);
+  const idx = visible.findIndex((p) => p.id === currentPageId);
+  if (idx !== -1) return visible[idx + 1]?.id ?? null;
+  const allIdx = def.pages.findIndex((p) => p.id === currentPageId);
+  for (let i = allIdx + 1; i < def.pages.length; i++) {
+    if (isPageVisible(def.pages[i]!, def, answers)) return def.pages[i]!.id;
+  }
+  return null;
 }
 
 /** Build the evaluation context: variable defaults overlaid with answers. */
@@ -95,10 +113,7 @@ export function nextPageId(currentPageId: string, def: JourneyDefinition, answer
     const target = def.pages.find((p) => p.id === current.advanceTo);
     if (target && isPageVisible(target, def, answers)) return current.advanceTo;
   }
-  const pages = visiblePages(def, answers);
-  const idx = pages.findIndex((p) => p.id === currentPageId);
-  if (idx === -1) return pages[0]?.id ?? null;
-  return pages[idx + 1]?.id ?? null;
+  return nextVisibleInOrder(def, currentPageId, answers);
 }
 
 export interface ScoreResult {
