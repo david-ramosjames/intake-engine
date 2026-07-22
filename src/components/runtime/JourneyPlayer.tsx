@@ -103,6 +103,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const [locale, setLocale] = useState<string>(languages[0]!);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Set when a lead submits successfully but the journey defines no ending page
+  // to land on — guarantees the visitor sees a thank-you, never the start form.
+  const [forcedDone, setForcedDone] = useState(false);
   const submittedRef = useRef(false);
   const sessionRef = useRef<string>("");
   const startedRef = useRef(false);
@@ -199,7 +202,8 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
   const currentId = history[history.length - 1] ?? firstId;
   const page = pages.find((p) => p.id === currentId) ?? pages[0];
-  const terminal = page ? isTerminalType(page.type) : false;
+  const terminalPage = page && isTerminalType(page.type) ? page : null;
+  const terminal = Boolean(terminalPage) || forcedDone;
 
   // Localized-text resolver bound to the current locale.
   const L = useCallback(
@@ -257,7 +261,10 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           pages.find((p) => p.type === wantType) ??
           pages.find((p) => p.type === "end") ??
           pages.find((p) => isTerminalType(p.type));
+        // Land on the journey's ending screen; if it defines none, force a
+        // built-in thank-you rather than falling back to the start form.
         if (end) setHistory((h) => [...h, end.id]);
+        else setForcedDone(true);
         return;
       }
       goTo(target, ans);
@@ -615,7 +622,11 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
           }`}
         >
           {terminal ? (
-            <EndingView page={page!} L={L} onCtaClick={() => emit("cta_click")} onPhoneClick={trackPhoneClick} />
+            terminalPage ? (
+              <EndingView page={terminalPage} L={L} onCtaClick={() => emit("cta_click")} onPhoneClick={trackPhoneClick} />
+            ) : (
+              <FallbackEnding locale={locale} />
+            )
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-5 md:space-y-3">
               <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 md:gap-y-3">
@@ -1797,6 +1808,23 @@ function Banner({
           <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="shrink-0" compact />
         </div>
       </div>
+    </div>
+  );
+}
+
+// Built-in confirmation shown only when a lead submits successfully but the
+// journey defines no ending page. A safety net so a completed visitor is never
+// dropped back on the start form.
+function FallbackEnding({ locale }: { locale: string }) {
+  const es = locale?.toLowerCase().startsWith("es");
+  const title = es ? "Gracias — hemos recibido tu información." : "Thank you — we've got your information.";
+  const body = es
+    ? "Un miembro de nuestro equipo se pondrá en contacto contigo en breve."
+    : "A team member will reach out shortly.";
+  return (
+    <div className="animate-fade-up space-y-6">
+      <h1 className="whitespace-pre-line text-3xl font-semibold sm:text-4xl">{title}</h1>
+      <p className="text-lg leading-relaxed opacity-70">{body}</p>
     </div>
   );
 }
