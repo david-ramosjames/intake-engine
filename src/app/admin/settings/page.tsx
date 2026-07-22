@@ -147,6 +147,7 @@ export default async function Settings() {
               accountId: cr?.accountId ?? "",
               companyId: cr?.companyId ?? "",
               formId: cr?.formId ?? "",
+              swapUrl: cr?.swapUrl ?? "",
               hasKey: Boolean(cr?.apiKey),
             }}
           />

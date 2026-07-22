@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CallRailScript } from "@/components/runtime/CallRailScript";
 import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
 import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
@@ -42,10 +43,11 @@ export default async function Home({
       if (source) attribution.source = source;
       if (campaign) attribution.campaign = campaign;
       if (medium) attribution.medium = medium;
-      const { gtmId } = await getPublicSiteConfig(custom.org.id);
+      const { gtmId, callRailSwapUrl } = await getPublicSiteConfig(custom.org.id);
       return (
         <>
           <GoogleTagManager gtmId={gtmId} />
+          <CallRailScript src={callRailSwapUrl} />
           <JourneyPlayer slug={journey.slug} definition={journey.definition} attribution={attribution} />
         </>
       );

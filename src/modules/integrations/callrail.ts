@@ -13,6 +13,10 @@ export interface CallRailConfig {
   companyId?: string; // numeric, e.g. "984308652"
   apiKey?: string;
   formId?: string; // optional label to group submissions in CallRail
+  // Dynamic Number Insertion (call tracking): the CallRail swap.js snippet URL,
+  // e.g. "//cdn.callrail.com/companies/<companyId>/<key>/12/swap.js". Independent
+  // of the form-submission fields above and injected on the public journey pages.
+  swapUrl?: string;
 }
 
 /** Read + shape the CallRail config from an org's settings blob. */
@@ -20,6 +24,25 @@ export function callRailConfig(settings: Record<string, unknown> | undefined): C
   const c = settings?.callrail;
   if (!c || typeof c !== "object") return null;
   return c as CallRailConfig;
+}
+
+/**
+ * The CallRail Dynamic Number Insertion (swap.js) script URL to load on public
+ * pages, normalized to https. Returns undefined when call tracking isn't set up.
+ */
+export function callRailSwapScriptUrl(config: CallRailConfig | null): string | undefined {
+  let raw = config?.swapUrl?.trim();
+  if (!raw) return undefined;
+  // Accept a pasted full <script … src="…"> tag: pull the URL out.
+  const srcMatch = raw.match(/src\s*=\s*["']([^"']+)["']/i);
+  if (srcMatch) raw = srcMatch[1]!.trim();
+  // Only ever load a CallRail swap.js over https; ignore anything that doesn't
+  // look like a URL to a swap script (defensive — this goes into a <script src>).
+  if (!/\bswap\.js\b/.test(raw)) return undefined;
+  if (raw.startsWith("//")) return `https:${raw}`;
+  if (raw.startsWith("http://")) return `https://${raw.slice(7)}`;
+  if (raw.startsWith("https://")) return raw;
+  return `https://${raw}`;
 }
 
 export function callRailReady(c: CallRailConfig | null): c is CallRailConfig {

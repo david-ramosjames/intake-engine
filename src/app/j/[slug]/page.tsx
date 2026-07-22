@@ -4,6 +4,7 @@
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { CallRailScript } from "@/components/runtime/CallRailScript";
 import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
 import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
@@ -57,11 +58,12 @@ export default async function JourneyRuntimePage({
   attribution.org = org.slug; // so the submit endpoint resolves the same tenant
   attribution.firm = org.name; // logo fallback text
 
-  const { gtmId } = await getPublicSiteConfig(org.id);
+  const { gtmId, callRailSwapUrl } = await getPublicSiteConfig(org.id);
 
   return (
     <>
       <GoogleTagManager gtmId={gtmId} />
+      <CallRailScript src={callRailSwapUrl} />
       <JourneyPlayer slug={journey.slug} definition={journey.definition} attribution={attribution} />
     </>
   );

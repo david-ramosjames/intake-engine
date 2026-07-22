@@ -30,6 +30,7 @@ export async function GET() {
       accountId: cfg?.accountId ?? "",
       companyId: cfg?.companyId ?? "",
       formId: cfg?.formId ?? "",
+      swapUrl: cfg?.swapUrl ?? "",
       hasKey: Boolean(cfg?.apiKey),
     },
   });
@@ -40,6 +41,7 @@ const bodySchema = z.object({
   accountId: z.string().optional(),
   companyId: z.string().optional(),
   formId: z.string().optional(),
+  swapUrl: z.string().optional(), // CallRail DNI (swap.js) URL for call tracking
   apiKey: z.string().optional(), // blank/absent = keep the existing key
 });
 
@@ -63,6 +65,7 @@ export async function PUT(req: NextRequest) {
     accountId: (parsed.data.accountId ?? existing.accountId ?? "").trim(),
     companyId: (parsed.data.companyId ?? existing.companyId ?? "").trim(),
     formId: (parsed.data.formId ?? existing.formId ?? "").trim() || undefined,
+    swapUrl: (parsed.data.swapUrl ?? existing.swapUrl ?? "").trim() || undefined,
     // Only overwrite the key when a new non-empty value is supplied.
     apiKey: parsed.data.apiKey && parsed.data.apiKey.trim() ? parsed.data.apiKey.trim() : existing.apiKey,
   };
@@ -75,6 +78,7 @@ export async function PUT(req: NextRequest) {
       accountId: next.accountId,
       companyId: next.companyId,
       formId: next.formId ?? "",
+      swapUrl: next.swapUrl ?? "",
       hasKey: Boolean(next.apiKey),
     },
   });

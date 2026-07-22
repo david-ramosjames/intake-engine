@@ -6,6 +6,7 @@
 
 import { cache } from "react";
 import { headers } from "next/headers";
+import { callRailConfig, callRailSwapScriptUrl } from "@/modules/integrations/callrail";
 import { getPrisma, hasDatabase } from "./db";
 import { store } from "./store";
 import type { StoredOrg } from "./store/types";
@@ -44,11 +45,12 @@ export const resolveCustomDomain = cache(async function resolveCustomDomain(): P
 // request so the page render doesn't add an extra round-trip.
 export const getPublicSiteConfig = cache(async function getPublicSiteConfig(
   orgId: string,
-): Promise<{ gtmId?: string }> {
+): Promise<{ gtmId?: string; callRailSwapUrl?: string }> {
   const settings = await store.getOrgSettings(orgId);
   const gtm = settings.gtm as { containerId?: string } | undefined;
   const gtmId = gtm?.containerId?.trim();
-  return { gtmId: gtmId || undefined };
+  const callRailSwapUrl = callRailSwapScriptUrl(callRailConfig(settings));
+  return { gtmId: gtmId || undefined, callRailSwapUrl };
 });
 
 export const resolvePublicOrg = cache(async function resolvePublicOrg(

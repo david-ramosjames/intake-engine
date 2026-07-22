@@ -12,6 +12,7 @@ type Config = {
   accountId: string;
   companyId: string;
   formId: string;
+  swapUrl: string;
   hasKey: boolean;
 };
 
@@ -23,6 +24,7 @@ export function CallRailSettings({ initial }: { initial: Config }) {
   const [accountId, setAccountId] = useState(initial.accountId);
   const [companyId, setCompanyId] = useState(initial.companyId);
   const [formId, setFormId] = useState(initial.formId);
+  const [swapUrl, setSwapUrl] = useState(initial.swapUrl);
   const [apiKey, setApiKey] = useState(""); // blank = keep existing
   const [hasKey, setHasKey] = useState(initial.hasKey);
   const [busy, setBusy] = useState(false);
@@ -36,7 +38,7 @@ export function CallRailSettings({ initial }: { initial: Config }) {
       const res = await fetch("/api/admin/integrations/callrail", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled, accountId, companyId, formId, apiKey: apiKey || undefined }),
+        body: JSON.stringify({ enabled, accountId, companyId, formId, swapUrl, apiKey: apiKey || undefined }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error ?? "Could not save.");
@@ -125,6 +127,32 @@ export function CallRailSettings({ initial }: { initial: Config }) {
         />,
         <>Optional label to group these submissions in CallRail&apos;s UI.</>,
       )}
+
+      {/* Separate feature: Dynamic Number Insertion (call tracking). Independent
+          of the form-submission fields above — it only needs the swap.js URL. */}
+      <div className="border-t border-gray-100 pt-4">
+        <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Call tracking (optional)</div>
+        <p className="mt-1 mb-3 text-xs text-gray-400">
+          Loads CallRail&apos;s Dynamic Number Insertion script on your journey pages so phone calls get a tracking
+          number and are attributed to their source. This is separate from the form capture above — it doesn&apos;t use
+          the API key. In CallRail, make sure your journey&apos;s phone number is set as a swap target.
+        </p>
+        {field(
+          "CallRail swap.js URL",
+          <input
+            className={`${input} w-full`}
+            placeholder="//cdn.callrail.com/companies/984308652/…/12/swap.js"
+            value={swapUrl}
+            onChange={(e) => setSwapUrl(e.target.value)}
+          />,
+          <>
+            CallRail → Settings → Integrations → <strong>JavaScript Snippet</strong>. Paste the <code>src</code> URL from
+            the snippet (or the whole <code>&lt;script&gt;</code> tag — we&apos;ll pull the URL out). Leave blank to turn
+            call tracking off.
+          </>,
+          "https://support.callrail.com/hc/en-us/articles/201721993",
+        )}
+      </div>
 
       <div className="flex items-center gap-3">
         <button
