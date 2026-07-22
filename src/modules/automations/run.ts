@@ -51,7 +51,11 @@ function summary(ctx: Ctx): string {
 async function runSlack(action: SlackAction, ctx: Ctx): Promise<void> {
   const url = action.webhookUrl?.trim();
   if (!url) return;
-  const text = renderTemplate(action.message, ctx).trim() || summary(ctx);
+  let text = renderTemplate(action.message, ctx).trim() || summary(ctx);
+  // Always include the visitor's message, even when the configured template
+  // doesn't reference {{description}} (append only if not already present).
+  const msg = ctx.description?.trim();
+  if (msg && !text.includes(msg)) text += `\n💬 Message: ${msg}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },

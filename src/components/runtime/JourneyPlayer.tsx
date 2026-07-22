@@ -102,6 +102,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
   const [history, setHistory] = useState<string[]>([firstId]);
   const [locale, setLocale] = useState<string>(languages[0]!);
   const [error, setError] = useState<string | null>(null);
+  // The desktop callback card has its own error slot so a card validation
+  // message shows only at the card, not also in the main CTA error line.
+  const [cbError, setCbError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Set when a lead submits successfully but the journey defines no ending page
   // to land on — guarantees the visitor sees a thank-you, never the start form.
@@ -302,6 +305,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
     markStarted();
     setAnswers((a) => ({ ...a, [key]: value }));
     setError(null);
+    setCbError(null);
   }
 
   function onContinue() {
@@ -705,7 +709,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                   definition={definition}
                   theme={theme}
                   L={L}
-                  error={error}
+                  error={cbError}
                   onField={(key, v) => set(key, v)}
                   onSubmit={() => {
                     // "Request callback" is an explicit completion: validate the
@@ -716,11 +720,11 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
                       if (!c.key || !c.validation?.required) continue;
                       const v = answers[c.key];
                       if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) {
-                        setError(`Please answer: ${L(tk.label(c.id), c.label) || c.key}`);
+                        setCbError(`Please answer: ${L(tk.label(c.id), c.label) || c.key}`);
                         return;
                       }
                     }
-                    setError(null);
+                    setCbError(null);
                     trackFormSubmit();
                     void finishLead(answers);
                   }}

@@ -163,7 +163,9 @@ function AutomationForm({
       "You have a new lead from {{journey}}.\n\nName: {{name}}\nPhone: {{phone}}\nEmail: {{email}}\nMessage: {{description}}",
   );
   const [webhookUrl, setWebhookUrl] = useState(existingSlack?.webhookUrl ?? "");
-  const [message, setMessage] = useState(existingSlack?.message ?? "🚨 New lead from {{journey}} — {{name}} ({{phone}})");
+  const [message, setMessage] = useState(
+    existingSlack?.message ?? "🚨 New lead from {{journey}} — {{name}} ({{phone}})\n💬 {{description}}",
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
