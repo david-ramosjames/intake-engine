@@ -22,7 +22,9 @@ export default async function Settings() {
 
   const settings = await store.getOrgSettings(org.id);
   const cr = callRailConfig(settings);
-  const gtmContainerId = ((settings.gtm as { containerId?: string } | undefined)?.containerId ?? "").trim();
+  const gtm = settings.gtm as { containerId?: string; ga4Id?: string } | undefined;
+  const gtmContainerId = (gtm?.containerId ?? "").trim();
+  const gtmGa4Id = (gtm?.ga4Id ?? "").trim();
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -71,19 +73,41 @@ export default async function Settings() {
           in GTM.)
         </p>
         <div className="mt-5">
-          <GtmSettings initialContainerId={gtmContainerId} />
+          <GtmSettings initialContainerId={gtmContainerId} initialGa4Id={gtmGa4Id} />
         </div>
-        <div className="mt-5 border-t border-gray-100 pt-4">
+
+        <div className="mt-6 border-t border-gray-100 pt-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-            dataLayer events (build Custom Event triggers on these)
+            One-click event setup (import into GTM)
           </div>
           <p className="mt-1 text-xs text-gray-400">
-            The journey pages push these to the dataLayer. In each business&apos;s GTM container, add a Custom Event
-            trigger with the matching Event name, then attach your GA4 event / Google Ads conversion tag.
+            The <strong>Download GTM setup</strong> button above generates a container file tailored to this business.
+            Importing it creates a Custom Event trigger and a GA4 event tag for all five events at once.
           </p>
+          <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-gray-600">
+            <li>Enter your Container ID and GA4 Measurement ID above and click <strong>Save</strong>.</li>
+            <li>Click <strong>Download GTM setup (.json)</strong>.</li>
+            <li>
+              In Tag Manager, open the container → <strong>Admin → Import Container</strong>. Choose the file, pick
+              the <strong>Default (or your) Workspace</strong>, and select <strong>Merge → Rename conflicting</strong>{" "}
+              (safest).
+            </li>
+            <li>Review the 5 triggers + 5 tags, then <strong>Submit / Publish</strong> the container.</li>
+          </ol>
+          <p className="mt-2 text-xs text-gray-400">
+            The import references a <code>GA4 Measurement ID</code> constant (pre-filled from the field above). To also
+            fire Google Ads conversions, add your Ads conversion tag on the same triggers.
+          </p>
+        </div>
+
+        <div className="mt-5 border-t border-gray-100 pt-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Events these pages push (for reference)
+          </div>
           <dl className="mt-3 space-y-1.5 text-sm">
             {[
-              ["consult_flow_open", "Consult flow opened (landing page viewed)"],
+              ["consult_flow_open", "Landing page opened / viewed"],
+              ["consult_flow_start", "Visitor started interacting with the flow"],
               ["form_submission", "Landing-page callback form submitted"],
               ["consult_flow_complete", "Lead completed (form or guided flow)"],
               ["consult_flow_phone_click", "A call button was tapped"],
@@ -95,8 +119,8 @@ export default async function Settings() {
             ))}
           </dl>
           <p className="mt-2 text-xs text-gray-400">
-            Each event also carries a <code>journey</code> parameter (the journey slug), and{" "}
-            <code>consult_flow_complete</code> includes the <code>outcome</code>.
+            Each event carries a <code>journey</code> parameter (the journey slug); <code>consult_flow_complete</code>{" "}
+            includes the <code>outcome</code>.
           </p>
         </div>
       </div>
