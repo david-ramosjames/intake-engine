@@ -617,7 +617,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
       <section
         className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 md:py-3 ${
-          mobileHero ? "z-10 animate-card-rise -mt-4 pt-0 md:mt-0 md:animate-none md:pt-6" : ""
+          mobileHero ? "z-10 animate-card-rise -mt-1 pt-0 md:mt-0 md:animate-none md:pt-6" : ""
         }`}
       >
         {showHeader && (
