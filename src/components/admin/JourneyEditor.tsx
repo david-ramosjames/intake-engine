@@ -104,19 +104,32 @@ export function JourneyEditor({
   // the LLM. Only fills boxes that are still empty, so it never clobbers edits or
   // reviewed translations — clear a box to have it re-translated. Nothing is
   // saved; the admin reviews the filled boxes and Saves as usual.
-  async function translateToSpanish() {
+  async function translateToSpanish(overwrite = false) {
+    if (
+      overwrite &&
+      !window.confirm(
+        "Re-translate every field and replace the existing Spanish, including edits you've made? " +
+          "(Nothing is saved until you click Save, so you can still leave without keeping it.)",
+      )
+    ) {
+      return;
+    }
     setTranslating(true);
     setXlateMsg(null);
     try {
-      const missing = collectStrings(def).filter((s) => !(def.i18n?.es?.[s.key] ?? "").trim());
-      if (missing.length === 0) {
-        setXlateMsg({ kind: "ok", msg: "Every field already has Spanish text. Clear a box to re-translate it." });
+      const all = collectStrings(def);
+      const items = overwrite ? all : all.filter((s) => !(def.i18n?.es?.[s.key] ?? "").trim());
+      if (items.length === 0) {
+        setXlateMsg({
+          kind: "ok",
+          msg: "Every field already has Spanish. Clear a box to re-translate it, or use Re-translate all.",
+        });
         return;
       }
       const res = await fetch(`/api/admin/journeys/${slug}/translate`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ targetLocale: "es", items: missing }),
+        body: JSON.stringify({ targetLocale: "es", items }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error ?? "Translation failed.");
@@ -129,7 +142,9 @@ export function JourneyEditor({
       });
       setXlateMsg({
         kind: "ok",
-        msg: `Translated ${entries.length} field${entries.length === 1 ? "" : "s"} — review below, then Save.`,
+        msg: `Translated ${entries.length} field${entries.length === 1 ? "" : "s"}${
+          overwrite ? " (overwritten)" : ""
+        } — review below, then Save.`,
       });
     } catch (e) {
       setXlateMsg({ kind: "err", msg: e instanceof Error ? e.message : "Translation failed." });
@@ -1197,14 +1212,23 @@ export function JourneyEditor({
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
                 type="button"
-                onClick={translateToSpanish}
+                onClick={() => translateToSpanish(false)}
                 disabled={translating}
                 className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
               >
                 {translating ? "Translating…" : "✨ Auto-translate to Spanish"}
               </button>
+              <button
+                type="button"
+                onClick={() => translateToSpanish(true)}
+                disabled={translating}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+              >
+                Re-translate all (overwrite)
+              </button>
               <span className="text-xs text-gray-400">
-                Fills empty Spanish boxes with AI. Review &amp; edit each, then Save.
+                First button fills only empty boxes; &ldquo;Re-translate all&rdquo; replaces every one. Review &amp;
+                edit, then Save.
               </span>
               {xlateMsg && (
                 <span className={`text-xs ${xlateMsg.kind === "ok" ? "text-green-600" : "text-red-600"}`}>
