@@ -551,7 +551,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
       {/* Mobile hero — attorney photo with the logo and name over it; it fades
           into the page so the content flows on one surface (no floating card). */}
       {mobileHero && (
-        <div className="relative h-[56vh] w-full shrink-0 overflow-hidden md:hidden">
+        <div className="relative h-[56dvh] w-full shrink-0 overflow-hidden md:hidden">
           <div className="absolute inset-0 animate-hero-zoom bg-center" style={heroBgStyle} />
           {/* Left scrim for the name — darkens the left, fully clear before the
               center so the attorney's face (right) is never covered. */}
@@ -617,7 +617,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
       <section
         className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 md:py-3 ${
-          mobileHero ? "z-10 animate-card-rise md:animate-none" : ""
+          mobileHero ? "z-10 animate-card-rise -mt-4 pt-0 md:mt-0 md:animate-none md:pt-6" : ""
         }`}
       >
         {showHeader && (
@@ -631,7 +631,7 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
         <div
           className={`mx-auto flex w-full max-w-2xl flex-1 flex-col py-4 md:py-2 md:justify-center ${
-            mobileHero ? "justify-start pt-1" : "justify-center"
+            mobileHero ? "justify-start pt-0" : "justify-center"
           }`}
         >
           {terminal ? (
@@ -641,8 +641,8 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
               <FallbackEnding locale={locale} />
             )
           ) : (
-            <div key={page?.id} className="animate-fade-up space-y-5 md:space-y-3">
-              <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 md:gap-y-3">
+            <div key={page?.id} className="animate-fade-up space-y-4 md:space-y-3">
+              <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2 md:gap-y-3">
                 {mainComps.map((c) => {
                   const isChoice = soleChoice && c.id === soleChoice.id;
                   // Compact inputs (name, phone, email…) share a row two-up on
