@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Component, JourneyDefinition, Page } from "@/modules/journeys/domain/schema";
 import { tk } from "@/modules/journeys/domain/i18n";
+import { collectStrings } from "@/modules/journeys/domain/strings";
 import { DeleteJourneyButton } from "@/components/admin/DeleteJourneyButton";
 
 const OPTION_TYPES = new Set(["singleSelect", "radio", "dropdown", "multiSelect", "checkbox"]);
@@ -47,6 +48,8 @@ export function JourneyEditor({
   const [def, setDef] = useState<JourneyDefinition>(() => clone(initial));
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [xlateMsg, setXlateMsg] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
 
   function mutate(fn: (d: JourneyDefinition) => void) {
     setDef((prev) => {
@@ -94,6 +97,44 @@ export function JourneyEditor({
       setStatus({ kind: "err", msg: e instanceof Error ? e.message : "Save failed." });
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Auto-fill the Spanish (i18n.es) entries from the current English content via
+  // the LLM. Only fills boxes that are still empty, so it never clobbers edits or
+  // reviewed translations — clear a box to have it re-translated. Nothing is
+  // saved; the admin reviews the filled boxes and Saves as usual.
+  async function translateToSpanish() {
+    setTranslating(true);
+    setXlateMsg(null);
+    try {
+      const missing = collectStrings(def).filter((s) => !(def.i18n?.es?.[s.key] ?? "").trim());
+      if (missing.length === 0) {
+        setXlateMsg({ kind: "ok", msg: "Every field already has Spanish text. Clear a box to re-translate it." });
+        return;
+      }
+      const res = await fetch(`/api/admin/journeys/${slug}/translate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ targetLocale: "es", items: missing }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Translation failed.");
+      const translations = (data.translations ?? {}) as Record<string, string>;
+      const entries = Object.entries(translations).filter(([, v]) => v && v.trim());
+      mutate((d) => {
+        d.i18n ??= {};
+        d.i18n.es ??= {};
+        for (const [k, v] of entries) d.i18n.es[k] = v;
+      });
+      setXlateMsg({
+        kind: "ok",
+        msg: `Translated ${entries.length} field${entries.length === 1 ? "" : "s"} — review below, then Save.`,
+      });
+    } catch (e) {
+      setXlateMsg({ kind: "err", msg: e instanceof Error ? e.message : "Translation failed." });
+    } finally {
+      setTranslating(false);
     }
   }
 
@@ -1151,6 +1192,27 @@ export function JourneyEditor({
             />
             Enable Spanish (adds an EN/ES toggle for visitors and a Spanish box under each text)
           </label>
+
+          {esEnabled && (
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={translateToSpanish}
+                disabled={translating}
+                className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+              >
+                {translating ? "Translating…" : "✨ Auto-translate to Spanish"}
+              </button>
+              <span className="text-xs text-gray-400">
+                Fills empty Spanish boxes with AI. Review &amp; edit each, then Save.
+              </span>
+              {xlateMsg && (
+                <span className={`text-xs ${xlateMsg.kind === "ok" ? "text-green-600" : "text-red-600"}`}>
+                  {xlateMsg.msg}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
