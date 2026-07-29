@@ -59,10 +59,13 @@ export function DomainsManager({
     <div className="space-y-6">
       {/* How it works */}
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-gray-600">
-        <span className="font-semibold text-gray-800">How this works:</span> each domain shows{" "}
-        <span className="font-medium">one journey</span>. Connect a domain, pick which journey it should open, and
-        visitors who go to that domain land straight on it — no <code className="rounded bg-white px-1">/j/…</code>{" "}
-        link needed. Connect a separate domain for each journey you want to give its own URL.
+        <span className="font-semibold text-gray-800">How this works:</span> connect{" "}
+        <span className="font-medium">one domain for your firm</span> (e.g.{" "}
+        <code className="rounded bg-white px-1">start.yourfirm.com</code>). Every published journey is then served at
+        its own path — <code className="rounded bg-white px-1">/car</code>,{" "}
+        <code className="rounded bg-white px-1">/slip-and-fall</code>, etc. The journey you pick below is the default
+        shown at the domain root (<code className="rounded bg-white px-1">/</code>). Add{" "}
+        <code className="rounded bg-white px-1">?lang=es</code> for Spanish (or let the visitor&apos;s browser decide).
       </div>
 
       {/* Connected domains */}
@@ -88,23 +91,33 @@ export function DomainsManager({
                     {d.hostname}
                   </a>
                   <div className="text-xs text-gray-500">
-                    Serves: {journeyName(d.journeyId) ?? "First published journey"}
+                    Default (<code className="rounded bg-gray-50 px-1 font-mono">/</code>):{" "}
+                    {journeyName(d.journeyId) ?? "First published journey"}
                   </div>
-                  {/* Language landing URLs — use the Spanish one for Spanish ad
-                      campaigns so the page opens in Spanish. */}
-                  <div className="mt-2 space-y-1">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="inline-block w-16 shrink-0 text-gray-400">English</span>
-                      <code className="truncate rounded bg-gray-50 px-1.5 py-0.5 font-mono text-gray-600">
-                        https://{d.hostname}/
-                      </code>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="inline-block w-16 shrink-0 text-gray-400">Spanish</span>
-                      <code className="truncate rounded bg-gray-50 px-1.5 py-0.5 font-mono text-gray-600">
-                        https://{d.hostname}/?lang=es
-                      </code>
-                    </div>
+                  {/* Per-journey path URLs (English + Spanish) — use these as the
+                      final URLs in Google Ads; the Spanish one opens in Spanish. */}
+                  <div className="mt-2">
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Journey URLs</div>
+                    {journeys.length === 0 ? (
+                      <div className="mt-1 text-xs text-gray-400">No published journeys yet.</div>
+                    ) : (
+                      <div className="mt-1 space-y-1">
+                        {journeys.map((j) => (
+                          <div key={j.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                            <span className="w-28 shrink-0 truncate font-medium text-gray-600" title={j.name}>
+                              {j.name}
+                            </span>
+                            <code className="rounded bg-gray-50 px-1.5 py-0.5 font-mono text-gray-600">
+                              https://{d.hostname}/{j.slug}
+                            </code>
+                            <span className="text-gray-300">·</span>
+                            <code className="rounded bg-gray-50 px-1.5 py-0.5 font-mono text-gray-600">
+                              /{j.slug}?lang=es
+                            </code>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button

@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
-import { CallRailScript } from "@/components/runtime/CallRailScript";
-import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
-import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
-import { localeFromAcceptLanguage, localeFromParam } from "@/modules/journeys/domain/i18n";
-import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
+import { JourneyRuntime } from "@/components/runtime/JourneyRuntime";
+import { journeyMetadata } from "@/modules/journeys/og";
 import { getAdminOrg } from "@/server/currentOrg";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store } from "@/server/store";
-import { getPublicSiteConfig, resolveCustomDomain } from "@/server/tenant";
+import { resolveCustomDomain } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -30,38 +26,13 @@ export default async function Home({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // On a connected custom domain, the root serves that domain's journey.
+  // On a connected firm domain, the root serves that domain's default journey.
   const custom = await resolveCustomDomain();
   if (custom?.journeySlug) {
     const journey = await getPublishedJourneyCached(custom.org.id, custom.journeySlug);
     if (journey && journey.status === "PUBLISHED") {
-      preloadHero(journey.definition);
       const sp = await searchParams;
-      const pick = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
-      const attribution: Record<string, string> = { org: custom.org.slug, firm: custom.org.name };
-      const source = pick("utm_source") ?? pick("source");
-      const campaign = pick("utm_campaign") ?? pick("campaign");
-      const medium = pick("utm_medium") ?? pick("medium");
-      if (source) attribution.source = source;
-      if (campaign) attribution.campaign = campaign;
-      if (medium) attribution.medium = medium;
-      const { gtmId, callRailSwapUrl } = await getPublicSiteConfig(custom.org.id);
-      const languages = journey.definition.languages ?? ["en"];
-      const initialLocale =
-        localeFromParam(pick("lang") ?? pick("hl") ?? pick("locale"), languages) ??
-        localeFromAcceptLanguage((await headers()).get("accept-language"), languages);
-      return (
-        <>
-          <GoogleTagManager gtmId={gtmId} />
-          <CallRailScript src={callRailSwapUrl} />
-          <JourneyPlayer
-            slug={journey.slug}
-            definition={journey.definition}
-            attribution={attribution}
-            initialLocale={initialLocale}
-          />
-        </>
-      );
+      return <JourneyRuntime org={custom.org} slug={journey.slug} searchParams={sp} />;
     }
   }
 
