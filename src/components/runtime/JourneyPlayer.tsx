@@ -23,6 +23,9 @@ interface Props {
   slug: string;
   definition: JourneyDefinition;
   attribution?: Record<string, string>;
+  // Starting language (e.g. from a ?lang=es ad URL). Falls back to the journey's
+  // default when unset or not an available language.
+  initialLocale?: string;
 }
 
 type Outcome = "lead" | "referral" | "declined";
@@ -92,7 +95,7 @@ function collectContext(): Record<string, string> {
   return ctx;
 }
 
-export function JourneyPlayer({ slug, definition, attribution }: Props) {
+export function JourneyPlayer({ slug, definition, attribution, initialLocale }: Props) {
   const pages = definition.pages;
   const theme = definition.theme ?? {};
   const firstId = pages[0]?.id ?? "";
@@ -100,7 +103,9 @@ export function JourneyPlayer({ slug, definition, attribution }: Props) {
 
   const [answers, setAnswers] = useState<Answers>({});
   const [history, setHistory] = useState<string[]>([firstId]);
-  const [locale, setLocale] = useState<string>(languages[0]!);
+  const [locale, setLocale] = useState<string>(
+    initialLocale && languages.includes(initialLocale) ? initialLocale : languages[0]!,
+  );
   const [error, setError] = useState<string | null>(null);
   // The desktop callback card has its own error slot so a card validation
   // message shows only at the card, not also in the main CTA error line.

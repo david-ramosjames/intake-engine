@@ -46,6 +46,17 @@ export const tk = {
   reviewText: (index: number) => `reviews:${index}:text`,
 };
 
+/**
+ * Resolve a starting locale from a URL value (e.g. ?lang=es on a Spanish ad's
+ * final URL). Normalizes region tags ("es-MX" → "es") and only returns a locale
+ * the journey actually offers; otherwise undefined (caller uses the default).
+ */
+export function localeFromParam(value: string | undefined, languages: string[]): string | undefined {
+  if (!value) return undefined;
+  const norm = value.trim().toLowerCase().split(/[-_]/)[0];
+  return languages.find((l) => l.toLowerCase() === norm);
+}
+
 /** Resolve a piece of text for a locale, falling back to the base value. */
 export function localize(
   def: Pick<JourneyDefinition, "i18n">,
