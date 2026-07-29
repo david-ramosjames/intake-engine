@@ -182,6 +182,13 @@ export const prismaStore: PlatformStore = {
     const journey = await prisma.journey.findFirst({ where: { organizationId: orgId, slug } });
     if (!journey) throw new Error("Journey not found.");
 
+    if (input.slug && input.slug !== journey.slug) {
+      const clash = await prisma.journey.findFirst({
+        where: { organizationId: orgId, slug: input.slug, NOT: { id: journey.id } },
+      });
+      if (clash) throw new Error("That URL path is already used by another journey.");
+    }
+
     // Editing never mutates a published version — create the next version and
     // pin it as published.
     const latest = await prisma.journeyVersion.findFirst({
@@ -202,6 +209,7 @@ export const prismaStore: PlatformStore = {
       data: {
         name: input.name ?? journey.name,
         description: input.description ?? journey.description,
+        slug: input.slug ?? journey.slug,
         publishedVersionId: version.id,
         status: "PUBLISHED",
       },

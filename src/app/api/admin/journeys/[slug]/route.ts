@@ -13,8 +13,21 @@ import { store } from "@/server/store";
 const bodySchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
+  slug: z.string().optional(),
   definition: journeyDefinitionSchema,
 });
+
+// Paths that collide with app routes and can't be used as a journey slug.
+const RESERVED_SLUGS = new Set(["admin", "api", "j", "login", "favicon.ico", "robots.txt", "sitemap.xml", "_next"]);
+
+function normalizeSlug(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -45,12 +58,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
   const existing = await store.getJourney(org.id, slug);
   if (!existing) return NextResponse.json({ ok: false, error: "Journey not found." }, { status: 404 });
 
-  await store.updateJourney(org.id, slug, {
-    name: parsed.data.name,
-    description: parsed.data.description,
-    definition: parsed.data.definition,
-  });
+  // Resolve an optional slug (URL path) change.
+  let newSlug: string | undefined;
+  if (parsed.data.slug !== undefined) {
+    const norm = normalizeSlug(parsed.data.slug);
+    if (!norm) return NextResponse.json({ ok: false, error: "Enter a valid URL path." }, { status: 400 });
+    if (RESERVED_SLUGS.has(norm)) {
+      return NextResponse.json({ ok: false, error: `"${norm}" is reserved — pick another path.` }, { status: 400 });
+    }
+    if (norm !== slug) newSlug = norm;
+  }
+
+  try {
+    await store.updateJourney(org.id, slug, {
+      name: parsed.data.name,
+      description: parsed.data.description,
+      slug: newSlug,
+      definition: parsed.data.definition,
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Could not save." },
+      { status: 409 },
+    );
+  }
 
   revalidateJourney(org.id, slug);
-  return NextResponse.json({ ok: true });
+  if (newSlug) revalidateJourney(org.id, newSlug);
+  return NextResponse.json({ ok: true, slug: newSlug ?? slug });
 }

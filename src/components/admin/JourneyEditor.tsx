@@ -46,6 +46,7 @@ export function JourneyEditor({
 }) {
   const router = useRouter();
   const [def, setDef] = useState<JourneyDefinition>(() => clone(initial));
+  const [slugDraft, setSlugDraft] = useState(slug);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
   const [translating, setTranslating] = useState(false);
@@ -87,12 +88,14 @@ export function JourneyEditor({
       const res = await fetch(`/api/admin/journeys/${slug}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: def.name, definition: def }),
+        body: JSON.stringify({ name: def.name, slug: slugDraft, definition: def }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error ?? "Save failed.");
       setStatus({ kind: "ok", msg: "Saved." });
-      router.refresh();
+      // A slug change moves the journey's admin URL — follow it.
+      if (data.slug && data.slug !== slug) router.replace(`/admin/journeys/${data.slug}/edit`);
+      else router.refresh();
     } catch (e) {
       setStatus({ kind: "err", msg: e instanceof Error ? e.message : "Save failed." });
     } finally {
@@ -366,6 +369,27 @@ export function JourneyEditor({
               value={def.name}
               onChange={(e) => mutate((d) => void (d.name = e.target.value))}
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">URL path</label>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-gray-400">yourfirm.com /</span>
+              <input
+                className={`${input} max-w-xs`}
+                value={slugDraft}
+                placeholder="car"
+                onChange={(e) => {
+                  setSlugDraft(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-"));
+                  setStatus(null);
+                }}
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              This journey&apos;s public URL is{" "}
+              <code className="rounded bg-gray-50 px-1 font-mono">/{slugDraft || "…"}</code> (Spanish:{" "}
+              <code className="rounded bg-gray-50 px-1 font-mono">/{slugDraft || "…"}?lang=es</code>). Lowercase letters,
+              numbers, and hyphens. Changing it changes the live link.
+            </p>
           </div>
           <div className="flex flex-wrap gap-6">
             <ColorField

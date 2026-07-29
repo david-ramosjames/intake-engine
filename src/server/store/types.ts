@@ -66,6 +66,8 @@ export interface CreateJourneyInput {
 export interface UpdateJourneyInput {
   name?: string;
   description?: string;
+  // New URL path/slug. When changed it must stay unique within the org.
+  slug?: string;
   definition: JourneyDefinition;
 }
 

@@ -169,6 +169,12 @@ export const demoStore: PlatformStore = {
     const db = await load();
     const journey = db.journeys.find((j) => j.orgId === orgId && j.slug === slug);
     if (!journey) throw new Error("Journey not found.");
+    if (input.slug !== undefined && input.slug !== journey.slug) {
+      if (db.journeys.some((j) => j.orgId === orgId && j.slug === input.slug && j.id !== journey.id)) {
+        throw new Error("That URL path is already used by another journey.");
+      }
+      journey.slug = input.slug;
+    }
     if (input.name !== undefined) journey.name = input.name;
     if (input.description !== undefined) journey.description = input.description;
     journey.definition = input.definition;
