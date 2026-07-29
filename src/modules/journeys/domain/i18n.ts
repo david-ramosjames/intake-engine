@@ -57,6 +57,34 @@ export function localeFromParam(value: string | undefined, languages: string[]):
   return languages.find((l) => l.toLowerCase() === norm);
 }
 
+/**
+ * Resolve a starting locale from the browser's Accept-Language header — used as a
+ * fallback when no ?lang param is present, so a Spanish-preferring browser opens
+ * the journey in Spanish. Returns undefined when none of the browser's languages
+ * are offered (caller uses the journey default).
+ */
+export function localeFromAcceptLanguage(
+  header: string | null | undefined,
+  languages: string[],
+): string | undefined {
+  if (!header) return undefined;
+  const ranked = header
+    .split(",")
+    .map((part) => {
+      const [tag, ...params] = part.trim().split(";");
+      const q = params.find((p) => p.trim().startsWith("q="));
+      const weight = q ? Number.parseFloat(q.split("=")[1] ?? "1") : 1;
+      return { base: (tag ?? "").trim().toLowerCase().split(/[-_]/)[0], weight: Number.isNaN(weight) ? 1 : weight };
+    })
+    .filter((x) => x.base)
+    .sort((a, b) => b.weight - a.weight);
+  for (const { base } of ranked) {
+    const match = languages.find((l) => l.toLowerCase() === base);
+    if (match) return match;
+  }
+  return undefined;
+}
+
 /** Resolve a piece of text for a locale, falling back to the base value. */
 export function localize(
   def: Pick<JourneyDefinition, "i18n">,

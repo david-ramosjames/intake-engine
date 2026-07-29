@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { CallRailScript } from "@/components/runtime/CallRailScript";
 import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
-import { localeFromParam } from "@/modules/journeys/domain/i18n";
+import { localeFromAcceptLanguage, localeFromParam } from "@/modules/journeys/domain/i18n";
 import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
 import { getAdminOrg } from "@/server/currentOrg";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
@@ -45,10 +46,10 @@ export default async function Home({
       if (campaign) attribution.campaign = campaign;
       if (medium) attribution.medium = medium;
       const { gtmId, callRailSwapUrl } = await getPublicSiteConfig(custom.org.id);
-      const initialLocale = localeFromParam(
-        pick("lang") ?? pick("hl") ?? pick("locale"),
-        journey.definition.languages ?? ["en"],
-      );
+      const languages = journey.definition.languages ?? ["en"];
+      const initialLocale =
+        localeFromParam(pick("lang") ?? pick("hl") ?? pick("locale"), languages) ??
+        localeFromAcceptLanguage((await headers()).get("accept-language"), languages);
       return (
         <>
           <GoogleTagManager gtmId={gtmId} />

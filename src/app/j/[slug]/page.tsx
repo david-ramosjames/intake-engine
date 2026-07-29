@@ -3,11 +3,12 @@
 // player. Attribution params (utm_*) are captured for lead source analytics.
 
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { CallRailScript } from "@/components/runtime/CallRailScript";
 import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
-import { localeFromParam } from "@/modules/journeys/domain/i18n";
+import { localeFromAcceptLanguage, localeFromParam } from "@/modules/journeys/domain/i18n";
 import { journeyMetadata, preloadHero } from "@/modules/journeys/og";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { getPublicSiteConfig, resolvePublicOrg } from "@/server/tenant";
@@ -60,10 +61,10 @@ export default async function JourneyRuntimePage({
   attribution.firm = org.name; // logo fallback text
 
   const { gtmId, callRailSwapUrl } = await getPublicSiteConfig(org.id);
-  const initialLocale = localeFromParam(
-    pick("lang") ?? pick("hl") ?? pick("locale"),
-    journey.definition.languages ?? ["en"],
-  );
+  const languages = journey.definition.languages ?? ["en"];
+  const initialLocale =
+    localeFromParam(pick("lang") ?? pick("hl") ?? pick("locale"), languages) ??
+    localeFromAcceptLanguage((await headers()).get("accept-language"), languages);
 
   return (
     <>

@@ -77,7 +77,7 @@ export function DomainsManager({
         ) : (
           <ul className="divide-y divide-gray-100">
             {domains.map((d) => (
-              <li key={d.id} className="flex items-center justify-between gap-4 px-5 py-3">
+              <li key={d.id} className="flex items-start justify-between gap-4 px-5 py-3">
                 <div className="min-w-0">
                   <a
                     href={`https://${d.hostname}`}
@@ -90,6 +90,22 @@ export function DomainsManager({
                   <div className="text-xs text-gray-500">
                     Serves: {journeyName(d.journeyId) ?? "First published journey"}
                   </div>
+                  {/* Language landing URLs — use the Spanish one for Spanish ad
+                      campaigns so the page opens in Spanish. */}
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="inline-block w-16 shrink-0 text-gray-400">English</span>
+                      <code className="truncate rounded bg-gray-50 px-1.5 py-0.5 font-mono text-gray-600">
+                        https://{d.hostname}/
+                      </code>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="inline-block w-16 shrink-0 text-gray-400">Spanish</span>
+                      <code className="truncate rounded bg-gray-50 px-1.5 py-0.5 font-mono text-gray-600">
+                        https://{d.hostname}/?lang=es
+                      </code>
+                    </div>
+                  </div>
                 </div>
                 <button
                   onClick={() => remove(d.id)}
@@ -100,6 +116,15 @@ export function DomainsManager({
               </li>
             ))}
           </ul>
+        )}
+        {domains.length > 0 && (
+          <p className="border-t border-gray-100 px-5 py-3 text-xs leading-relaxed text-gray-500">
+            <span className="font-medium text-gray-700">Language:</span> the page auto-detects the visitor&apos;s
+            browser language. To force a language — e.g. for a Spanish Google Ads campaign — set the ad&apos;s final URL
+            to the <code className="rounded bg-gray-50 px-1 font-mono">?lang=es</code> link above. Use{" "}
+            <code className="rounded bg-gray-50 px-1 font-mono">?lang=en</code> to force English. Visitors can still
+            switch with the EN/ES toggle. (Requires Spanish to be enabled on the journey.)
+          </p>
         )}
       </div>
 
