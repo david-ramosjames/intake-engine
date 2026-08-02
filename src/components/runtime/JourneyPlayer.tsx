@@ -16,7 +16,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
 import { ctaHref } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
-import { isComponentVisible, isTerminalType, resolveNext, type Answers } from "@/modules/journeys/runtime/engine";
+import {
+  isComponentVisible,
+  isConvertType,
+  isTerminalType,
+  resolveNext,
+  type Answers,
+} from "@/modules/journeys/runtime/engine";
 import { Field } from "./fields";
 
 interface Props {
@@ -253,7 +259,10 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
     (id: string, ans: Answers) => {
       setHistory((h) => [...h, id]);
       const target = pageById(id);
-      if (target && isTerminalType(target.type)) void submit(ans, target.type);
+      // Terminal screens and "convert" milestones both submit the lead (firing
+      // CallRail / GA). A convert page isn't terminal, so the flow continues from
+      // its Continue button; submit() is guarded to run only once.
+      if (target && (isTerminalType(target.type) || isConvertType(target.type))) void submit(ans, target.type);
     },
     [pageById, submit],
   );
@@ -641,7 +650,16 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
         >
           {terminal ? (
             terminalPage ? (
-              <EndingView page={terminalPage} L={L} onCtaClick={() => emit("cta_click")} onPhoneClick={trackPhoneClick} />
+              terminalPage.type === "sign" ? (
+                <SignView page={terminalPage} L={L} locale={locale} slug={slug} answers={answers} />
+              ) : (
+                <EndingView
+                  page={terminalPage}
+                  L={L}
+                  onCtaClick={() => emit("cta_click")}
+                  onPhoneClick={trackPhoneClick}
+                />
+              )
             ) : (
               <FallbackEnding locale={locale} />
             )
@@ -1866,6 +1884,68 @@ function Banner({
           <LangToggle languages={languages} locale={locale} setLocale={setLocale} className="shrink-0" compact />
         </div>
       </div>
+    </div>
+  );
+}
+
+// Final "sign a contract" step. The lead was already submitted at the convert
+// milestone (or here, if there was none), so this just presents the DocuSeal
+// contract: embedded inline, or a button to open it (redirect / new tab). The
+// URL comes from the page's signing config today; a prefilled, API-created
+// submission URL can be swapped in later without changing this view.
+function SignView({
+  page,
+  L,
+  locale,
+  answers,
+}: {
+  page: Page;
+  L: Localize;
+  locale: string;
+  slug: string;
+  answers: Answers;
+}) {
+  void answers; // reserved for API-prefilled submissions
+  const signing = page.signing;
+  const mode = signing?.mode ?? "embed";
+  const url = signing?.url?.trim();
+  const es = locale === "es";
+  const label = signing?.buttonLabel || (es ? "Firmar ahora" : "Sign now");
+  return (
+    <div className="animate-fade-up space-y-6">
+      {page.components.map((c) =>
+        c.type === "heading" ? (
+          <h1 key={c.id} className="whitespace-pre-line text-3xl font-semibold sm:text-4xl">
+            {L(tk.content(c.id), c.content)}
+          </h1>
+        ) : (
+          <p key={c.id} className="text-lg leading-relaxed opacity-70">
+            {L(tk.content(c.id), c.content)}
+          </p>
+        ),
+      )}
+      {url ? (
+        mode === "embed" ? (
+          <iframe
+            src={url}
+            title="Sign your agreement"
+            className="h-[70vh] w-full rounded-xl border border-[color:color-mix(in_srgb,var(--text)_18%,transparent)] bg-white"
+          />
+        ) : (
+          <a
+            href={url}
+            target={mode === "newtab" ? "_blank" : undefined}
+            rel={mode === "newtab" ? "noopener noreferrer" : undefined}
+            className="j-cta j-cta-primary flex min-h-[3.5rem] w-full items-center justify-center rounded-[var(--radius)] text-lg font-semibold focus-ring"
+          >
+            {label}
+          </a>
+        )
+      ) : (
+        <p className="text-sm opacity-60">
+          {es ? "La firma aún no está configurada." : "Signing isn’t configured yet."}
+        </p>
+      )}
     </div>
   );
 }

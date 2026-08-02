@@ -156,7 +156,7 @@ export function JourneyEditor({
     }
   }
 
-  const terminalTypes = new Set(["review", "success", "referral", "decline", "end"]);
+  const terminalTypes = new Set(["review", "success", "referral", "decline", "end", "sign"]);
   const pageList = def.pages.map((p) => ({ id: p.id, name: p.name, type: p.type }));
 
   function addQuestion() {
@@ -196,6 +196,48 @@ export function JourneyEditor({
         components: [
           { id: `${id}-h`, type: "heading", content: "Welcome" },
           { id: `${id}-p`, type: "paragraph", content: "Answer a few quick questions to get started." },
+        ],
+      });
+    });
+  }
+
+  // A "convert" milestone: submits the lead (fires CallRail/GA) then continues.
+  // Inserted just before the first ending screen so more questions can follow.
+  function addConvert() {
+    mutate((d) => {
+      const id = `convert_${Math.random().toString(36).slice(2, 8)}`;
+      const page: Page = {
+        id: `page_${id}`,
+        name: "You may have a case",
+        type: "convert",
+        continueLabel: "Continue",
+        components: [
+          { id: `${id}-h`, type: "heading", content: "Good news — You may have a case!" },
+          {
+            id: `${id}-p`,
+            type: "paragraph",
+            content: "Let’s grab a few quick details so you can finish your sign-up.",
+          },
+        ],
+      };
+      const firstTerminal = d.pages.findIndex((p) => terminalTypes.has(p.type));
+      if (firstTerminal === -1) d.pages.push(page);
+      else d.pages.splice(firstTerminal, 0, page);
+    });
+  }
+
+  // A "sign" step: the final screen that sends the visitor into DocuSeal.
+  function addSign() {
+    mutate((d) => {
+      const id = `sign_${Math.random().toString(36).slice(2, 8)}`;
+      d.pages.push({
+        id: `page_${id}`,
+        name: "Sign agreement",
+        type: "sign",
+        signing: { mode: "embed", buttonLabel: "Sign now" },
+        components: [
+          { id: `${id}-h`, type: "heading", content: "Last step — sign your agreement." },
+          { id: `${id}-p`, type: "paragraph", content: "You’re almost done." },
         ],
       });
     });
@@ -1297,6 +1339,60 @@ export function JourneyEditor({
               </div>
             </div>
 
+            {page.type === "sign" && (
+              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Signing (DocuSeal)
+                </div>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  The lead is already captured at the milestone; this screen sends them to sign. Paste a DocuSeal link
+                  below (embed link or shareable URL). Pre-filling from the visitor&apos;s answers is set up separately
+                  with your DocuSeal API key.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500">How to open</label>
+                    <select
+                      className={`${controlBase} w-full`}
+                      value={page.signing?.mode ?? "embed"}
+                      onChange={(e) =>
+                        mutate(
+                          (d) =>
+                            void (((d.pages[pi]!.signing ??= { mode: "embed" }).mode = e.target.value as "embed" | "redirect" | "newtab")),
+                        )
+                      }
+                    >
+                      <option value="embed">Embed inline (sign on the page)</option>
+                      <option value="redirect">Button → go to DocuSeal</option>
+                      <option value="newtab">Button → open in new tab</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500">Button label</label>
+                    <input
+                      className={input}
+                      placeholder="Sign now"
+                      value={page.signing?.buttonLabel ?? ""}
+                      onChange={(e) =>
+                        mutate((d) => void (((d.pages[pi]!.signing ??= { mode: "embed" }).buttonLabel = e.target.value || undefined)))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="mb-1 block text-xs font-medium text-gray-500">DocuSeal link / embed URL</label>
+                  <input
+                    className={`${input} w-full`}
+                    placeholder="https://your-docuseal.up.railway.app/d/…"
+                    value={page.signing?.url ?? ""}
+                    onChange={(e) =>
+                      mutate((d) => void (((d.pages[pi]!.signing ??= { mode: "embed" }).url = e.target.value || undefined)))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
             {!terminalTypes.has(page.type) && (
               <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -1508,6 +1604,18 @@ export function JourneyEditor({
           className="rounded-full border border-dashed border-gray-300 px-5 py-2.5 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600"
         >
           + Add ending
+        </button>
+        <button
+          onClick={addConvert}
+          className="rounded-full border border-dashed border-gray-300 px-5 py-2.5 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600"
+        >
+          + Add &ldquo;you may have a case&rdquo; milestone
+        </button>
+        <button
+          onClick={addSign}
+          className="rounded-full border border-dashed border-gray-300 px-5 py-2.5 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600"
+        >
+          + Add sign step
         </button>
       </div>
     </div>

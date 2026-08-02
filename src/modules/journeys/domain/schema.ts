@@ -141,12 +141,17 @@ export const pageType = z.enum([
   "referral",
   "decline",
   "end",
+  // "convert": a success-style milestone that submits the lead (fires CallRail /
+  // GA) but is NOT terminal — the flow continues to more questions.
+  "convert",
+  // "sign": a terminal step that sends the visitor to sign a contract (DocuSeal).
+  "sign",
 ]);
 export type PageType = z.infer<typeof pageType>;
 
 /** The lead outcome recorded when a flow reaches a given ending type. */
 export function outcomeForPageType(type: PageType): "lead" | "referral" | "declined" | null {
-  if (type === "success" || type === "end") return "lead";
+  if (type === "success" || type === "end" || type === "convert" || type === "sign") return "lead";
   if (type === "referral") return "referral";
   if (type === "decline") return "declined";
   return null;
@@ -175,6 +180,18 @@ export const pageSchema = z.object({
   advanceTo: z.string().optional(),
   // Call-to-action buttons, shown on terminal/ending screens (call, website…).
   cta: z.array(ctaSchema).optional(),
+  // Signing config for a "sign" page. `url` is a DocuSeal link/embed to open
+  // directly; when the org has DocuSeal API credentials + `templateId`, the
+  // server instead creates a submission pre-filled from the lead's answers and
+  // uses that. `mode` controls how it opens.
+  signing: z
+    .object({
+      mode: z.enum(["embed", "redirect", "newtab"]).default("embed"),
+      url: z.string().optional(),
+      templateId: z.string().optional(),
+      buttonLabel: z.string().optional(),
+    })
+    .optional(),
   components: z.array(componentSchema),
 });
 export type Page = z.infer<typeof pageSchema>;
