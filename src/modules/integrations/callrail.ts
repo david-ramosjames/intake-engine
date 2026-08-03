@@ -93,7 +93,6 @@ export async function forwardLeadToCallRail(
   const body = compact({
     company_id: config.companyId,
     form_data: formData,
-    form_url: pageUrl,
     referring_url: pageUrl,
     landing_page_url: landingPageUrl,
     referrer,
@@ -118,15 +117,33 @@ export async function forwardLeadToCallRail(
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const body = (await res.text().catch(() => "")).slice(0, 300);
+    const respBody = (await res.text().catch(() => "")).slice(0, 300);
+    // Log the exact shape we sent (field names + URLs, no PII values) so an
+    // otherwise-detail-free CallRail 400 can be diagnosed from the server logs.
+    console.error(
+      "[callrail] request rejected",
+      JSON.stringify({
+        status: res.status,
+        endpoint: `/a/${config.accountId}/form_submissions.json`,
+        sent: {
+          company_id: config.companyId,
+          form_data_fields: Object.keys(formData),
+          referring_url: pageUrl,
+          landing_page_url: landingPageUrl,
+          referrer,
+          utm: Object.keys(body).filter((k) => k.startsWith("utm_") || ["gclid", "fbclid", "msclkid"].includes(k)),
+        },
+        response: respBody,
+      }),
+    );
     const hint =
       res.status === 401
         ? " (check the API key)"
         : res.status === 404
           ? " (check the Account ID)"
           : res.status === 400 || res.status === 422
-            ? " (CallRail rejected a field — check the Company ID)"
+            ? " (CallRail rejected the request — see the [callrail] request rejected log for the fields sent)"
             : "";
-    throw new Error(`CallRail returned ${res.status}${hint}. ${body}`.trim());
+    throw new Error(`CallRail returned ${res.status}${hint}. ${respBody}`.trim());
   }
 }
