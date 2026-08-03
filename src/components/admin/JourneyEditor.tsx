@@ -21,6 +21,18 @@ const CONTENT_TYPES = new Set(["heading", "paragraph"]);
 // Compact inputs can share a row two-up on the live form; offer a "Full width"
 // toggle for them. Must mirror COMPACT_FIELDS in the runtime player.
 const COMPACT_INPUT_TYPES = new Set(["shortText", "email", "phone", "number", "currency", "date", "time"]);
+// Open-answer input types whose kind can be switched in the editor (short/long
+// text, plus typed inputs like date/email/phone). Excludes choice/upload types.
+const SWITCHABLE_INPUT_TYPES = new Set([
+  "shortText",
+  "longText",
+  "email",
+  "phone",
+  "number",
+  "currency",
+  "date",
+  "time",
+]);
 // Quick-pick icons for the trust bar. Any emoji works in the icon box; these
 // are one-click shortcuts for common legal / trust signals.
 const ICON_CHOICES = ["⭐", "⚖️", "💰", "💵", "🏆", "🛡️", "✅", "📞", "🤝", "❤️", "👩‍⚖️", "📅", "🚚", "⏱️"];
@@ -1863,7 +1875,7 @@ function ComponentEditor({
           />
           Required
         </label>
-        {TEXT_ANSWER_TYPES.has(component.type) && (
+        {SWITCHABLE_INPUT_TYPES.has(component.type) && (
           <label className="flex items-center gap-2 text-sm text-gray-600">
             Answer:
             <select
@@ -1873,6 +1885,12 @@ function ComponentEditor({
             >
               <option value="shortText">Short answer (one line)</option>
               <option value="longText">Paragraph (multi-line)</option>
+              <option value="email">Email</option>
+              <option value="phone">Phone</option>
+              <option value="number">Number</option>
+              <option value="currency">Currency</option>
+              <option value="date">Date (day / month / year)</option>
+              <option value="time">Time</option>
             </select>
           </label>
         )}

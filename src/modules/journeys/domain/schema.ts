@@ -195,6 +195,9 @@ export const pageSchema = z.object({
       // journey's current locale selects which one is used.
       templateIdEn: z.string().optional(),
       templateIdEs: z.string().optional(),
+      // Answer key holding the date of loss (a Date field → yyyy-MM-dd), passed
+      // to the contract. Defaults to auto-detecting the first Date question.
+      dateOfLossKey: z.string().optional(),
       buttonLabel: z.string().optional(),
     })
     .optional(),

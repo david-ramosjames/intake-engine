@@ -56,6 +56,15 @@ export async function POST(req: NextRequest) {
   }
 
   const contact = extractContact(journey.definition, answers);
+
+  // Date of loss for the contract — a Date field answer (yyyy-MM-dd). Use the
+  // configured key, else auto-detect the first Date question in the journey.
+  const dateKey =
+    signing.dateOfLossKey ||
+    journey.definition.pages.flatMap((p) => p.components).find((c) => c.type === "date" && c.key)?.key;
+  const dolValue = dateKey ? answers[dateKey] : undefined;
+  const dateOfLoss = typeof dolValue === "string" && dolValue.trim() ? dolValue.trim() : null;
+
   try {
     const res = await fetch(`${base}/api/intake`, {
       method: "POST",
@@ -66,6 +75,7 @@ export async function POST(req: NextRequest) {
         email: contact.email ?? null,
         language: isEs ? "es" : "en",
         templateId,
+        dateOfLoss,
         source: `intake:${slug}`,
         sendSms: false,
         sendEmail: false,
