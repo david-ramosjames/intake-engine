@@ -1553,6 +1553,18 @@ export function JourneyEditor({
                     mutate((d) => {
                       const comp = d.pages[pi]!.components[ci]! as Record<string, unknown>;
                       comp[field] = value;
+                      if (field === "type") {
+                        // Every answer field needs a key to store the response.
+                        if (!comp.key) comp.key = `q_${Math.random().toString(36).slice(2, 8)}`;
+                        // Switching to a choice type needs options to pick from.
+                        const isChoice = OPTION_TYPES.has(value);
+                        if (isChoice && (!Array.isArray(comp.options) || (comp.options as unknown[]).length === 0)) {
+                          comp.options = [
+                            { label: "Option 1", value: "option_1" },
+                            { label: "Option 2", value: "option_2" },
+                          ];
+                        }
+                      }
                     })
                   }
                   onRequired={(req) =>
@@ -1875,7 +1887,7 @@ function ComponentEditor({
           />
           Required
         </label>
-        {SWITCHABLE_INPUT_TYPES.has(component.type) && (
+        {(SWITCHABLE_INPUT_TYPES.has(component.type) || OPTION_TYPES.has(component.type)) && (
           <label className="flex items-center gap-2 text-sm text-gray-600">
             Answer:
             <select
@@ -1883,14 +1895,23 @@ function ComponentEditor({
               value={component.type}
               onChange={(e) => onField("type", e.target.value)}
             >
-              <option value="shortText">Short answer (one line)</option>
-              <option value="longText">Paragraph (multi-line)</option>
-              <option value="email">Email</option>
-              <option value="phone">Phone</option>
-              <option value="number">Number</option>
-              <option value="currency">Currency</option>
-              <option value="date">Date (day / month / year)</option>
-              <option value="time">Time</option>
+              <optgroup label="Choices">
+                <option value="singleSelect">Multiple choice (pick one)</option>
+                <option value="multiSelect">Checkboxes (pick several)</option>
+                <option value="dropdown">Dropdown</option>
+                <option value="radio">Radio buttons</option>
+                <option value="checkbox">Checkbox</option>
+              </optgroup>
+              <optgroup label="Typed answer">
+                <option value="shortText">Short answer (one line)</option>
+                <option value="longText">Paragraph (multi-line)</option>
+                <option value="email">Email</option>
+                <option value="phone">Phone</option>
+                <option value="number">Number</option>
+                <option value="currency">Currency</option>
+                <option value="date">Date (day / month / year)</option>
+                <option value="time">Time</option>
+              </optgroup>
             </select>
           </label>
         )}
