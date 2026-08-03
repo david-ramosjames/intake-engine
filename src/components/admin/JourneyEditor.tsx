@@ -97,6 +97,11 @@ export function JourneyEditor({
   const expandAll = () => setCollapsed(new Set());
   const allCollapsed = def.pages.length > 0 && def.pages.every((p) => collapsed.has(p.id));
 
+  // The design & content block (colors, buttons, logo, side image, callback
+  // card, below-the-fold, banner) is long, so it starts collapsed — the page
+  // opens on the journey name and its steps, not a wall of settings.
+  const [showSettings, setShowSettings] = useState(false);
+
   function mutate(fn: (d: JourneyDefinition) => void) {
     setDef((prev) => {
       const next = clone(prev);
@@ -478,6 +483,24 @@ export function JourneyEditor({
               numbers, and hyphens. Changing it changes the live link.
             </p>
           </div>
+
+          <div className="border-t border-gray-100 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowSettings((v) => !v)}
+              aria-expanded={showSettings}
+              className="flex w-full items-center gap-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 transition hover:text-gray-700"
+            >
+              <span className={`inline-block text-xs transition-transform ${showSettings ? "rotate-90" : ""}`}>▶</span>
+              Design &amp; content
+              <span className="ml-1 font-normal normal-case tracking-normal text-gray-400">
+                colors, buttons, logo, side image, callback card, banner
+              </span>
+            </button>
+          </div>
+
+          {showSettings && (
+          <div className="space-y-4">
           <div className="flex flex-wrap gap-6">
             <ColorField
               label="Background"
@@ -1347,6 +1370,8 @@ export function JourneyEditor({
                 </span>
               )}
             </div>
+          )}
+          </div>
           )}
         </div>
       </section>
