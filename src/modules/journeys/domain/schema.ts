@@ -187,8 +187,14 @@ export const pageSchema = z.object({
   signing: z
     .object({
       mode: z.enum(["embed", "redirect", "newtab"]).default("embed"),
+      // Static DocuSeal link (fallback / no prefill). When DocuSeal template ids
+      // are set below, the server instead creates a pre-filled submission via
+      // Sign Flow and uses that URL.
       url: z.string().optional(),
-      templateId: z.string().optional(),
+      // DocuSeal template ids per language (contracts differ EN vs ES). The
+      // journey's current locale selects which one is used.
+      templateIdEn: z.string().optional(),
+      templateIdEs: z.string().optional(),
       buttonLabel: z.string().optional(),
     })
     .optional(),

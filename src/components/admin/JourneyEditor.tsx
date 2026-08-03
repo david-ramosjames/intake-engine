@@ -1379,8 +1379,47 @@ export function JourneyEditor({
                     />
                   </div>
                 </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500">DocuSeal template ID — English</label>
+                    <input
+                      className={input}
+                      placeholder="e.g. 12"
+                      value={page.signing?.templateIdEn ?? ""}
+                      onChange={(e) =>
+                        mutate(
+                          (d) =>
+                            void (((d.pages[pi]!.signing ??= { mode: "embed" }).templateIdEn =
+                              e.target.value || undefined)),
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500">DocuSeal template ID — Spanish</label>
+                    <input
+                      className={input}
+                      placeholder="e.g. 13"
+                      value={page.signing?.templateIdEs ?? ""}
+                      onChange={(e) =>
+                        mutate(
+                          (d) =>
+                            void (((d.pages[pi]!.signing ??= { mode: "embed" }).templateIdEs =
+                              e.target.value || undefined)),
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-gray-400">
+                  With template IDs set, the contract is created in Sign Flow pre-filled from the visitor&apos;s answers
+                  and shown here to sign; Sign Flow&apos;s reminder texts follow up if they don&apos;t finish. The
+                  Spanish template is used when the journey is in Spanish.
+                </p>
                 <div className="mt-3">
-                  <label className="mb-1 block text-xs font-medium text-gray-500">DocuSeal link / embed URL</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">
+                    Or a static DocuSeal link (no pre-fill)
+                  </label>
                   <input
                     className={`${input} w-full`}
                     placeholder="https://your-docuseal.up.railway.app/d/…"

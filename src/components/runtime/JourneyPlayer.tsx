@@ -651,7 +651,14 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
           {terminal ? (
             terminalPage ? (
               terminalPage.type === "sign" ? (
-                <SignView page={terminalPage} L={L} locale={locale} slug={slug} answers={answers} />
+                <SignView
+                  page={terminalPage}
+                  L={L}
+                  locale={locale}
+                  slug={slug}
+                  answers={answers}
+                  org={attribution?.org}
+                />
               ) : (
                 <EndingView
                   page={terminalPage}
@@ -1897,20 +1904,49 @@ function SignView({
   page,
   L,
   locale,
+  slug,
   answers,
+  org,
 }: {
   page: Page;
   L: Localize;
   locale: string;
   slug: string;
   answers: Answers;
+  org?: string;
 }) {
-  void answers; // reserved for API-prefilled submissions
   const signing = page.signing;
   const mode = signing?.mode ?? "embed";
-  const url = signing?.url?.trim();
   const es = locale === "es";
   const label = signing?.buttonLabel || (es ? "Firmar ahora" : "Sign now");
+
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
+  const requestedRef = useRef(false);
+
+  useEffect(() => {
+    if (requestedRef.current) return; // create the submission once (guards StrictMode double-run)
+    requestedRef.current = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/journeys/${slug}/sign`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ slug, pageId: page.id, locale, answers, org }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { signingUrl?: string };
+        if (data.signingUrl) setUrl(data.signingUrl);
+        else setErr(true);
+      } catch {
+        setErr(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="animate-fade-up space-y-6">
       {page.components.map((c) =>
@@ -1924,7 +1960,9 @@ function SignView({
           </p>
         ),
       )}
-      {url ? (
+      {loading ? (
+        <p className="text-sm opacity-60">{es ? "Preparando tu contrato…" : "Preparing your agreement…"}</p>
+      ) : url ? (
         mode === "embed" ? (
           <iframe
             src={url}
@@ -1943,7 +1981,10 @@ function SignView({
         )
       ) : (
         <p className="text-sm opacity-60">
-          {es ? "La firma aún no está configurada." : "Signing isn’t configured yet."}
+          {es
+            ? "No pudimos cargar el contrato. Te enviaremos un enlace en breve."
+            : "We couldn’t load the agreement. We’ll send you a link shortly."}
+          {err ? "" : ""}
         </p>
       )}
     </div>
