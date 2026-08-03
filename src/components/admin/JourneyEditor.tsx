@@ -47,6 +47,24 @@ function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;
 }
 
+// A one-line preview shown next to a collapsed step so you can tell what's
+// inside without expanding it — its lead heading (or first question) plus a
+// count of the questions/elements on the screen.
+function pageSummary(page: Page): string {
+  const comps = page.components as Array<{ type: string; content?: unknown; label?: unknown; key?: unknown }>;
+  const heading = comps.find(
+    (c) => c.type === "heading" && typeof c.content === "string" && (c.content as string).trim(),
+  );
+  const questions = comps.filter((c) => typeof c.key === "string" && c.key);
+  const label =
+    ((heading?.content as string | undefined) ?? "").trim() ||
+    (typeof questions[0]?.label === "string" ? (questions[0]!.label as string) : "");
+  const count = questions.length
+    ? `${questions.length} question${questions.length === 1 ? "" : "s"}`
+    : `${page.components.length} element${page.components.length === 1 ? "" : "s"}`;
+  return label ? `${label} · ${count}` : count;
+}
+
 export function JourneyEditor({
   slug,
   orgSlug,
@@ -63,6 +81,21 @@ export function JourneyEditor({
   const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
   const [translating, setTranslating] = useState(false);
   const [xlateMsg, setXlateMsg] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+
+  // Collapsible step cards. Every existing step starts collapsed so the whole
+  // flow fits on one screen; you expand just the step you're editing. New steps
+  // you add aren't in this set, so they come in expanded.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(initial.pages.map((p) => p.id)));
+  const togglePage = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const collapseAll = () => setCollapsed(new Set(def.pages.map((p) => p.id)));
+  const expandAll = () => setCollapsed(new Set());
+  const allCollapsed = def.pages.length > 0 && def.pages.every((p) => collapsed.has(p.id));
 
   function mutate(fn: (d: JourneyDefinition) => void) {
     setDef((prev) => {
@@ -1319,11 +1352,36 @@ export function JourneyEditor({
       </section>
 
       {/* Pages */}
-      <div className="mt-6 space-y-4">
-        {def.pages.map((page, pi) => (
-          <section key={page.id} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
+      <div className="mt-6 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          Steps <span className="ml-1 font-normal text-gray-400">({def.pages.length})</span>
+        </h2>
+        <button
+          type="button"
+          onClick={allCollapsed ? expandAll : collapseAll}
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+        >
+          {allCollapsed ? "Expand all" : "Collapse all"}
+        </button>
+      </div>
+      <div className="mt-3 space-y-3">
+        {def.pages.map((page, pi) => {
+          const open = !collapsed.has(page.id);
+          return (
+          <section key={page.id} className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between gap-3 p-4">
               <div className="flex min-w-0 flex-1 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => togglePage(page.id)}
+                  aria-label={open ? "Collapse step" : "Expand step"}
+                  aria-expanded={open}
+                  className="shrink-0 rounded-md px-1 text-gray-400 transition hover:text-gray-700"
+                  title={open ? "Collapse" : "Expand"}
+                >
+                  <span className={`inline-block text-xs transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+                </button>
+                <span className="w-5 shrink-0 text-center text-xs font-medium text-gray-400">{pi + 1}</span>
                 <input
                   className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-sm font-semibold text-gray-900 hover:border-gray-200 focus:border-gray-300 focus:outline-none"
                   value={page.name}
@@ -1333,6 +1391,11 @@ export function JourneyEditor({
                 <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
                   {page.type}
                 </span>
+                {!open && (
+                  <span className="hidden min-w-0 truncate text-xs text-gray-400 sm:inline">
+                    {pageSummary(page)}
+                  </span>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-1 text-gray-400">
                 <IconBtn label="Move up" disabled={pi === 0} onClick={() => mutate((d) => swap(d.pages, pi, pi - 1))}>
@@ -1351,6 +1414,8 @@ export function JourneyEditor({
               </div>
             </div>
 
+            {open && (
+            <div className="border-t border-gray-100 px-6 pb-6 pt-4">
             {page.type === "sign" && (
               <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -1645,8 +1710,11 @@ export function JourneyEditor({
                 onChange={(cta) => mutate((d) => void (d.pages[pi]!.cta = cta))}
               />
             )}
+            </div>
+            )}
           </section>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
