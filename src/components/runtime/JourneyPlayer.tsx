@@ -1968,11 +1968,27 @@ function SignView({
         <p className="text-sm opacity-60">{es ? "Preparando tu contrato…" : "Preparing your agreement…"}</p>
       ) : url ? (
         mode === "embed" ? (
-          <iframe
-            src={url}
-            title="Sign your agreement"
-            className="h-[70vh] w-full rounded-xl border border-[color:color-mix(in_srgb,var(--text)_18%,transparent)] bg-white"
-          />
+          <div className="space-y-2">
+            <iframe
+              src={url}
+              title="Sign your agreement"
+              className="h-[70vh] w-full rounded-xl border border-[color:color-mix(in_srgb,var(--text)_18%,transparent)] bg-white"
+            />
+            {/* If the signing app blocks embedding (X-Frame-Options / frame-ancestors),
+                the iframe shows "refused to connect" — this link is the way out. */}
+            <p className="text-sm opacity-60">
+              {es ? "¿No se muestra el contrato? " : "Agreement not showing? "}
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:opacity-100"
+              >
+                {es ? "Ábrelo en una pestaña nueva" : "Open it in a new tab"}
+              </a>
+              .
+            </p>
+          </div>
         ) : (
           <a
             href={url}
