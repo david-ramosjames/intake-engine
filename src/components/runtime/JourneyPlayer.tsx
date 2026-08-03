@@ -1010,7 +1010,11 @@ function ContentOrField({
       );
     }
     case "paragraph":
-      return <p className="text-base leading-relaxed opacity-70">{L(tk.content(component.id), component.content)}</p>;
+      return (
+        <p className="whitespace-pre-line text-base leading-relaxed opacity-70">
+          {L(tk.content(component.id), component.content)}
+        </p>
+      );
     case "image":
       return component.src ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -1955,7 +1959,7 @@ function SignView({
             {L(tk.content(c.id), c.content)}
           </h1>
         ) : (
-          <p key={c.id} className="text-lg leading-relaxed opacity-70">
+          <p key={c.id} className="whitespace-pre-line text-lg leading-relaxed opacity-70">
             {L(tk.content(c.id), c.content)}
           </p>
         ),
@@ -2029,7 +2033,7 @@ function EndingView({
         ) : c.type === "stats" && c.stats ? (
           <StatsBar key={c.id} stats={c.stats} />
         ) : (
-          <p key={c.id} className="text-lg leading-relaxed opacity-70">
+          <p key={c.id} className="whitespace-pre-line text-lg leading-relaxed opacity-70">
             {L(tk.content(c.id), c.content)}
           </p>
         ),

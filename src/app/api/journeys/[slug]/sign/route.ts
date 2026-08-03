@@ -52,6 +52,15 @@ export async function POST(req: NextRequest) {
   const token = process.env.SIGNFLOW_INTAKE_TOKEN?.trim();
   if (!templateId || !base || !token) {
     if (signing.url) return NextResponse.json({ ok: true, signingUrl: signing.url });
+    console.error("[sign] not configured", {
+      slug,
+      pageId,
+      locale,
+      hasTemplateId: Boolean(templateId),
+      hasBaseUrl: Boolean(base),
+      hasToken: Boolean(token),
+      hasStaticUrl: Boolean(signing.url),
+    });
     return NextResponse.json({ ok: false, error: "Signing isn’t configured." }, { status: 400 });
   }
 
@@ -85,12 +94,26 @@ export async function POST(req: NextRequest) {
     const data = (await res.json().catch(() => ({}))) as { signingUrl?: string; error?: unknown };
     if (!res.ok || !data.signingUrl) {
       const msg = typeof data.error === "string" ? data.error : `Sign Flow returned ${res.status}.`;
+      console.error("[sign] Sign Flow rejected", {
+        slug,
+        pageId,
+        templateId,
+        status: res.status,
+        error: data.error ?? null,
+      });
       // Fall back to a static link if provided.
       if (signing.url) return NextResponse.json({ ok: true, signingUrl: signing.url });
       return NextResponse.json({ ok: false, error: msg }, { status: 502 });
     }
     return NextResponse.json({ ok: true, signingUrl: data.signingUrl });
   } catch (e) {
+    console.error("[sign] could not reach Sign Flow", {
+      slug,
+      pageId,
+      templateId,
+      base,
+      error: e instanceof Error ? e.message : String(e),
+    });
     if (signing.url) return NextResponse.json({ ok: true, signingUrl: signing.url });
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Could not reach Sign Flow." },
