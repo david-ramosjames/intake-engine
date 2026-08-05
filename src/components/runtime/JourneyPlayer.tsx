@@ -121,6 +121,11 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
   // to land on — guarantees the visitor sees a thank-you, never the start form.
   const [forcedDone, setForcedDone] = useState(false);
   const submittedRef = useRef(false);
+  // Set once the lead is created; lets a later submit() enrich that same lead
+  // with the answers gathered after an early (conversion-point) submission
+  // instead of creating a duplicate or dropping them.
+  const leadIdRef = useRef<string | null>(null);
+  const outcomeRef = useRef<Outcome | null>(null);
   const sessionRef = useRef<string>("");
   const startedRef = useRef(false);
 
@@ -229,7 +234,20 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
 
   const submit = useCallback(
     async (ans: Answers, endingType?: string): Promise<Outcome | null> => {
-      if (submittedRef.current) return null;
+      // Already submitted (e.g. at a mid-flow conversion point). Enrich that same
+      // lead with the answers gathered since, then report the original outcome so
+      // the flow still lands on the right ending. Fire-and-forget; never blocks.
+      if (submittedRef.current) {
+        if (leadIdRef.current) {
+          void fetch(`/api/leads/${leadIdRef.current}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            keepalive: true,
+            body: JSON.stringify({ slug, org: attribution?.org, answers: ans, context: collectContext() }),
+          }).catch(() => {});
+        }
+        return outcomeRef.current;
+      }
       submittedRef.current = true;
       setBusy(true);
       setError(null);
@@ -239,9 +257,11 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ slug, answers: ans, attribution, endingType, context: collectContext() }),
         });
-        const data = (await res.json()) as { ok: boolean; outcome?: Outcome; error?: string };
+        const data = (await res.json()) as { ok: boolean; leadId?: string; outcome?: Outcome; error?: string };
         if (!res.ok || !data.ok) throw new Error(data.error ?? "Something went wrong.");
         const outcome = data.outcome ?? "lead";
+        leadIdRef.current = data.leadId ?? null;
+        outcomeRef.current = outcome;
         emit("completed", { outcome });
         return outcome;
       } catch (e) {

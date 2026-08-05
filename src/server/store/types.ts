@@ -89,6 +89,19 @@ export interface CreateLeadInput {
   medium?: string;
 }
 
+// Enrich an already-created lead with the answers gathered after it was first
+// submitted (e.g. when the lead fired at a mid-flow conversion point and the
+// visitor went on to answer more qualifying questions). Outcome/status are left
+// as first recorded — this only fills in the fuller picture.
+export interface UpdateLeadInput {
+  answers: Record<string, unknown>;
+  score?: number;
+  displayName?: string;
+  email?: string;
+  phone?: string;
+  context?: Record<string, string>;
+}
+
 export interface StoredDomain {
   id: string;
   organizationId: string;
@@ -195,6 +208,7 @@ export interface PlatformStore {
   listLeads(orgId: string): Promise<StoredLead[]>;
   getLead(orgId: string, id: string): Promise<StoredLead | null>;
   createLead(input: CreateLeadInput): Promise<StoredLead>;
+  updateLead(orgId: string, id: string, input: UpdateLeadInput): Promise<StoredLead | null>;
   deleteLead(orgId: string, id: string): Promise<void>;
 
   recordEvent(input: RecordEventInput): Promise<void>;

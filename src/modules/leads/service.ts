@@ -76,3 +76,28 @@ export async function submitLead(
 
   return { leadId: lead.id, score, qualified: outcome === "lead", outcome };
 }
+
+// Enrich an already-submitted lead with the answers gathered after it was first
+// recorded (e.g. the lead fired at a mid-flow conversion point, then the visitor
+// answered more qualifying questions). Re-scores and fills in any contact info
+// captured later. Deliberately does NOT re-run automations / CallRail — those
+// fired once at submission; this only completes the stored record.
+export async function enrichLead(
+  journey: StoredJourney,
+  leadId: string,
+  answers: Answers,
+  context: Record<string, string> = {},
+): Promise<boolean> {
+  const def = journey.definition;
+  const { score } = scoreLead(def, answers);
+  const contact = extractContact(def, answers);
+  const updated = await store.updateLead(journey.orgId, leadId, {
+    answers,
+    score,
+    displayName: contact.displayName,
+    email: contact.email,
+    phone: contact.phone,
+    context: Object.keys(context).length ? context : undefined,
+  });
+  return Boolean(updated);
+}

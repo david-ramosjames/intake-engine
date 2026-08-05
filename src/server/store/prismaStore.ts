@@ -14,6 +14,7 @@ import {
   type CreateLeadInput,
   type CreateOrgInput,
   type PlatformStore,
+  type UpdateLeadInput,
   type StoredAutomation,
   type StoredDomain,
   type StoredEvent,
@@ -361,6 +362,25 @@ export const prismaStore: PlatformStore = {
       medium: input.medium,
       createdAt: new Date().toISOString(),
     };
+  },
+
+  async updateLead(orgId: string, id: string, input: UpdateLeadInput) {
+    const prisma = await getPrisma();
+    // Scope to the org so one tenant can't enrich another's lead.
+    const existing = await prisma.lead.findFirst({ where: { id, organizationId: orgId } });
+    if (!existing) return null;
+    const data: Record<string, unknown> = { answers: input.answers as object };
+    if (input.score !== undefined) data.score = input.score;
+    if (input.displayName !== undefined) data.displayName = input.displayName;
+    if (input.email !== undefined) data.email = input.email;
+    if (input.phone !== undefined) data.phone = input.phone;
+    if (input.context !== undefined) data.context = input.context as object;
+    const lead = await prisma.lead.update({
+      where: { id: existing.id },
+      data,
+      include: { journey: true },
+    });
+    return leadRow(lead);
   },
 
   async listDomains(orgId) {

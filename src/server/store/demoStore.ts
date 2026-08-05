@@ -16,6 +16,7 @@ import {
   type CreateLeadInput,
   type CreateOrgInput,
   type PlatformStore,
+  type UpdateLeadInput,
   type RecordEventInput,
   type StoredAutomation,
   type StoredDomain,
@@ -282,6 +283,20 @@ export const demoStore: PlatformStore = {
       createdAt: new Date().toISOString(),
     };
     db.leads.push(lead);
+    await persist();
+    return lead;
+  },
+
+  async updateLead(orgId: string, id: string, input: UpdateLeadInput) {
+    const db = await load();
+    const lead = db.leads.find((l) => l.orgId === orgId && l.id === id);
+    if (!lead) return null;
+    lead.answers = input.answers;
+    if (input.score !== undefined) lead.score = input.score;
+    if (input.displayName !== undefined) lead.displayName = input.displayName;
+    if (input.email !== undefined) lead.email = input.email;
+    if (input.phone !== undefined) lead.phone = input.phone;
+    if (input.context !== undefined) lead.context = input.context;
     await persist();
     return lead;
   },
