@@ -1591,6 +1591,26 @@ export function JourneyEditor({
                   </select>
                 </div>
                 <div className="mt-3 border-t border-gray-200 pt-3">
+                  <label className="flex items-start gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={page.submitLeadOnAdvance ?? false}
+                      onChange={(e) =>
+                        mutate((d) => void (d.pages[pi]!.submitLeadOnAdvance = e.target.checked || undefined))
+                      }
+                    />
+                    <span>
+                      Submit the lead here
+                      <span className="block text-xs font-normal text-gray-400">
+                        When the visitor completes this screen and continues, count it as the conversion — fire CallRail,
+                        Slack, and Google Analytics. Use this on the screen that captures contact info when there&apos;s no
+                        &ldquo;you may have a case&rdquo; milestone. It fires once per visit.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+                <div className="mt-3 border-t border-gray-200 pt-3">
                   <div className="text-[11px] font-medium text-gray-500">Button colors</div>
                   <div className="mt-2 flex flex-wrap gap-6">
                     <ColorField

@@ -293,9 +293,15 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
         await finishLead(ans);
         return;
       }
+      // Conversion point: a screen (e.g. the one that captures contact info)
+      // flagged to submit the lead when completed. This fires CallRail / Slack /
+      // GA as the visitor continues on to more questions — the role the removed
+      // "convert" milestone used to play. Passing "convert" records it as a lead
+      // (like that milestone did); submit() is guarded to run once.
+      if (from.submitLeadOnAdvance) void submit(ans, "convert");
       goTo(target, ans);
     },
-    [definition, finishLead, goTo],
+    [definition, finishLead, goTo, submit],
   );
 
   const back = () => {
