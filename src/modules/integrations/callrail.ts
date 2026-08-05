@@ -89,10 +89,15 @@ export async function forwardLeadToCallRail(
   const pageUrl = context.pageUrl || context.landingPage || "";
   const landingPageUrl = context.landingPage || pageUrl;
   const referrer = context.referrer || landingPageUrl;
+  // CallRail parses form_url server-side (URI(form_url)); omitting it makes that
+  // parse hit nil and 400 with "bad argument (expected URI object or URI
+  // string)". It's the URL of the page the form lives on — the journey page.
+  const formUrl = pageUrl || landingPageUrl;
 
   const body = compact({
     company_id: config.companyId,
     form_data: formData,
+    form_url: formUrl,
     referring_url: pageUrl,
     landing_page_url: landingPageUrl,
     referrer,
@@ -128,6 +133,7 @@ export async function forwardLeadToCallRail(
         sent: {
           company_id: config.companyId,
           form_data_fields: Object.keys(formData),
+          form_url: formUrl,
           referring_url: pageUrl,
           landing_page_url: landingPageUrl,
           referrer,
