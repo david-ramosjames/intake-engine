@@ -19,8 +19,77 @@ export function FaqLibraryManager({ initialSets }: { initialSets: FaqSet[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSets[0]?.id ?? null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [xlateMsg, setXlateMsg] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
 
   const selected = sets.find((s) => s.id === selectedId) ?? null;
+
+  // Fill the Spanish fields of the selected set via the shared translator. Like
+  // the journey editor: the default only fills empty boxes; overwrite replaces
+  // every one. Nothing is saved until "Save FAQ library".
+  async function translate(overwrite: boolean) {
+    if (!selected) return;
+    if (
+      overwrite &&
+      !window.confirm(
+        "Re-translate every Spanish box in this set and replace what's there, including edits you've made? " +
+          "(Nothing is saved until you click Save FAQ library.)",
+      )
+    ) {
+      return;
+    }
+    setTranslating(true);
+    setXlateMsg(null);
+    try {
+      const items: Array<{ key: string; text: string }> = [];
+      const add = (key: string, text: string | undefined, existingEs: string | undefined) => {
+        if (!text?.trim()) return;
+        if (!overwrite && existingEs?.trim()) return;
+        items.push({ key, text });
+      };
+      add("heading", selected.heading, selected.headingEs);
+      add("disclaimer", selected.disclaimer, selected.disclaimerEs);
+      selected.items.forEach((it, i) => {
+        add(`q:${i}`, it.q, it.qEs);
+        add(`a:${i}`, it.a, it.aEs);
+      });
+      if (items.length === 0) {
+        setXlateMsg({ kind: "ok", msg: "Every box already has Spanish. Clear one to re-translate it, or use Re-translate all." });
+        return;
+      }
+      const res = await fetch("/api/admin/translate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ targetLocale: "es", items }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Translation failed.");
+      const t = (data.translations ?? {}) as Record<string, string>;
+      let n = 0;
+      setSets((prev) =>
+        prev.map((s) => {
+          if (s.id !== selected.id) return s;
+          const next = { ...s, items: s.items.map((it) => ({ ...it })) };
+          if (t.heading?.trim()) (next.headingEs = t.heading), n++;
+          if (t.disclaimer?.trim()) (next.disclaimerEs = t.disclaimer), n++;
+          next.items.forEach((it, i) => {
+            if (t[`q:${i}`]?.trim()) (it.qEs = t[`q:${i}`]), n++;
+            if (t[`a:${i}`]?.trim()) (it.aEs = t[`a:${i}`]), n++;
+          });
+          return next;
+        }),
+      );
+      setStatus(null);
+      setXlateMsg({
+        kind: "ok",
+        msg: `Translated ${n} box${n === 1 ? "" : "es"}${overwrite ? " (overwritten)" : ""} — review, then Save.`,
+      });
+    } catch (e) {
+      setXlateMsg({ kind: "err", msg: e instanceof Error ? e.message : "Translation failed." });
+    } finally {
+      setTranslating(false);
+    }
+  }
 
   function update(id: string, patch: Partial<FaqSet>) {
     setSets((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -132,6 +201,33 @@ export function FaqLibraryManager({ initialSets }: { initialSets: FaqSet[] }) {
             >
               Delete set
             </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50/50 p-3">
+            <button
+              type="button"
+              onClick={() => translate(false)}
+              disabled={translating}
+              className="rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
+            >
+              {translating ? "Translating…" : "Translate to Spanish"}
+            </button>
+            <button
+              type="button"
+              onClick={() => translate(true)}
+              disabled={translating}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              Re-translate all (overwrite)
+            </button>
+            <span className="text-xs text-gray-400">
+              Fills the 🇪🇸 boxes in this set. First button fills only empty ones; review &amp; edit, then Save.
+            </span>
+            {xlateMsg && (
+              <span className={`text-xs ${xlateMsg.kind === "ok" ? "text-green-600" : "text-red-600"}`}>
+                {xlateMsg.msg}
+              </span>
+            )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
