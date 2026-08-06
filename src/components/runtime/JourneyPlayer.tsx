@@ -814,6 +814,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
         <BelowFold
           theme={theme}
           L={L}
+          locale={locale}
           cta={
             theme.belowFold?.showCta ? (
               <>
@@ -1183,10 +1184,12 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
 function BelowFold({
   theme,
   L,
+  locale,
   cta,
 }: {
   theme: NonNullable<JourneyDefinition["theme"]>;
   L: Localize;
+  locale: string;
   cta?: React.ReactNode;
 }) {
   const faq = theme.faq;
@@ -1194,7 +1197,7 @@ function BelowFold({
   const showFaq = Boolean(faq?.enabled && (faq.items?.length ?? 0) > 0);
   const showReviews = Boolean(reviews?.enabled && (reviews.items?.length ?? 0) > 0);
   if (!showFaq && !showReviews) return null;
-  const faqNode = showFaq ? <FaqSection faq={faq!} L={L} /> : null;
+  const faqNode = showFaq ? <FaqSection faq={faq!} L={L} locale={locale} /> : null;
   const reviewsNode = showReviews ? <ReviewsCarousel reviews={reviews!} L={L} /> : null;
   const reviewsFirst = theme.belowFold?.reviewsFirst;
   return (
@@ -1233,10 +1236,22 @@ function PlusToggle({ open }: { open: boolean }) {
   );
 }
 
-function FaqSection({ faq, L }: { faq: NonNullable<NonNullable<JourneyDefinition["theme"]>["faq"]>; L: Localize }) {
+function FaqSection({
+  faq,
+  L,
+  locale,
+}: {
+  faq: NonNullable<NonNullable<JourneyDefinition["theme"]>["faq"]>;
+  L: Localize;
+  locale: string;
+}) {
   const items = faq.items ?? [];
-  const heading = L(tk.faqHeading(), faq.heading) || "Frequently Asked Questions";
-  const disclaimer = L(tk.faqDisclaimer(), faq.disclaimer) || undefined;
+  // For FAQs pulled from a reusable set, Spanish lives inline on the item
+  // (qEs/aEs); prefer it in Spanish. Inline (per-journey) FAQs keep using the
+  // translation dictionary via L.
+  const es = locale?.toLowerCase().startsWith("es");
+  const heading = (es && faq.headingEs) || L(tk.faqHeading(), faq.heading) || "Frequently Asked Questions";
+  const disclaimer = (es && faq.disclaimerEs) || L(tk.faqDisclaimer(), faq.disclaimer) || undefined;
   const [open, setOpen] = useState<number | null>(null);
   const divide = "border-t border-[color:color-mix(in_srgb,var(--text)_12%,transparent)]";
   return (
@@ -1253,12 +1268,14 @@ function FaqSection({ faq, L }: { faq: NonNullable<NonNullable<JourneyDefinition
                 aria-expanded={isOpen}
                 className="flex w-full items-center justify-between gap-5 text-left focus-ring"
               >
-                <span className="text-lg font-medium leading-snug sm:text-xl">{L(tk.faqQuestion(i), it.q)}</span>
+                <span className="text-lg font-medium leading-snug sm:text-xl">
+                  {(es && it.qEs) || L(tk.faqQuestion(i), it.q)}
+                </span>
                 <PlusToggle open={isOpen} />
               </button>
               {isOpen && (
                 <p className="animate-fade-up mt-3 max-w-[70ch] pr-10 leading-relaxed opacity-75">
-                  {L(tk.faqAnswer(i), it.a)}
+                  {(es && it.aEs) || L(tk.faqAnswer(i), it.a)}
                 </p>
               )}
             </div>

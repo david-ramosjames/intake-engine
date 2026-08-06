@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 const items: Array<[label: string, href: string]> = [
   ["Overview", "/admin"],
   ["Journeys", "/admin/journeys"],
+  ["FAQs", "/admin/faqs"],
   ["Leads", "/admin/leads"],
   ["Analytics", "/admin/analytics"],
   ["Automations", "/admin/automations"],

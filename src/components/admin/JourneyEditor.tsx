@@ -5,10 +5,11 @@
 // (validated server-side against the canonical schema). A full drag-and-drop
 // canvas is the roadmap; this makes journeys genuinely editable today.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Component, JourneyDefinition, Page } from "@/modules/journeys/domain/schema";
+import type { FaqSet } from "@/modules/faq/faqSets";
 import { tk } from "@/modules/journeys/domain/i18n";
 import { collectStrings } from "@/modules/journeys/domain/strings";
 import { DeleteJourneyButton } from "@/components/admin/DeleteJourneyButton";
@@ -101,6 +102,21 @@ export function JourneyEditor({
   // card, below-the-fold, banner) is long, so it starts collapsed — the page
   // opens on the journey name and its steps, not a wall of settings.
   const [showSettings, setShowSettings] = useState(false);
+
+  // The org's reusable FAQ library, for the "use a saved set" dropdown below.
+  const [faqSets, setFaqSets] = useState<FaqSet[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/admin/faq-sets")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (alive && d?.ok) setFaqSets(d.sets as FaqSet[]);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   function mutate(fn: (d: JourneyDefinition) => void) {
     setDef((prev) => {
@@ -1030,6 +1046,34 @@ export function JourneyEditor({
                   Show
                 </span>
               </label>
+
+              <label className="mt-2 block text-xs font-medium text-gray-500">FAQ content</label>
+              <select
+                className={`${controlBase} mt-1 w-full`}
+                value={def.theme?.faq?.setId ?? ""}
+                onChange={(e) =>
+                  mutate((d) => void (((d.theme ??= {}).faq ??= {}).setId = e.target.value || undefined))
+                }
+              >
+                <option value="">Custom — just for this journey</option>
+                {faqSets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    From library: {s.name} ({s.items.length})
+                  </option>
+                ))}
+              </select>
+
+              {def.theme?.faq?.setId ? (
+                <p className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                  Using the{" "}
+                  <strong>{faqSets.find((s) => s.id === def.theme?.faq?.setId)?.name ?? "selected"}</strong> set from your{" "}
+                  <Link href="/admin/faqs" className="underline">
+                    FAQ library
+                  </Link>
+                  . Edit the questions there — changes apply to every journey using this set.
+                </p>
+              ) : (
+                <>
               <input
                 className={`${input} mt-2`}
                 placeholder="Section heading (e.g. Frequently Asked Questions)"
@@ -1108,6 +1152,8 @@ export function JourneyEditor({
                 />
                 <EsBox es={es} k={tk.faqDisclaimer()} placeholder="Disclaimer — Spanish" />
               </div>
+                </>
+              )}
             </div>
 
             {/* Reviews */}
@@ -1710,6 +1756,12 @@ export function JourneyEditor({
                   onRemoveOption={(oi) =>
                     mutate((d) => void d.pages[pi]!.components[ci]!.options!.splice(oi, 1))
                   }
+                  onMoveOption={(oi, dir) =>
+                    mutate((d) => {
+                      const opts = d.pages[pi]!.components[ci]!.options;
+                      if (opts) swap(opts, oi, oi + dir);
+                    })
+                  }
                   onStats={(stats) => mutate((d) => void (d.pages[pi]!.components[ci]!.stats = stats))}
                   onLineColors={(colors) =>
                     mutate((d) => {
@@ -1842,6 +1894,7 @@ function ComponentEditor({
   onOptionGoTo,
   onAddOption,
   onRemoveOption,
+  onMoveOption,
   onStats,
   onLineColors,
   onRemove,
@@ -1857,6 +1910,7 @@ function ComponentEditor({
   onOptionGoTo: (oi: number, goTo: string) => void;
   onAddOption: () => void;
   onRemoveOption: (oi: number) => void;
+  onMoveOption: (oi: number, dir: -1 | 1) => void;
   onStats?: (stats: Array<{ value: string; label: string; icon?: string }>) => void;
   onLineColors?: (colors: Array<string | null>) => void;
   onRemove?: () => void;
@@ -2069,6 +2123,18 @@ function ComponentEditor({
                       </option>
                     ))}
                 </select>
+                <div className="flex shrink-0 items-center text-gray-400">
+                  <IconBtn label="Move option up" disabled={oi === 0} onClick={() => onMoveOption(oi, -1)}>
+                    ↑
+                  </IconBtn>
+                  <IconBtn
+                    label="Move option down"
+                    disabled={oi === (component.options?.length ?? 0) - 1}
+                    onClick={() => onMoveOption(oi, 1)}
+                  >
+                    ↓
+                  </IconBtn>
+                </div>
                 <button
                   onClick={() => onRemoveOption(oi)}
                   className="shrink-0 rounded-md px-2 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"

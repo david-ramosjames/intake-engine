@@ -11,8 +11,10 @@ import { CallRailScript } from "@/components/runtime/CallRailScript";
 import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
 import { localeFromAcceptLanguage, localeFromParam } from "@/modules/journeys/domain/i18n";
+import { findFaqSet } from "@/modules/faq/faqSets";
 import { preloadHero } from "@/modules/journeys/og";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
+import { store } from "@/server/store";
 import type { StoredOrg } from "@/server/store/types";
 import { getPublicSiteConfig } from "@/server/tenant";
 
@@ -31,7 +33,30 @@ export async function JourneyRuntime({
 
   const journey = await getPublishedJourneyCached(org.id, slug);
   if (!journey || journey.status !== "PUBLISHED") notFound();
-  preloadHero(journey.definition);
+
+  // Resolve a referenced FAQ set from the org's library into the definition so
+  // the client renders it like inline FAQs. Done immutably — the cached journey
+  // definition must not be mutated. If the set was deleted, fall back to any
+  // inline items (usually none).
+  let definition = journey.definition;
+  const faq = definition.theme?.faq;
+  if (faq?.setId) {
+    const set = findFaqSet(await store.getOrgSettings(org.id), faq.setId);
+    const resolvedFaq = set
+      ? {
+          enabled: faq.enabled,
+          setId: faq.setId,
+          heading: set.heading,
+          headingEs: set.headingEs,
+          disclaimer: set.disclaimer,
+          disclaimerEs: set.disclaimerEs,
+          items: set.items,
+        }
+      : { ...faq, items: faq.items ?? [] };
+    definition = { ...definition, theme: { ...definition.theme, faq: resolvedFaq } };
+  }
+
+  preloadHero(definition);
 
   const attribution: Record<string, string> = {};
   const source = pick("utm_source") ?? pick("source");
@@ -55,7 +80,7 @@ export async function JourneyRuntime({
       <CallRailScript src={callRailSwapUrl} />
       <JourneyPlayer
         slug={journey.slug}
-        definition={journey.definition}
+        definition={definition}
         attribution={attribution}
         initialLocale={initialLocale}
       />

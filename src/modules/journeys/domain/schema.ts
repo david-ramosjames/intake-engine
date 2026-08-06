@@ -310,10 +310,18 @@ export const themeTokensSchema = z
     faq: z
       .object({
         enabled: z.boolean().optional(),
+        // When set, the FAQ content comes from a reusable FAQ set in the org's
+        // library (resolved at render time) instead of the inline items below.
+        setId: z.string().optional(),
         heading: z.string().optional(),
-        items: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
+        // Spanish heading/disclaimer, used when a resolved FAQ set carries them.
+        headingEs: z.string().optional(),
+        items: z
+          .array(z.object({ q: z.string(), a: z.string(), qEs: z.string().optional(), aEs: z.string().optional() }))
+          .optional(),
         // Small print shown under the questions (e.g. a legal disclaimer).
         disclaimer: z.string().optional(),
+        disclaimerEs: z.string().optional(),
       })
       .optional(),
     reviews: z
