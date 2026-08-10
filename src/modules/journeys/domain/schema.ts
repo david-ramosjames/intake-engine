@@ -420,6 +420,11 @@ export const journeyDefinitionSchema = z.object({
       title: z.string().optional(), // the HTML <title> tag
       description: z.string().optional(), // meta description
       h1: z.string().optional(), // a crawlable main headline for the landing page
+      // Spanish variants, used when the page is served in Spanish (e.g. a Spanish
+      // ad pointing at ?lang=es). Each falls back to its English counterpart.
+      titleEs: z.string().optional(),
+      descriptionEs: z.string().optional(),
+      h1Es: z.string().optional(),
     })
     .optional(),
   theme: themeTokensSchema.optional(),

@@ -99,8 +99,13 @@ export async function JourneyRuntime({
       <CallRailScript src={callRailSwapUrl} />
       {/* A strong, keyword-relevant H1 in the server HTML for search engines and
           Google Ads text customization. Visually hidden so it doesn't disturb the
-          hero layout; only rendered when set in the journey's SEO settings. */}
-      {definition.seo?.h1?.trim() && <h1 className="sr-only">{definition.seo.h1}</h1>}
+          hero layout; only rendered when set in the journey's SEO settings. Uses
+          the Spanish variant when the page is served in Spanish. */}
+      {(() => {
+        const es = initialLocale?.toLowerCase().startsWith("es");
+        const h1 = ((es && definition.seo?.h1Es?.trim()) || definition.seo?.h1?.trim()) || "";
+        return h1 ? <h1 className="sr-only">{h1}</h1> : null;
+      })()}
       <JourneyPlayer
         slug={journey.slug}
         definition={definition}

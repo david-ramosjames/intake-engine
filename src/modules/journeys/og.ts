@@ -33,7 +33,7 @@ export function preloadHero(def: JourneyDefinition): void {
   if (url) ReactDOM.preload(url, { as: "image", fetchPriority: "high" });
 }
 
-export function journeyMetadata(def: JourneyDefinition, firmName: string): Metadata {
+export function journeyMetadata(def: JourneyDefinition, firmName: string, locale?: string): Metadata {
   const theme = def.theme ?? {};
   const firm = firmName || def.name;
   // The document <title> is what GA4 reports as page_title. Make it distinct per
@@ -43,9 +43,13 @@ export function journeyMetadata(def: JourneyDefinition, firmName: string): Metad
   const autoTitle = journeyName && journeyName !== firm ? `${firm} — ${journeyName}` : firm;
   // A journey-specific SEO title/description (set in the editor) wins over the
   // auto-generated values — this is what keeps Google Ads from falling back to
-  // the brand + raw subdomain.
-  const docTitle = def.seo?.title?.trim() || autoTitle;
-  const description = def.seo?.description?.trim() || journeyHeadline(def) || def.name;
+  // the brand + raw subdomain. In Spanish, the Spanish variant wins, then the
+  // English SEO value, then the auto value.
+  const es = locale?.toLowerCase().startsWith("es");
+  const seo = def.seo ?? {};
+  const docTitle = (es && seo.titleEs?.trim()) || seo.title?.trim() || autoTitle;
+  const description =
+    (es && seo.descriptionEs?.trim()) || seo.description?.trim() || journeyHeadline(def) || def.name;
   const image = publicUrl(theme.socialImageUrl, theme.sideImageUrl, theme.logoUrl);
   const images = image ? [{ url: image }] : undefined;
 

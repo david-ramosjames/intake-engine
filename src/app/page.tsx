@@ -2,20 +2,32 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { JourneyRuntime } from "@/components/runtime/JourneyRuntime";
 import { journeyMetadata } from "@/modules/journeys/og";
+import { pickLocale } from "@/modules/journeys/domain/i18n";
 import { getAdminOrg } from "@/server/currentOrg";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store } from "@/server/store";
 import { resolveCustomDomain } from "@/server/tenant";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
   // On a connected custom domain, the link preview is about that firm/journey.
   const custom = await resolveCustomDomain();
   if (custom?.journeySlug) {
     const journey = await getPublishedJourneyCached(custom.org.id, custom.journeySlug);
     if (journey && journey.status === "PUBLISHED") {
-      return journeyMetadata(journey.definition, custom.org.name);
+      const sp = await searchParams;
+      const languages = journey.definition.languages ?? ["en"];
+      const langParam = ["lang", "hl", "locale"]
+        .map((k) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined))
+        .find(Boolean);
+      const locale = pickLocale(langParam, (await headers()).get("accept-language"), languages);
+      return journeyMetadata(journey.definition, custom.org.name, locale);
     }
   }
   return {};

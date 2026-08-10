@@ -231,6 +231,40 @@ export function JourneyEditor({
     }
   }
 
+  // Translate just the SEO fields (title / H1 / meta description) into their
+  // Spanish counterparts. Only fills empty boxes so it won't clobber edits.
+  const [seoTranslating, setSeoTranslating] = useState(false);
+  async function translateSeo() {
+    const seo = def.seo ?? {};
+    const items: Array<{ key: string; text: string }> = [];
+    if (seo.title?.trim() && !seo.titleEs?.trim()) items.push({ key: "title", text: seo.title });
+    if (seo.h1?.trim() && !seo.h1Es?.trim()) items.push({ key: "h1", text: seo.h1 });
+    if (seo.description?.trim() && !seo.descriptionEs?.trim())
+      items.push({ key: "description", text: seo.description });
+    if (items.length === 0) return;
+    setSeoTranslating(true);
+    try {
+      const res = await fetch("/api/admin/translate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ targetLocale: "es", items }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Translation failed.");
+      const t = (data.translations ?? {}) as Record<string, string>;
+      mutate((d) => {
+        d.seo ??= {};
+        if (t.title?.trim()) d.seo.titleEs = t.title;
+        if (t.h1?.trim()) d.seo.h1Es = t.h1;
+        if (t.description?.trim()) d.seo.descriptionEs = t.description;
+      });
+    } catch {
+      /* best-effort; the boxes stay editable */
+    } finally {
+      setSeoTranslating(false);
+    }
+  }
+
   const terminalTypes = new Set(["review", "success", "referral", "decline", "end", "sign"]);
   const pageList = def.pages.map((p) => ({ id: p.id, name: p.name, type: p.type }));
 
@@ -510,10 +544,23 @@ export function JourneyEditor({
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Search &amp; ads (SEO)</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Search &amp; ads (SEO)</div>
+              {es.esEnabled && (
+                <button
+                  type="button"
+                  onClick={translateSeo}
+                  disabled={seoTranslating}
+                  className="rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {seoTranslating ? "Translating…" : "Translate to Spanish"}
+                </button>
+              )}
+            </div>
             <p className="mt-0.5 text-xs text-gray-400">
               What Google reads for search results and Google Ads. Set a strong, keyword-relevant title and headline so
               ads don&apos;t fall back to your brand name + domain.
+              {es.esEnabled && " Spanish visitors (and Spanish ads → ?lang=es) get the 🇪🇸 versions below."}
             </p>
             <div className="mt-3 space-y-3">
               <div>
@@ -526,6 +573,14 @@ export function JourneyEditor({
                   value={def.seo?.title ?? ""}
                   onChange={(e) => mutate((d) => void (((d.seo ??= {}).title = e.target.value || undefined)))}
                 />
+                {es.esEnabled && (
+                  <input
+                    className={`${input} mt-1.5 w-full border-dashed`}
+                    placeholder="🇪🇸 Page title — Spanish"
+                    value={def.seo?.titleEs ?? ""}
+                    onChange={(e) => mutate((d) => void (((d.seo ??= {}).titleEs = e.target.value || undefined)))}
+                  />
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">
@@ -537,6 +592,14 @@ export function JourneyEditor({
                   value={def.seo?.h1 ?? ""}
                   onChange={(e) => mutate((d) => void (((d.seo ??= {}).h1 = e.target.value || undefined)))}
                 />
+                {es.esEnabled && (
+                  <input
+                    className={`${input} mt-1.5 w-full border-dashed`}
+                    placeholder="🇪🇸 Main headline (H1) — Spanish"
+                    value={def.seo?.h1Es ?? ""}
+                    onChange={(e) => mutate((d) => void (((d.seo ??= {}).h1Es = e.target.value || undefined)))}
+                  />
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">
@@ -549,6 +612,15 @@ export function JourneyEditor({
                   value={def.seo?.description ?? ""}
                   onChange={(e) => mutate((d) => void (((d.seo ??= {}).description = e.target.value || undefined)))}
                 />
+                {es.esEnabled && (
+                  <textarea
+                    className={`${input} mt-1.5 w-full border-dashed`}
+                    rows={2}
+                    placeholder="🇪🇸 Meta description — Spanish"
+                    value={def.seo?.descriptionEs ?? ""}
+                    onChange={(e) => mutate((d) => void (((d.seo ??= {}).descriptionEs = e.target.value || undefined)))}
+                  />
+                )}
               </div>
             </div>
           </div>

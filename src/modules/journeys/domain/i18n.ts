@@ -85,6 +85,24 @@ export function localeFromAcceptLanguage(
   return undefined;
 }
 
+/**
+ * The effective starting locale: an explicit ?lang/hl/locale param wins, then the
+ * browser's Accept-Language, then the journey's default (first language, or "en").
+ * Used by both the runtime render and generateMetadata so the two agree.
+ */
+export function pickLocale(
+  param: string | undefined,
+  acceptLanguage: string | null | undefined,
+  languages: string[],
+): string {
+  return (
+    localeFromParam(param, languages) ??
+    localeFromAcceptLanguage(acceptLanguage, languages) ??
+    languages[0] ??
+    "en"
+  );
+}
+
 /** Resolve a piece of text for a locale, falling back to the base value. */
 export function localize(
   def: Pick<JourneyDefinition, "i18n">,
