@@ -1217,9 +1217,46 @@ function BelowFold({
   );
 }
 
+// Parse content-block body copy into paragraphs and bullet lists. A line that
+// starts with -, *, or • becomes a list item; consecutive bullet lines group
+// into one <ul>; blank lines separate paragraphs. Lets authors paste or type
+// bulleted lists and have them render as real bullets.
+type ContentToken = { type: "p"; text: string } | { type: "ul"; items: string[] };
+function parseContentBody(body: string): ContentToken[] {
+  const bullet = /^\s*[-*•]\s+(.*)$/;
+  const tokens: ContentToken[] = [];
+  let para: string[] = [];
+  let list: string[] = [];
+  const flushPara = () => {
+    if (para.length) tokens.push({ type: "p", text: para.join("\n") });
+    para = [];
+  };
+  const flushList = () => {
+    if (list.length) tokens.push({ type: "ul", items: list });
+    list = [];
+  };
+  for (const raw of body.split("\n")) {
+    const m = raw.match(bullet);
+    if (m) {
+      flushPara();
+      list.push(m[1]!.trim());
+    } else if (raw.trim() === "") {
+      flushPara();
+      flushList();
+    } else {
+      flushList();
+      para.push(raw);
+    }
+  }
+  flushPara();
+  flushList();
+  return tokens;
+}
+
 // A plain content/paragraph section below the fold (heading + body copy). Body
-// text keeps its line breaks; blank lines separate paragraphs. Spanish is
-// carried inline (headingEs/bodyEs) and preferred when viewed in Spanish.
+// text keeps its line breaks; blank lines separate paragraphs; -, *, or • lines
+// become bullet lists. Spanish is carried inline (headingEs/bodyEs) and
+// preferred when viewed in Spanish.
 function ContentSection({
   content,
   locale,
@@ -1230,17 +1267,25 @@ function ContentSection({
   const es = locale?.toLowerCase().startsWith("es");
   const heading = (es && content.headingEs) || content.heading;
   const body = ((es && content.bodyEs) || content.body || "").trim();
-  const paragraphs = body.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-  if (!heading && paragraphs.length === 0) return null;
+  const tokens = parseContentBody(body);
+  if (!heading && tokens.length === 0) return null;
   return (
     <section className="mx-auto w-full max-w-5xl px-6 py-14 md:py-20">
       {heading && <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>}
       <div className={`${heading ? "mt-6" : ""} max-w-[70ch] space-y-4`}>
-        {paragraphs.map((p, i) => (
-          <p key={i} className="whitespace-pre-line leading-relaxed opacity-75">
-            {p}
-          </p>
-        ))}
+        {tokens.map((t, i) =>
+          t.type === "ul" ? (
+            <ul key={i} className="list-disc space-y-1.5 pl-6 leading-relaxed opacity-75">
+              {t.items.map((it, j) => (
+                <li key={j}>{it}</li>
+              ))}
+            </ul>
+          ) : (
+            <p key={i} className="whitespace-pre-line leading-relaxed opacity-75">
+              {t.text}
+            </p>
+          ),
+        )}
       </div>
     </section>
   );

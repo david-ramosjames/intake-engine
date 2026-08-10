@@ -204,10 +204,15 @@ export function ContentLibraryManager({ initialBlocks }: { initialBlocks: Conten
             <textarea
               className={`${input} w-full`}
               rows={5}
-              placeholder="Write the paragraph(s). Blank lines separate paragraphs."
+              placeholder={"Write the paragraph(s). Blank lines separate paragraphs.\n\nStart a line with - for a bullet:\n- First point\n- Second point"}
               value={selected.body}
               onChange={(e) => update(selected.id, { body: e.target.value })}
             />
+            <p className="mt-1 text-xs text-gray-400">
+              Blank lines separate paragraphs. Lines starting with <code className="rounded bg-gray-100 px-1">-</code>,{" "}
+              <code className="rounded bg-gray-100 px-1">*</code>, or <code className="rounded bg-gray-100 px-1">•</code>{" "}
+              become bullet points.
+            </p>
             <textarea
               className={`${input} mt-1.5 w-full border-dashed`}
               rows={5}
