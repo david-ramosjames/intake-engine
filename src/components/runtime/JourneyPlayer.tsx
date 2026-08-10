@@ -12,7 +12,7 @@
 //  • Bilingual: when the journey has >1 language, a toggle switches all text
 //    instantly (translations resolved from definition.i18n).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
 import { ctaHref } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
@@ -532,9 +532,8 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
       }}
       className="flex flex-col"
     >
-      {/* Above-the-fold fills the screen exactly as before; optional sections
-          (FAQ / reviews) append below this wrapper on the landing screen. */}
-      <div className="flex min-h-dvh flex-col">
+      {/* The top banner is a page-level child (outside the first-screen wrapper)
+          so it can stick to the top across the whole page on desktop. */}
       <Banner
         theme={theme}
         L={L}
@@ -544,6 +543,9 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
         setLocale={setLocale}
         logoMobileHidden={mobileHero}
       />
+      {/* Above-the-fold fills the screen exactly as before; optional sections
+          (FAQ / reviews) append below this wrapper on the landing screen. */}
+      <div className="flex min-h-dvh flex-col">
       <div className="flex flex-1 flex-col md:flex-row">
       {theme.sideImageUrl && (
         <aside className="relative hidden bg-center md:block md:w-[38%] lg:w-[40%]" style={heroBgStyleDesktop}>
@@ -1199,15 +1201,26 @@ function BelowFold({
   const showReviews = Boolean(reviews?.enabled && (reviews.items?.length ?? 0) > 0);
   const showContent = Boolean(content?.enabled && (content.body?.trim() || content.heading?.trim()));
   if (!showFaq && !showReviews && !showContent) return null;
-  const faqNode = showFaq ? <FaqSection faq={faq!} L={L} locale={locale} /> : null;
-  const reviewsNode = showReviews ? <ReviewsCarousel reviews={reviews!} L={L} /> : null;
-  const contentNode = showContent ? <ContentSection content={content!} locale={locale} /> : null;
-  const reviewsFirst = theme.belowFold?.reviewsFirst;
+  const nodes: Record<string, React.ReactNode> = {
+    content: showContent ? <ContentSection content={content!} locale={locale} /> : null,
+    faq: showFaq ? <FaqSection faq={faq!} L={L} locale={locale} /> : null,
+    reviews: showReviews ? <ReviewsCarousel reviews={reviews!} L={L} /> : null,
+  };
+  // Render in the author-chosen order; fall back to a stable default (honoring
+  // the legacy reviewsFirst flag) and append any sections not listed.
+  const defaultOrder = ["content", ...(theme.belowFold?.reviewsFirst ? ["reviews", "faq"] : ["faq", "reviews"])];
+  const configured = theme.belowFold?.order ?? [];
+  const seen = new Set<string>();
+  const renderOrder = [...configured, ...defaultOrder].filter((k) => {
+    if (seen.has(k) || !(k in nodes)) return false;
+    seen.add(k);
+    return true;
+  });
   return (
     <div>
-      {contentNode}
-      {reviewsFirst ? reviewsNode : faqNode}
-      {reviewsFirst ? faqNode : reviewsNode}
+      {renderOrder.map((k) => (
+        <Fragment key={k}>{nodes[k]}</Fragment>
+      ))}
       {cta && (
         <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-16">
           <div className="mx-auto flex w-full max-w-md flex-col gap-3">{cta}</div>
@@ -1223,7 +1236,8 @@ function BelowFold({
 // bulleted lists and have them render as real bullets.
 type ContentToken = { type: "p"; text: string } | { type: "ul"; items: string[] };
 function parseContentBody(body: string): ContentToken[] {
-  const bullet = /^\s*[-*•]\s+(.*)$/;
+  // Accept hyphen, asterisk, bullet, and en/em-dashes (pasted lists often use –).
+  const bullet = /^\s*[-*•–—·]\s+(.*)$/;
   const tokens: ContentToken[] = [];
   let para: string[] = [];
   let list: string[] = [];
@@ -1272,7 +1286,7 @@ function ContentSection({
   return (
     <section className="mx-auto w-full max-w-5xl px-6 py-14 md:py-20">
       {heading && <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>}
-      <div className={`${heading ? "mt-6" : ""} max-w-[70ch] space-y-4`}>
+      <div className={`${heading ? "mt-6" : ""} space-y-4`}>
         {tokens.map((t, i) =>
           t.type === "ul" ? (
             <ul key={i} className="list-disc space-y-1.5 pl-6 leading-relaxed opacity-75">
@@ -1979,7 +1993,7 @@ function Banner({
   const items = banner.items ?? [];
   return (
     <div
-      className="animate-slide-down w-full border-b"
+      className="animate-slide-down w-full border-b md:sticky md:top-0 md:z-40"
       style={{
         background: banner.background ?? "color-mix(in srgb, var(--text) 8%, var(--bg))",
         color: banner.textColor,

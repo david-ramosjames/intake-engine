@@ -359,6 +359,10 @@ export const themeTokensSchema = z
     // optional repeat of the Call / Start buttons at the very bottom.
     belowFold: z
       .object({
+        // Order the below-the-fold sections render in — a permutation of
+        // "content", "faq", "reviews". Missing sections fall back to a stable
+        // default order. Supersedes the legacy `reviewsFirst` flag.
+        order: z.array(z.enum(["content", "faq", "reviews"])).optional(),
         reviewsFirst: z.boolean().optional(),
         showCta: z.boolean().optional(),
       })

@@ -1130,32 +1130,63 @@ export function JourneyEditor({
               Extra sections visitors reach by scrolling down on the landing screen. These never change the main
               above-the-fold layout.
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                Show first
-                <select
-                  className={`${controlBase} py-1`}
-                  value={def.theme?.belowFold?.reviewsFirst ? "reviews" : "faq"}
-                  onChange={(e) =>
-                    mutate(
-                      (d) => void (((d.theme ??= {}).belowFold ??= {}).reviewsFirst = e.target.value === "reviews"),
-                    )
-                  }
-                >
-                  <option value="faq">FAQs</option>
-                  <option value="reviews">Reviews</option>
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  className="accent-blue-600"
-                  checked={def.theme?.belowFold?.showCta ?? false}
-                  onChange={(e) => mutate((d) => void (((d.theme ??= {}).belowFold ??= {}).showCta = e.target.checked))}
-                />
-                Repeat the Call / Start buttons at the bottom
-              </label>
-            </div>
+            {(() => {
+              const labels: Record<string, string> = {
+                content: "Content section",
+                faq: "FAQs",
+                reviews: "Reviews",
+              };
+              const dflt = [
+                "content",
+                ...(def.theme?.belowFold?.reviewsFirst ? ["reviews", "faq"] : ["faq", "reviews"]),
+              ];
+              const cur = def.theme?.belowFold?.order ?? dflt;
+              const order = [...cur, ...dflt].filter((k, i, a) => a.indexOf(k) === i && k in labels);
+              const move = (i: number, dir: -1 | 1) =>
+                mutate((d) => {
+                  const bf = ((d.theme ??= {}).belowFold ??= {});
+                  const arr = [...order];
+                  const j = i + dir;
+                  if (j < 0 || j >= arr.length) return;
+                  [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+                  bf.order = arr as ("content" | "faq" | "reviews")[];
+                });
+              return (
+                <div className="mt-2">
+                  <div className="mb-1 text-xs font-medium text-gray-500">Section order (top to bottom)</div>
+                  <div className="space-y-1">
+                    {order.map((k, i) => (
+                      <div
+                        key={k}
+                        className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700"
+                      >
+                        <span>{labels[k]}</span>
+                        <span className="flex items-center text-gray-400">
+                          <IconBtn label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
+                            ↑
+                          </IconBtn>
+                          <IconBtn label="Move down" disabled={i === order.length - 1} onClick={() => move(i, 1)}>
+                            ↓
+                          </IconBtn>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Only the sections you turn on below appear; this sets the order they stack in.
+                  </p>
+                </div>
+              );
+            })()}
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                className="accent-blue-600"
+                checked={def.theme?.belowFold?.showCta ?? false}
+                onChange={(e) => mutate((d) => void (((d.theme ??= {}).belowFold ??= {}).showCta = e.target.checked))}
+              />
+              Repeat the Call / Start buttons at the bottom
+            </label>
 
             {/* FAQs */}
             <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
