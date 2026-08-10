@@ -40,8 +40,12 @@ export function journeyMetadata(def: JourneyDefinition, firmName: string): Metad
   // journey — "Firm Name — Journey Name" — so journeys don't collapse into one
   // row in Analytics. The link/social preview keeps just the firm name.
   const journeyName = def.name?.trim();
-  const docTitle = journeyName && journeyName !== firm ? `${firm} — ${journeyName}` : firm;
-  const description = journeyHeadline(def) ?? def.name;
+  const autoTitle = journeyName && journeyName !== firm ? `${firm} — ${journeyName}` : firm;
+  // A journey-specific SEO title/description (set in the editor) wins over the
+  // auto-generated values — this is what keeps Google Ads from falling back to
+  // the brand + raw subdomain.
+  const docTitle = def.seo?.title?.trim() || autoTitle;
+  const description = def.seo?.description?.trim() || journeyHeadline(def) || def.name;
   const image = publicUrl(theme.socialImageUrl, theme.sideImageUrl, theme.logoUrl);
   const images = image ? [{ url: image }] : undefined;
 

@@ -324,6 +324,19 @@ export const themeTokensSchema = z
         disclaimerEs: z.string().optional(),
       })
       .optional(),
+    // A below-the-fold content/paragraph section (heading + body copy). Like the
+    // FAQ block, the content can come from a reusable content block in the org's
+    // library (resolved at render time) via setId, or be inline per-journey.
+    content: z
+      .object({
+        enabled: z.boolean().optional(),
+        setId: z.string().optional(),
+        heading: z.string().optional(),
+        headingEs: z.string().optional(),
+        body: z.string().optional(),
+        bodyEs: z.string().optional(),
+      })
+      .optional(),
     reviews: z
       .object({
         enabled: z.boolean().optional(),
@@ -399,6 +412,16 @@ export const journeyDefinitionSchema = z.object({
   // Translations, keyed by locale then by a stable text key (see i18n.ts).
   // e.g. { es: { "c:case:label": "¿Qué tipo de caso?" } }
   i18n: z.record(z.record(z.string())).optional(),
+  // Search & ads metadata for the landing page. When set, these override the
+  // auto-generated values so Google Ads / search have strong, keyword-relevant
+  // material instead of falling back to the brand + domain.
+  seo: z
+    .object({
+      title: z.string().optional(), // the HTML <title> tag
+      description: z.string().optional(), // meta description
+      h1: z.string().optional(), // a crawlable main headline for the landing page
+    })
+    .optional(),
   theme: themeTokensSchema.optional(),
   variables: z.array(variableSchema).default([]),
   pages: z.array(pageSchema).min(1),

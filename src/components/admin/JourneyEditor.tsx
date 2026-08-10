@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Component, JourneyDefinition, Page } from "@/modules/journeys/domain/schema";
 import type { FaqSet } from "@/modules/faq/faqSets";
+import type { ContentBlock } from "@/modules/content/contentBlocks";
 import { tk } from "@/modules/journeys/domain/i18n";
 import { collectStrings } from "@/modules/journeys/domain/strings";
 import { DeleteJourneyButton } from "@/components/admin/DeleteJourneyButton";
@@ -103,14 +104,22 @@ export function JourneyEditor({
   // opens on the journey name and its steps, not a wall of settings.
   const [showSettings, setShowSettings] = useState(false);
 
-  // The org's reusable FAQ library, for the "use a saved set" dropdown below.
+  // The org's reusable FAQ + content libraries, for the "use a saved set"
+  // dropdowns below.
   const [faqSets, setFaqSets] = useState<FaqSet[]>([]);
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
   useEffect(() => {
     let alive = true;
     fetch("/api/admin/faq-sets")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (alive && d?.ok) setFaqSets(d.sets as FaqSet[]);
+      })
+      .catch(() => {});
+    fetch("/api/admin/content-blocks")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (alive && d?.ok) setContentBlocks(d.blocks as ContentBlock[]);
       })
       .catch(() => {});
     return () => {
@@ -498,6 +507,50 @@ export function JourneyEditor({
               <code className="rounded bg-gray-50 px-1 font-mono">/{slugDraft || "…"}?lang=es</code>). Lowercase letters,
               numbers, and hyphens. Changing it changes the live link.
             </p>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Search &amp; ads (SEO)</div>
+            <p className="mt-0.5 text-xs text-gray-400">
+              What Google reads for search results and Google Ads. Set a strong, keyword-relevant title and headline so
+              ads don&apos;t fall back to your brand name + domain.
+            </p>
+            <div className="mt-3 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Page title <span className="font-normal text-gray-400">(browser tab &amp; Google) · ~60 characters</span>
+                </label>
+                <input
+                  className={`${input} w-full`}
+                  placeholder="e.g. Austin Personal Injury Lawyers · Free Consultation · Ramos James Law"
+                  value={def.seo?.title ?? ""}
+                  onChange={(e) => mutate((d) => void (((d.seo ??= {}).title = e.target.value || undefined)))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Main headline (H1) <span className="font-normal text-gray-400">— the page&apos;s primary heading for search &amp; ads</span>
+                </label>
+                <input
+                  className={`${input} w-full`}
+                  placeholder="e.g. Injured in an Austin car accident? Get a free case review."
+                  value={def.seo?.h1 ?? ""}
+                  onChange={(e) => mutate((d) => void (((d.seo ??= {}).h1 = e.target.value || undefined)))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Meta description <span className="font-normal text-gray-400">(optional) · ~155 characters</span>
+                </label>
+                <textarea
+                  className={`${input} w-full`}
+                  rows={2}
+                  placeholder="e.g. Hurt in a car accident in Austin? Ramos James Law offers a free consultation — no fee unless we win."
+                  value={def.seo?.description ?? ""}
+                  onChange={(e) => mutate((d) => void (((d.seo ??= {}).description = e.target.value || undefined)))}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-gray-100 pt-3">
@@ -1152,6 +1205,74 @@ export function JourneyEditor({
                 />
                 <EsBox es={es} k={tk.faqDisclaimer()} placeholder="Disclaimer — Spanish" />
               </div>
+                </>
+              )}
+            </div>
+
+            {/* Content block (paragraph) */}
+            <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
+              <label className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-600">Content section (paragraph)</span>
+                <span className="flex items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    className="accent-blue-600"
+                    checked={def.theme?.content?.enabled ?? false}
+                    onChange={(e) => mutate((d) => void (((d.theme ??= {}).content ??= {}).enabled = e.target.checked))}
+                  />
+                  Show
+                </span>
+              </label>
+
+              <label className="mt-2 block text-xs font-medium text-gray-500">Content</label>
+              <select
+                className={`${controlBase} mt-1 w-full`}
+                value={def.theme?.content?.setId ?? ""}
+                onChange={(e) =>
+                  mutate((d) => void (((d.theme ??= {}).content ??= {}).setId = e.target.value || undefined))
+                }
+              >
+                <option value="">Custom — just for this journey</option>
+                {contentBlocks.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    From library: {b.name}
+                  </option>
+                ))}
+              </select>
+
+              {def.theme?.content?.setId ? (
+                <p className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                  Using the{" "}
+                  <strong>{contentBlocks.find((b) => b.id === def.theme?.content?.setId)?.name ?? "selected"}</strong>{" "}
+                  block from your{" "}
+                  <Link href="/admin/content" className="underline">
+                    Content library
+                  </Link>
+                  . Edit it there — changes apply to every journey using this block.
+                </p>
+              ) : (
+                <>
+                  <input
+                    className={`${input} mt-2`}
+                    placeholder="Heading (optional)"
+                    value={def.theme?.content?.heading ?? ""}
+                    onChange={(e) =>
+                      mutate((d) => void (((d.theme ??= {}).content ??= {}).heading = e.target.value || undefined))
+                    }
+                  />
+                  <textarea
+                    className={`${input} mt-2`}
+                    rows={4}
+                    placeholder="Body — write the paragraph(s). Blank lines separate paragraphs."
+                    value={def.theme?.content?.body ?? ""}
+                    onChange={(e) =>
+                      mutate((d) => void (((d.theme ??= {}).content ??= {}).body = e.target.value || undefined))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    For Spanish, reuse a saved block from the Content library (it carries its own translation), or use
+                    the library&apos;s translate button.
+                  </p>
                 </>
               )}
             </div>

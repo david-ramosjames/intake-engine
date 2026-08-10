@@ -1194,14 +1194,18 @@ function BelowFold({
 }) {
   const faq = theme.faq;
   const reviews = theme.reviews;
+  const content = theme.content;
   const showFaq = Boolean(faq?.enabled && (faq.items?.length ?? 0) > 0);
   const showReviews = Boolean(reviews?.enabled && (reviews.items?.length ?? 0) > 0);
-  if (!showFaq && !showReviews) return null;
+  const showContent = Boolean(content?.enabled && (content.body?.trim() || content.heading?.trim()));
+  if (!showFaq && !showReviews && !showContent) return null;
   const faqNode = showFaq ? <FaqSection faq={faq!} L={L} locale={locale} /> : null;
   const reviewsNode = showReviews ? <ReviewsCarousel reviews={reviews!} L={L} /> : null;
+  const contentNode = showContent ? <ContentSection content={content!} locale={locale} /> : null;
   const reviewsFirst = theme.belowFold?.reviewsFirst;
   return (
     <div>
+      {contentNode}
       {reviewsFirst ? reviewsNode : faqNode}
       {reviewsFirst ? faqNode : reviewsNode}
       {cta && (
@@ -1210,6 +1214,35 @@ function BelowFold({
         </section>
       )}
     </div>
+  );
+}
+
+// A plain content/paragraph section below the fold (heading + body copy). Body
+// text keeps its line breaks; blank lines separate paragraphs. Spanish is
+// carried inline (headingEs/bodyEs) and preferred when viewed in Spanish.
+function ContentSection({
+  content,
+  locale,
+}: {
+  content: NonNullable<NonNullable<JourneyDefinition["theme"]>["content"]>;
+  locale: string;
+}) {
+  const es = locale?.toLowerCase().startsWith("es");
+  const heading = (es && content.headingEs) || content.heading;
+  const body = ((es && content.bodyEs) || content.body || "").trim();
+  const paragraphs = body.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  if (!heading && paragraphs.length === 0) return null;
+  return (
+    <section className="mx-auto w-full max-w-5xl px-6 py-14 md:py-20">
+      {heading && <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>}
+      <div className={`${heading ? "mt-6" : ""} max-w-[70ch] space-y-4`}>
+        {paragraphs.map((p, i) => (
+          <p key={i} className="whitespace-pre-line leading-relaxed opacity-75">
+            {p}
+          </p>
+        ))}
+      </div>
+    </section>
   );
 }
 
