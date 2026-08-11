@@ -108,9 +108,8 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
         <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-700">Source</h2>
           <div className="mt-3">
-            <Row label="Page submitted" value={ctx.pageUrl} />
-            <Row label="Landing page" value={ctx.landingPage} />
-            <Row label="Referrer" value={ctx.referrer || "—"} />
+            {/* Lead with the resolved source/medium/campaign first, so it's
+                visible up top — the long raw URLs come after. */}
             {(() => {
               const d = lead.source
                 ? { source: lead.source, medium: lead.medium, campaign: lead.campaign }
@@ -123,9 +122,12 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
                 </>
               );
             })()}
+            <Row label="Referrer" value={ctx.referrer || "—"} />
             <Row label="Click ID" value={ctx.gclid ?? ctx.gbraid ?? ctx.fbclid ?? ctx.msclkid} />
             <Row label="utm_term" value={ctx.utm_term} />
             <Row label="utm_content" value={ctx.utm_content} />
+            <Row label="Page submitted" value={ctx.pageUrl} />
+            <Row label="Landing page" value={ctx.landingPage} />
             <Row label="Browser" value={ctx.userAgent} />
           </div>
         </section>
