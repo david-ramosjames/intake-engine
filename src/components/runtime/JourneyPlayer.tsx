@@ -1284,7 +1284,7 @@ function ContentSection({
   const tokens = parseContentBody(body);
   if (!heading && tokens.length === 0) return null;
   return (
-    <section className="mx-auto w-full max-w-5xl px-6 py-14 md:py-20">
+    <section className="mx-auto w-full max-w-5xl px-6 py-10 md:py-12">
       {heading && <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>}
       <div className={`${heading ? "mt-6" : ""} space-y-4`}>
         {tokens.map((t, i) =>
@@ -1347,7 +1347,7 @@ function FaqSection({
   const [open, setOpen] = useState<number | null>(null);
   const divide = "border-t border-[color:color-mix(in_srgb,var(--text)_12%,transparent)]";
   return (
-    <section className="mx-auto w-full max-w-5xl px-6 py-14 md:py-20">
+    <section className="mx-auto w-full max-w-5xl px-6 py-10 md:py-12">
       <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>
       <div className="mt-6">
         {items.map((it, i) => {
@@ -1435,7 +1435,7 @@ function ReviewsCarousel({
   if (n === 0) return null;
   if (n === 1) {
     return (
-      <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-20">
+      <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-10 md:py-12">
         {heading && <h2 className="mb-8 text-center text-2xl font-semibold sm:text-3xl">{heading}</h2>}
         <div className="mx-auto max-w-md">
           <ReviewCard review={items[0]!} index={0} L={L} />
@@ -1507,7 +1507,7 @@ function SlidingReviews({
   }, [animate]);
 
   return (
-    <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-20">
+    <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-10 md:py-12">
       {heading && <h2 className="mb-8 text-center text-2xl font-semibold sm:text-3xl">{heading}</h2>}
       <div className="mx-auto flex max-w-5xl items-center gap-2 sm:gap-4">
         <button
