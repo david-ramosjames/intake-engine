@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deleteLead } from "@/app/admin/actions";
 import { OutcomeBadge } from "@/components/admin/OutcomeBadge";
+import { formatCentral } from "@/lib/datetime";
 import type { JourneyDefinition } from "@/modules/journeys/domain/schema";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
@@ -66,7 +67,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
             <OutcomeBadge outcome={lead.outcome} />
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            {new Date(lead.createdAt).toLocaleString()} · {lead.journeySlug}
+            {formatCentral(lead.createdAt)} · {lead.journeySlug}
           </p>
         </div>
         <form action={deleteLead}>

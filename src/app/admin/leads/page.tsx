@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { OutcomeBadge } from "@/components/admin/OutcomeBadge";
+import { formatCentral } from "@/lib/datetime";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
 export const dynamic = "force-dynamic";
 
 function fmt(d: string) {
-  return new Date(d).toLocaleString();
+  return formatCentral(d);
 }
 
 export default async function Leads({ searchParams }: { searchParams: Promise<{ outcome?: string }> }) {
