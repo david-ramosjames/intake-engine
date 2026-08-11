@@ -51,6 +51,9 @@ function summary(ctx: Ctx): string {
 async function runSlack(action: SlackAction, ctx: Ctx): Promise<void> {
   const url = action.webhookUrl?.trim();
   if (!url) return;
+  // Only ping Slack for actionable outcomes (lead / referral). A "not a fit"
+  // (declined) doesn't warrant a notification.
+  if (ctx.outcome === "declined") return;
   let text = renderTemplate(action.message, ctx).trim() || summary(ctx);
   // Always include the visitor's message, even when the configured template
   // doesn't reference {{description}} (append only if not already present).
