@@ -94,6 +94,12 @@ function collectContext(): Record<string, string> {
     "gclid",
     "fbclid",
     "msclkid",
+    // Google Ads auto-tagging often has no UTMs — these identify a paid click.
+    "gbraid",
+    "wbraid",
+    "gad_source",
+    "gad_campaignid",
+    "campaignid",
   ]) {
     const v = params.get(k);
     if (v) ctx[k] = v;

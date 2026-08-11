@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { OutcomeBadge } from "@/components/admin/OutcomeBadge";
+import { deriveAttribution } from "@/modules/leads/attribution";
 import { formatCentral } from "@/lib/datetime";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
@@ -91,10 +92,17 @@ export default async function Leads({ searchParams }: { searchParams: Promise<{ 
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     <Link href={`/admin/leads/${l.id}`} className="block">
-                      {l.source ?? l.context?.utm_source ?? "direct"}
-                      {l.medium || l.context?.utm_medium ? (
-                        <div className="text-gray-400">{l.medium ?? l.context?.utm_medium}</div>
-                      ) : null}
+                      {(() => {
+                        // Prefer the stored source; for older leads with none,
+                        // derive it from the saved context (click ids / referrer).
+                        const d = l.source ? { source: l.source, medium: l.medium } : deriveAttribution({}, l.context ?? {});
+                        return (
+                          <>
+                            {d.source ?? "direct"}
+                            {d.medium ? <div className="text-gray-400">{d.medium}</div> : null}
+                          </>
+                        );
+                      })()}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-600">

@@ -4,6 +4,7 @@
 // to the Automation Engine.
 
 import { extractContact, scoreLead, type Answers } from "@/modules/journeys/runtime/engine";
+import { deriveAttribution } from "@/modules/leads/attribution";
 import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/schema";
 import { runLeadAutomations } from "@/modules/automations/run";
 import { callRailConfig, forwardLeadToCallRail } from "@/modules/integrations/callrail";
@@ -38,6 +39,11 @@ export async function submitLead(
   const byEnding = endingType ? outcomeForPageType(endingType as PageType) : null;
   const outcome: LeadOutcome = byEnding ?? (qualified ? "lead" : "declined");
 
+  // Resolve source/medium/campaign: explicit UTMs win, else infer from click
+  // ids (gclid/gbraid → Google Ads) and referrer so paid/organic traffic isn't
+  // logged as "direct".
+  const derived = deriveAttribution(attribution, context);
+
   const lead = await store.createLead({
     orgId: journey.orgId,
     journeyId: journey.id,
@@ -51,9 +57,9 @@ export async function submitLead(
     displayName: contact.displayName,
     email: contact.email,
     phone: contact.phone,
-    source: attribution.source ?? context.utm_source,
-    campaign: attribution.campaign ?? context.utm_campaign,
-    medium: attribution.medium ?? context.utm_medium,
+    source: derived.source,
+    campaign: derived.campaign,
+    medium: derived.medium,
   });
 
   // Fire the org's automations for this completed lead (email / Slack). Awaited

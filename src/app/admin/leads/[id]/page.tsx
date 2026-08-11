@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { deleteLead } from "@/app/admin/actions";
 import { OutcomeBadge } from "@/components/admin/OutcomeBadge";
 import { formatCentral } from "@/lib/datetime";
+import { deriveAttribution } from "@/modules/leads/attribution";
 import type { JourneyDefinition } from "@/modules/journeys/domain/schema";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
@@ -110,9 +111,19 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
             <Row label="Page submitted" value={ctx.pageUrl} />
             <Row label="Landing page" value={ctx.landingPage} />
             <Row label="Referrer" value={ctx.referrer || "—"} />
-            <Row label="utm_source" value={lead.source ?? ctx.utm_source} />
-            <Row label="utm_medium" value={lead.medium ?? ctx.utm_medium} />
-            <Row label="utm_campaign" value={lead.campaign ?? ctx.utm_campaign} />
+            {(() => {
+              const d = lead.source
+                ? { source: lead.source, medium: lead.medium, campaign: lead.campaign }
+                : deriveAttribution({}, ctx);
+              return (
+                <>
+                  <Row label="Source" value={d.source ?? "direct"} />
+                  <Row label="Medium" value={d.medium} />
+                  <Row label="Campaign" value={d.campaign} />
+                </>
+              );
+            })()}
+            <Row label="Click ID" value={ctx.gclid ?? ctx.gbraid ?? ctx.fbclid ?? ctx.msclkid} />
             <Row label="utm_term" value={ctx.utm_term} />
             <Row label="utm_content" value={ctx.utm_content} />
             <Row label="Browser" value={ctx.userAgent} />
