@@ -294,6 +294,25 @@ function AutomationForm({
               Create a webhook at api.slack.com → Your app → Incoming Webhooks, pick the channel, and paste the URL
               here.
             </p>
+            <div className="rounded-md border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">
+              <div className="font-medium text-gray-600">When a Slack message is posted</div>
+              <ul className="mt-1.5 space-y-1">
+                <li>
+                  <span className="text-green-600">✓</span> New <strong>Lead</strong> — every qualified submission
+                </li>
+                <li>
+                  <span className="text-green-600">✓</span> <strong>Referral</strong> — every refer-out submission
+                </li>
+                <li>
+                  <span className="text-green-600">✓</span> <strong>Not a fit</strong>, but the visitor{" "}
+                  <strong>typed a message</strong> (e.g. a written inquiry) — worth a look
+                </li>
+                <li>
+                  <span className="text-gray-400">✕</span> <strong>Not a fit</strong> with{" "}
+                  <strong>no message</strong> (only picked options) — skipped
+                </li>
+              </ul>
+            </div>
           </div>
         )}
       </div>

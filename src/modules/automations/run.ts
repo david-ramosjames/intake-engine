@@ -12,6 +12,24 @@ import type { AutomationAction, EmailAction, SlackAction } from "@/server/store/
 
 type Ctx = Record<string, string>;
 
+// Free-text answer types and message-like keys. Used to decide whether a lead
+// "typed something" (a written message worth reading) vs. only picking options.
+const MESSAGE_TYPES = new Set(["longText", "textarea"]);
+const MESSAGE_KEY = /message|description|details|comment|notes|question|tell/i;
+
+/** True when the visitor entered a free-text message (not just picked options). */
+function leadHasMessage(journey: StoredJourney, lead: StoredLead): boolean {
+  for (const page of journey.definition.pages) {
+    for (const c of page.components) {
+      if (!c.key) continue;
+      const v = lead.answers?.[c.key];
+      if (typeof v !== "string" || !v.trim()) continue;
+      if (MESSAGE_TYPES.has(c.type as string) || MESSAGE_KEY.test(c.key)) return true;
+    }
+  }
+  return false;
+}
+
 /** Flatten a lead into {{token}} values usable in action text. */
 function leadContext(journey: StoredJourney, lead: StoredLead): Ctx {
   const ctx: Ctx = {
@@ -23,6 +41,8 @@ function leadContext(journey: StoredJourney, lead: StoredLead): Ctx {
     journey: journey.name,
     source: lead.source ?? "",
     campaign: lead.campaign ?? "",
+    // Internal flag (not a real answer token) used to gate Slack on declines.
+    _hasMessage: leadHasMessage(journey, lead) ? "1" : "",
   };
   // Every answer becomes a token too (e.g. {{description}}, {{case_type}}).
   for (const [k, v] of Object.entries(lead.answers ?? {})) {
@@ -51,9 +71,10 @@ function summary(ctx: Ctx): string {
 async function runSlack(action: SlackAction, ctx: Ctx): Promise<void> {
   const url = action.webhookUrl?.trim();
   if (!url) return;
-  // Only ping Slack for actionable outcomes (lead / referral). A "not a fit"
-  // (declined) doesn't warrant a notification.
-  if (ctx.outcome === "declined") return;
+  // Ping Slack for actionable outcomes (lead / referral). Skip a "not a fit"
+  // (declined) ONLY when the visitor didn't type a message — if they wrote
+  // something (e.g. an inquiry), notify so the team can decide whether to reply.
+  if (ctx.outcome === "declined" && ctx._hasMessage !== "1") return;
   let text = renderTemplate(action.message, ctx).trim() || summary(ctx);
   // Always include the visitor's message, even when the configured template
   // doesn't reference {{description}} (append only if not already present).
