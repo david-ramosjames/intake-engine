@@ -296,6 +296,7 @@ function AutomationForm({
             </p>
             <div className="rounded-md border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">
               <div className="font-medium text-gray-600">When a Slack message is posted</div>
+              <p className="mt-0.5">Each message is labeled with its type:</p>
               <ul className="mt-1.5 space-y-1">
                 <li>
                   <span className="text-green-600">✓</span> New <strong>Lead</strong> — every qualified submission

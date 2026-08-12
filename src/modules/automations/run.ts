@@ -80,6 +80,15 @@ async function runSlack(action: SlackAction, ctx: Ctx): Promise<void> {
   // doesn't reference {{description}} (append only if not already present).
   const msg = ctx.description?.trim();
   if (msg && !text.includes(msg)) text += `\n💬 Message: ${msg}`;
+  // Lead the message with a clear type label so the channel can tell at a glance
+  // what kind of submission it is.
+  const label =
+    ctx.outcome === "referral"
+      ? "🔵 *Referral*"
+      : ctx.outcome === "declined"
+        ? "🟠 *Not a fit — visitor left a message*"
+        : "🟢 *New lead*";
+  text = `${label}\n${text}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
