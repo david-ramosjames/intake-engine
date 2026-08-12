@@ -37,14 +37,23 @@ type AnyDelegate = {
   deleteMany: (args?: unknown) => Promise<any>;
 };
 
-const globalForPrisma = globalThis as unknown as { prisma?: Db };
+// A single PrismaClient (and therefore a single connection pool) per process,
+// in EVERY environment. Cache the initialization PROMISE on globalThis so that
+// (a) concurrent callers during startup share one client instead of each
+// creating its own, and (b) the client survives module reloads. Caching only in
+// non-production previously meant production created a NEW client — and a new
+// pool of DB connections — on every getPrisma() call, which exhausts Postgres
+// ("too many clients already") under real traffic.
+const globalForPrisma = globalThis as unknown as { prismaPromise?: Promise<Db> };
 
-export async function getPrisma(): Promise<Db> {
-  if (globalForPrisma.prisma) return globalForPrisma.prisma;
-  const mod: any = await import("@prisma/client");
-  const client: Db = new mod.PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
-  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = client;
-  return client;
+export function getPrisma(): Promise<Db> {
+  if (!globalForPrisma.prismaPromise) {
+    globalForPrisma.prismaPromise = (async () => {
+      const mod: any = await import("@prisma/client");
+      return new mod.PrismaClient({
+        log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+      }) as Db;
+    })();
+  }
+  return globalForPrisma.prismaPromise;
 }
