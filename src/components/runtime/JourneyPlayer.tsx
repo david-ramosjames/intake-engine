@@ -1489,22 +1489,45 @@ function SlidingReviews({
     return () => mq.removeEventListener("change", update);
   }, []);
 
+  // Auto-advance, paused while the tab is hidden. A backgrounded tab doesn't run
+  // the CSS transition (so its transitionend never fires), which previously let
+  // the index keep climbing past the cloned cards and scrolled the track fully
+  // off-screen — a blank reviews area when the visitor came back.
   useEffect(() => {
-    const id = setInterval(() => setIndex((i) => i + 1), intervalMs);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | undefined;
+    const stop = () => {
+      if (id) clearInterval(id);
+      id = undefined;
+    };
+    const start = () => {
+      stop();
+      id = setInterval(() => setIndex((i) => i + 1), intervalMs);
+    };
+    const onVis = () => (document.hidden ? stop() : start());
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [intervalMs]);
 
-  // After a slide lands in the cloned region, jump (without animation) to the
-  // matching real card so the loop is seamless.
-  const onEnd = () => {
-    if (index >= n + clones) {
-      setAnimate(false);
-      setIndex(index - n);
-    } else if (index < clones) {
-      setAnimate(false);
-      setIndex(index + n);
+  // Once a slide has animated into a cloned card, snap (without animation) to the
+  // matching real card so the loop is seamless AND the index can never run away.
+  // Driven by a timeout rather than onTransitionEnd so a transition that never
+  // fires its end event (backgrounded tab, reduced motion, interrupted slide)
+  // can't strand the track off-screen.
+  useEffect(() => {
+    if (!animate) return;
+    if (index >= n + clones || index < clones) {
+      const t = setTimeout(() => {
+        setAnimate(false);
+        setIndex((i) => (i >= n + clones ? i - n : i < clones ? i + n : i));
+      }, 700); // just past the 650ms slide transition
+      return () => clearTimeout(t);
     }
-  };
+  }, [index, animate, n]);
+
   useEffect(() => {
     if (!animate) {
       const r = requestAnimationFrame(() => setAnimate(true));
@@ -1532,7 +1555,6 @@ function SlidingReviews({
               transform: `translateX(-${(index * 100) / perView}%)`,
               transition: animate ? "transform 650ms cubic-bezier(0.22,1,0.36,1)" : "none",
             }}
-            onTransitionEnd={onEnd}
           >
             {slides.map((s, i) => (
               <div key={i} className="w-full shrink-0 px-2 md:w-1/2">
