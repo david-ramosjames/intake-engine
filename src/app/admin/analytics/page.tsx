@@ -1,7 +1,16 @@
+import Link from "next/link";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
 export const dynamic = "force-dynamic";
+
+const RANGE_PRESETS: Array<[value: string, label: string]> = [
+  ["7", "7 days"],
+  ["30", "30 days"],
+  ["90", "90 days"],
+  ["365", "12 months"],
+  ["all", "All time"],
+];
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) {
   return (
@@ -17,12 +26,39 @@ function pct(n: number, d: number) {
   return d ? `${((n / d) * 100).toFixed(1)}%` : "—";
 }
 
-export default async function Analytics() {
+export default async function Analytics({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string; from?: string; to?: string }>;
+}) {
   const org = await getAdminOrg();
   if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
 
-  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
-  const events = await store.listEvents(org.id, since);
+  const sp = await searchParams;
+  const from = typeof sp.from === "string" ? sp.from : "";
+  const to = typeof sp.to === "string" ? sp.to : "";
+  const range = typeof sp.range === "string" ? sp.range : "30";
+
+  // Resolve the window: a custom from/to wins, else a preset (default 30 days).
+  let sinceISO: string | undefined;
+  let untilMs = Infinity;
+  let rangeLabel: string;
+  if (from || to) {
+    sinceISO = from ? new Date(`${from}T00:00:00`).toISOString() : undefined;
+    untilMs = to ? new Date(`${to}T23:59:59.999`).getTime() : Infinity;
+    rangeLabel = `${from || "start"} → ${to || "now"}`;
+  } else if (range === "all") {
+    sinceISO = undefined;
+    rangeLabel = "all time";
+  } else {
+    const days = Number(range) || 30;
+    sinceISO = new Date(Date.now() - days * 86_400_000).toISOString();
+    rangeLabel = `last ${days} days`;
+  }
+  const usingCustom = Boolean(from || to);
+
+  const allEvents = await store.listEvents(org.id, sinceISO);
+  const events = untilMs === Infinity ? allEvents : allEvents.filter((e) => new Date(e.createdAt).getTime() <= untilMs);
 
   // Distinct sessions per funnel stage.
   const s = {
@@ -93,7 +129,53 @@ export default async function Analytics() {
   return (
     <div className="mx-auto max-w-6xl px-8 py-10">
       <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
-      <p className="mt-1 text-sm text-gray-500">Conversion funnel for {org.name} · last 30 days.</p>
+      <p className="mt-1 text-sm text-gray-500">Conversion funnel for {org.name} · {rangeLabel}.</p>
+
+      {/* Date range: quick presets + a custom from/to. */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {RANGE_PRESETS.map(([value, label]) => {
+          const active = !usingCustom && range === value;
+          return (
+            <Link
+              key={value}
+              href={`/admin/analytics?range=${value}`}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                active
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-gray-300 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {label}
+            </Link>
+          );
+        })}
+        <form method="get" className="ml-1 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-400">or</span>
+          <input
+            type="date"
+            name="from"
+            defaultValue={from}
+            className="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-700"
+            aria-label="From date"
+          />
+          <span className="text-xs text-gray-400">→</span>
+          <input
+            type="date"
+            name="to"
+            defaultValue={to}
+            className="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-700"
+            aria-label="To date"
+          />
+          <button
+            type="submit"
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+              usingCustom ? "border-blue-600 bg-blue-600 text-white" : "border-gray-300 text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            Apply
+          </button>
+        </form>
+      </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Opened" value={String(opened)} sub="unique sessions" />
@@ -106,7 +188,10 @@ export default async function Analytics() {
 
       <section className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="font-medium text-gray-900">Conversion funnel</h2>
-        <p className="mt-1 text-sm text-gray-500">Each stage counts unique sessions.</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Each stage counts unique sessions. <strong>Clicked a CTA</strong> counts any call-to-action tap — call,
+          text, schedule, or link buttons (on these landing pages that&apos;s mostly the Call button).
+        </p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-gray-200 text-left text-gray-400">
@@ -168,8 +253,8 @@ export default async function Analytics() {
         </section>
 
         <div className="space-y-6">
-          <Breakdown title="Top sources by opens" rows={topSources} total={opened} />
-          <Breakdown title="Top pages by opens" rows={topPages} total={opened} />
+          <Breakdown title="Unique sessions by source" rows={topSources} total={opened} />
+          <Breakdown title="Unique sessions by page" rows={topPages} total={opened} />
         </div>
       </div>
     </div>

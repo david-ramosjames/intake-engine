@@ -123,7 +123,11 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
               );
             })()}
             <Row label="Referrer" value={ctx.referrer || "—"} />
-            <Row label="Click ID" value={ctx.gclid ?? ctx.gbraid ?? ctx.fbclid ?? ctx.msclkid} />
+            <Row label="Click ID — gclid (Google)" value={ctx.gclid} />
+            <Row label="Click ID — gbraid (Google)" value={ctx.gbraid} />
+            <Row label="Click ID — wbraid (Google)" value={ctx.wbraid} />
+            <Row label="Click ID — msclkid (Microsoft/Bing)" value={ctx.msclkid} />
+            <Row label="Click ID — fbclid (Meta)" value={ctx.fbclid} />
             <Row label="utm_term" value={ctx.utm_term} />
             <Row label="utm_content" value={ctx.utm_content} />
             <Row label="Page submitted" value={ctx.pageUrl} />

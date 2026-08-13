@@ -16,6 +16,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
 import { ctaHref } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
+import { deriveAttribution } from "@/modules/leads/attribution";
 import {
   isComponentVisible,
   isConvertType,
@@ -167,6 +168,10 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
               : null;
       if (gtmEvent) pushDataLayer(gtmEvent, extra);
       try {
+        // Resolve the source the same way leads do (gclid/gbraid → google, a
+        // search-engine referrer → organic, etc.) so Analytics doesn't log paid
+        // ad clicks as "direct" just because Google auto-tagging omits utm_source.
+        const source = deriveAttribution(attribution ?? {}, collectContext()).source;
         void fetch("/api/events", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -176,7 +181,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
             slug,
             sessionId: sessionRef.current,
             type,
-            source: attribution?.source,
+            source,
             pageUrl: window.location.href,
             ...extra,
           }),
