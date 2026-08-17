@@ -77,12 +77,27 @@ export const ctaSchema = z.object({
 });
 export type Cta = z.infer<typeof ctaSchema>;
 
+/**
+ * Normalize a phone number to E.164 digits for tel:/sms: links (e.g.
+ * "(512) 537-3369" → "+15125373369"). A bare 10-digit US number gets +1; an
+ * 11-digit number starting with 1 gets a +; anything already starting with +
+ * is kept. This is the form CallRail and dialers expect.
+ */
+export function telDigits(raw: string): string {
+  const cleaned = (raw ?? "").replace(/[^\d+]/g, "");
+  if (cleaned.startsWith("+")) return cleaned;
+  const d = cleaned.replace(/\D/g, "");
+  if (d.length === 10) return `+1${d}`;
+  if (d.length === 11 && d.startsWith("1")) return `+${d}`;
+  return d;
+}
+
 /** Resolve the actual href for a CTA from its type/value (or explicit href). */
 export function ctaHref(cta: Cta): string {
   if (cta.href) return cta.href;
   const v = (cta.value ?? "").trim();
-  if (cta.type === "call") return `tel:${v.replace(/[^\d+]/g, "")}`;
-  if (cta.type === "text") return `sms:${v.replace(/[^\d+]/g, "")}`;
+  if (cta.type === "call") return `tel:${telDigits(v)}`;
+  if (cta.type === "text") return `sms:${telDigits(v)}`;
   return v;
 }
 

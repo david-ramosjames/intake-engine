@@ -13,6 +13,7 @@ import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
 import { localeFromAcceptLanguage, localeFromParam } from "@/modules/journeys/domain/i18n";
 import { findFaqSet } from "@/modules/faq/faqSets";
 import { findContentBlock } from "@/modules/content/contentBlocks";
+import { applyBusinessPhone } from "@/modules/settings/businessPhone";
 import { preloadHero } from "@/modules/journeys/og";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store } from "@/server/store";
@@ -87,7 +88,10 @@ export async function JourneyRuntime({
   attribution.org = org.slug; // so the submit endpoint resolves the same tenant
   attribution.firm = org.name; // logo fallback text
 
-  const { gtmId, callRailSwapUrl } = await getPublicSiteConfig(org.id);
+  const { gtmId, callRailSwapUrl, phone } = await getPublicSiteConfig(org.id);
+  // Apply the org's one master phone number to every call/text button + top bar,
+  // so all journeys stay in sync with the CallRail swap target.
+  if (phone) definition = applyBusinessPhone(definition, phone);
   const languages = journey.definition.languages ?? ["en"];
   const initialLocale =
     localeFromParam(pick("lang") ?? pick("hl") ?? pick("locale"), languages) ??

@@ -1,6 +1,8 @@
+import { BusinessPhoneSettings } from "@/components/admin/BusinessPhoneSettings";
 import { CallRailSettings } from "@/components/admin/CallRailSettings";
 import { GtmSettings } from "@/components/admin/GtmSettings";
 import { callRailConfig } from "@/modules/integrations/callrail";
+import { readBusinessPhone } from "@/modules/settings/businessPhone";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 import { industryLabel } from "@/server/store/types";
@@ -25,6 +27,7 @@ export default async function Settings() {
   const gtm = settings.gtm as { containerId?: string; ga4Id?: string } | undefined;
   const gtmContainerId = (gtm?.containerId ?? "").trim();
   const gtmGa4Id = (gtm?.ga4Id ?? "").trim();
+  const businessPhone = readBusinessPhone(settings);
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -38,6 +41,26 @@ export default async function Settings() {
           <Row label="Slug" value={org.slug} />
           <Row label="Industry" value={industryLabel(org.industry)} />
           <Row label="Business ID" value={org.id} />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">Business phone number</h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              businessPhone ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {businessPhone ? "On — used everywhere" : "Off — per-journey numbers"}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-gray-400">
+          Set one number and it appears on the call/text buttons and top bar across all of this business&apos;s
+          journeys — so you don&apos;t have to edit each one, and the number stays matched to your CallRail swap target.
+        </p>
+        <div className="mt-5">
+          <BusinessPhoneSettings initialPhone={businessPhone} />
         </div>
       </div>
 

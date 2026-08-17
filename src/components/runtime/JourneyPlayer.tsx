@@ -14,7 +14,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
-import { ctaHref } from "@/modules/journeys/domain/schema";
+import { ctaHref, telDigits } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
 import { deriveAttribution } from "@/modules/leads/attribution";
 import {
@@ -527,7 +527,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
   const stickyCallHref = pageCallCta
     ? ctaHref(pageCallCta)
     : bannerPhone
-      ? `tel:${bannerPhone.replace(/[^\d+]/g, "")}`
+      ? `tel:${telDigits(bannerPhone)}`
       : undefined;
   const stickyCallLabel = pageCallCta
     ? L(tk.cta(page!.id, callCtaIndex), pageCallCta.label)
@@ -2047,7 +2047,7 @@ function Banner({
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           {banner.phone && (
             <a
-              href={`tel:${banner.phone.replace(/[^\d+]/g, "")}`}
+              href={`tel:${telDigits(banner.phone)}`}
               onClick={onCtaClick}
               className="j-cta hidden items-center gap-2 rounded-full px-4 py-1.5 normal-case sm:inline-flex"
             >
