@@ -10,7 +10,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { extractContact } from "@/modules/journeys/runtime/engine";
+import { readSigningDefaults } from "@/modules/settings/signingDefaults";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
+import { store } from "@/server/store";
 import { resolvePublicOrg } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
@@ -43,9 +45,14 @@ export async function POST(req: NextRequest) {
   const signing = page?.signing;
   if (!signing) return NextResponse.json({ ok: false, error: "Not a sign step." }, { status: 400 });
 
-  // Pick the template for the language (contracts differ EN vs ES).
+  // Pick the template for the language (contracts differ EN vs ES). The sign
+  // step's own IDs win; when blank, fall back to the business-level default
+  // contracts set in Settings — so contracts can be managed in one place.
   const isEs = locale.toLowerCase().startsWith("es");
-  const templateId = (isEs ? signing.templateIdEs : signing.templateIdEn) || signing.templateIdEn;
+  const defaults = readSigningDefaults(await store.getOrgSettings(org.id));
+  const templateIdEn = signing.templateIdEn || defaults.templateIdEn;
+  const templateIdEs = signing.templateIdEs || defaults.templateIdEs;
+  const templateId = (isEs ? templateIdEs : templateIdEn) || templateIdEn;
 
   // No template configured → fall back to the static link, if any.
   const base = process.env.SIGNFLOW_BASE_URL?.trim().replace(/\/+$/, "");

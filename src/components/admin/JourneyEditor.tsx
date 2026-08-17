@@ -1786,7 +1786,9 @@ export function JourneyEditor({
                 <p className="mt-2 text-xs text-gray-400">
                   With template IDs set, the contract is created in Sign Flow pre-filled from the visitor&apos;s answers
                   and shown here to sign; Sign Flow&apos;s reminder texts follow up if they don&apos;t finish. The
-                  Spanish template is used when the journey is in Spanish.
+                  Spanish template is used when the journey is in Spanish.{" "}
+                  <strong>Leave these blank to use the business default contracts</strong> set in Settings — recommended,
+                  so contract swaps are a one-place change.
                 </p>
                 <div className="mt-3">
                   <label className="mb-1 block text-xs font-medium text-gray-500">

@@ -1,8 +1,10 @@
 import { BusinessPhoneSettings } from "@/components/admin/BusinessPhoneSettings";
 import { CallRailSettings } from "@/components/admin/CallRailSettings";
 import { GtmSettings } from "@/components/admin/GtmSettings";
+import { SigningDefaultsSettings } from "@/components/admin/SigningDefaultsSettings";
 import { callRailConfig } from "@/modules/integrations/callrail";
 import { readBusinessPhone } from "@/modules/settings/businessPhone";
+import { readSigningDefaults } from "@/modules/settings/signingDefaults";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 import { industryLabel } from "@/server/store/types";
@@ -28,6 +30,7 @@ export default async function Settings() {
   const gtmContainerId = (gtm?.containerId ?? "").trim();
   const gtmGa4Id = (gtm?.ga4Id ?? "").trim();
   const businessPhone = readBusinessPhone(settings);
+  const signingDefaults = readSigningDefaults(settings);
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -61,6 +64,28 @@ export default async function Settings() {
         </p>
         <div className="mt-5">
           <BusinessPhoneSettings initialPhone={businessPhone} />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">Default e-signature contracts</h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              signingDefaults.templateIdEn || signingDefaults.templateIdEs
+                ? "bg-green-50 text-green-700"
+                : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {signingDefaults.templateIdEn || signingDefaults.templateIdEs ? "Set" : "Off"}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-gray-400">
+          The DocuSeal contracts new signature requests use (one English, one Spanish). Every journey&apos;s sign step
+          inherits these unless it sets its own — so swapping contracts is a one-place change.
+        </p>
+        <div className="mt-5">
+          <SigningDefaultsSettings initialEn={signingDefaults.templateIdEn} initialEs={signingDefaults.templateIdEs} />
         </div>
       </div>
 
