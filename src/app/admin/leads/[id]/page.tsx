@@ -4,35 +4,13 @@ import { deleteLead } from "@/app/admin/actions";
 import { OutcomeBadge } from "@/components/admin/OutcomeBadge";
 import { formatCentral } from "@/lib/datetime";
 import { deriveAttribution } from "@/modules/leads/attribution";
-import type { JourneyDefinition } from "@/modules/journeys/domain/schema";
+import { answerRows } from "@/modules/leads/answers";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
 export const dynamic = "force-dynamic";
 
 // Human-readable answer rows using the journey definition for labels/options.
-function answerRows(def: JourneyDefinition | undefined, answers: Record<string, unknown>) {
-  const byKey = new Map<string, { label: string; options?: { label: string; value: string }[] }>();
-  for (const page of def?.pages ?? []) {
-    for (const c of page.components) {
-      if (c.key) byKey.set(c.key, { label: c.label ?? c.key, options: c.options });
-    }
-  }
-  return Object.entries(answers)
-    .filter(([, v]) => v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0))
-    .map(([key, raw]) => {
-      const meta = byKey.get(key);
-      const display = meta?.options
-        ? (Array.isArray(raw) ? raw : [raw])
-            .map((val) => meta.options?.find((o) => o.value === String(val))?.label ?? String(val))
-            .join(", ")
-        : Array.isArray(raw)
-          ? raw.join(", ")
-          : String(raw);
-      return { key, label: meta?.label ?? key, value: display };
-    });
-}
-
 function Row({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (

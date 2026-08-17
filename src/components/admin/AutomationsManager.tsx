@@ -163,9 +163,9 @@ function AutomationForm({
       "You have a new lead from {{journey}}.\n\nName: {{name}}\nPhone: {{phone}}\nEmail: {{email}}\nMessage: {{description}}",
   );
   const [webhookUrl, setWebhookUrl] = useState(existingSlack?.webhookUrl ?? "");
-  const [message, setMessage] = useState(
-    existingSlack?.message ?? "🚨 New lead from {{journey}} — {{name}} ({{phone}})\n💬 {{description}}",
-  );
+  // Optional custom note shown above the auto-generated full lead detail.
+  // Blank by default now — the Slack message already includes everything.
+  const [message, setMessage] = useState(existingSlack?.message ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -286,13 +286,14 @@ function AutomationForm({
             />
             <input
               className={`${input} w-full`}
-              placeholder="Message"
+              placeholder="Optional note to add at the top (leave blank — the full lead detail is included automatically)"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
             <p className="text-xs text-gray-400">
               Create a webhook at api.slack.com → Your app → Incoming Webhooks, pick the channel, and paste the URL
-              here.
+              here. Each Slack post now includes the full lead — name, phone, email, source, and every answer — so you
+              can leave the note blank. Tokens like <code>{"{{name}}"}</code> still work in the note.
             </p>
             <div className="rounded-md border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">
               <div className="font-medium text-gray-600">When a Slack message is posted</div>
@@ -313,6 +314,10 @@ function AutomationForm({
                   <strong>no message</strong> (only picked options) — skipped
                 </li>
               </ul>
+              <p className="mt-2 border-t border-gray-100 pt-2">
+                Every post includes the <strong>full lead</strong>: name, phone, email, source, and each question with
+                its answer.
+              </p>
             </div>
           </div>
         )}

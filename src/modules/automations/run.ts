@@ -7,6 +7,7 @@
 //   AUTOMATION_EMAIL_FROM  — the From address for emails (e.g. "Firm <leads@firm.com>")
 // Slack needs no env: each Slack action carries its own incoming-webhook URL.
 
+import { answerRows } from "@/modules/leads/answers";
 import { store, type StoredAutomation, type StoredJourney, type StoredLead } from "@/server/store";
 import type { AutomationAction, EmailAction, SlackAction } from "@/server/store/types";
 
@@ -43,12 +44,32 @@ function leadContext(journey: StoredJourney, lead: StoredLead): Ctx {
     campaign: lead.campaign ?? "",
     // Internal flag (not a real answer token) used to gate Slack on declines.
     _hasMessage: leadHasMessage(journey, lead) ? "1" : "",
+    // Internal: the full, human-readable lead detail block for Slack.
+    _detail: buildLeadDetail(journey, lead),
   };
   // Every answer becomes a token too (e.g. {{description}}, {{case_type}}).
   for (const [k, v] of Object.entries(lead.answers ?? {})) {
     if (ctx[k] === undefined) ctx[k] = Array.isArray(v) ? v.join(", ") : v == null ? "" : String(v);
   }
   return ctx;
+}
+
+/** A complete, readable summary of the lead for Slack: contact, source, and
+ *  every question/answer with its label. So the intake team has it all in one
+ *  message without opening the dashboard. */
+function buildLeadDetail(journey: StoredJourney, lead: StoredLead): string {
+  const lines: string[] = [];
+  const contact = [lead.phone && `📞 ${lead.phone}`, lead.email && `✉️ ${lead.email}`].filter(Boolean).join("   ·   ");
+  if (contact) lines.push(contact);
+  const src = [lead.source, lead.medium].filter(Boolean).join(" / ");
+  if (src) lines.push(`Source: ${src}${lead.campaign ? ` · campaign ${lead.campaign}` : ""}`);
+  const rows = answerRows(journey.definition, lead.answers ?? {});
+  if (rows.length) {
+    lines.push("");
+    lines.push("*Details*");
+    for (const r of rows) lines.push(`• *${r.label}:* ${r.value}`);
+  }
+  return lines.join("\n");
 }
 
 /** Replace {{ token }} occurrences; unknown tokens collapse to empty strings. */
@@ -75,20 +96,22 @@ async function runSlack(action: SlackAction, ctx: Ctx): Promise<void> {
   // (declined) ONLY when the visitor didn't type a message — if they wrote
   // something (e.g. an inquiry), notify so the team can decide whether to reply.
   if (ctx.outcome === "declined" && ctx._hasMessage !== "1") return;
-  let text = renderTemplate(action.message, ctx).trim() || summary(ctx);
-  // Always include the visitor's message, even when the configured template
-  // doesn't reference {{description}} (append only if not already present).
-  const msg = ctx.description?.trim();
-  if (msg && !text.includes(msg)) text += `\n💬 Message: ${msg}`;
-  // Lead the message with a clear type label so the channel can tell at a glance
-  // what kind of submission it is.
+  // Type label so the channel can tell at a glance what kind of submission it is.
   const label =
     ctx.outcome === "referral"
       ? "🔵 *Referral*"
       : ctx.outcome === "declined"
         ? "🟠 *Not a fit — visitor left a message*"
         : "🟢 *New lead*";
-  text = `${label}\n${text}`;
+  // Build a complete message: label · journey, the person's name, then the full
+  // contact + source + every answer, so the intake team has it all in Slack.
+  const header = `${label}${ctx.journey ? ` · ${ctx.journey}` : ""}`;
+  const name = ctx.name?.trim();
+  // An optional custom note the org configured (blank by default now).
+  const note = renderTemplate(action.message, ctx).trim();
+  const text = [header, name ? `*${name}*` : "", note, ctx._detail]
+    .filter((s) => s && s.trim())
+    .join("\n");
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
