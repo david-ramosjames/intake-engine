@@ -100,6 +100,9 @@ export interface UpdateLeadInput {
   email?: string;
   phone?: string;
   context?: Record<string, string>;
+  // Promote the lead's classification when set (e.g. the visitor later passed
+  // through a referral screen). Also updates status/qualified/referral to match.
+  outcome?: LeadOutcome;
 }
 
 export interface StoredDomain {

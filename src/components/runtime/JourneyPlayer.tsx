@@ -133,6 +133,10 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
   // instead of creating a duplicate or dropping them.
   const leadIdRef = useRef<string | null>(null);
   const outcomeRef = useRef<Outcome | null>(null);
+  // Flips true once the visitor reaches a screen marked as the referral point
+  // (or a referral ending), so the lead is recorded as a referral even if it was
+  // already submitted as a lead at an earlier conversion point.
+  const referralRef = useRef(false);
   const sessionRef = useRef<string>("");
   const startedRef = useRef(false);
 
@@ -243,6 +247,11 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
 
   const pageById = useCallback((id: string) => pages.find((p) => p.id === id), [pages]);
 
+  // Landing on a referral screen marks this visit as a referral for the lead.
+  useEffect(() => {
+    if (page && (page.markReferral || page.type === "referral")) referralRef.current = true;
+  }, [page]);
+
   const submit = useCallback(
     async (ans: Answers, endingType?: string): Promise<Outcome | null> => {
       // Already submitted (e.g. at a mid-flow conversion point). Enrich that same
@@ -254,7 +263,13 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
             method: "PATCH",
             headers: { "content-type": "application/json" },
             keepalive: true,
-            body: JSON.stringify({ slug, org: attribution?.org, answers: ans, context: collectContext() }),
+            body: JSON.stringify({
+              slug,
+              org: attribution?.org,
+              answers: ans,
+              context: collectContext(),
+              referral: referralRef.current,
+            }),
           }).catch(() => {});
         }
         return outcomeRef.current;
@@ -266,7 +281,14 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
         const res = await fetch(`/api/leads`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ slug, answers: ans, attribution, endingType, context: collectContext() }),
+          body: JSON.stringify({
+            slug,
+            answers: ans,
+            attribution,
+            endingType,
+            context: collectContext(),
+            referral: referralRef.current,
+          }),
         });
         const data = (await res.json()) as { ok: boolean; leadId?: string; outcome?: Outcome; error?: string };
         if (!res.ok || !data.ok) throw new Error(data.error ?? "Something went wrong.");

@@ -29,15 +29,17 @@ export async function submitLead(
   attribution: Attribution = {},
   endingType?: string,
   context: Record<string, string> = {},
+  referral?: boolean,
 ): Promise<SubmitResult> {
   const def = journey.definition;
   const { score, qualified } = scoreLead(def, answers);
   const contact = extractContact(def, answers);
 
-  // Outcome precedence: the ending the flow reached wins; otherwise fall back to
-  // score/qualification (lead vs declined).
+  // Outcome precedence: passing through a referral screen wins (it's a referral,
+  // not a lead, even if submitted early); then the ending the flow reached;
+  // otherwise fall back to score/qualification (lead vs declined).
   const byEnding = endingType ? outcomeForPageType(endingType as PageType) : null;
-  const outcome: LeadOutcome = byEnding ?? (qualified ? "lead" : "declined");
+  const outcome: LeadOutcome = referral ? "referral" : (byEnding ?? (qualified ? "lead" : "declined"));
 
   // Resolve source/medium/campaign: explicit UTMs win, else infer from click
   // ids (gclid/gbraid → Google Ads) and referrer so paid/organic traffic isn't
@@ -86,17 +88,21 @@ export async function submitLead(
 // Enrich an already-submitted lead with the answers gathered after it was first
 // recorded (e.g. the lead fired at a mid-flow conversion point, then the visitor
 // answered more qualifying questions). Re-scores and fills in any contact info
-// captured later. Deliberately does NOT re-run automations / CallRail — those
-// fired once at submission; this only completes the stored record.
+// captured later. Also promotes the lead to a referral if it later passed
+// through a referral screen — re-running automations (Slack/email) so the team
+// sees the corrected classification. Never re-forwards CallRail.
 export async function enrichLead(
   journey: StoredJourney,
   leadId: string,
   answers: Answers,
   context: Record<string, string> = {},
+  referral?: boolean,
 ): Promise<boolean> {
   const def = journey.definition;
   const { score } = scoreLead(def, answers);
   const contact = extractContact(def, answers);
+  const current = await store.getLead(journey.orgId, leadId);
+  const becomesReferral = Boolean(referral) && current?.outcome !== "referral";
   const updated = await store.updateLead(journey.orgId, leadId, {
     answers,
     score,
@@ -104,6 +110,14 @@ export async function enrichLead(
     email: contact.email,
     phone: contact.phone,
     context: Object.keys(context).length ? context : undefined,
+    outcome: becomesReferral ? "referral" : undefined,
   });
+  if (updated && becomesReferral) {
+    try {
+      await runLeadAutomations(journey, updated);
+    } catch (e) {
+      console.error("[automation] enrich re-notify threw", e);
+    }
+  }
   return Boolean(updated);
 }

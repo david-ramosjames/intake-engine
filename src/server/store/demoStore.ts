@@ -297,6 +297,13 @@ export const demoStore: PlatformStore = {
     if (input.email !== undefined) lead.email = input.email;
     if (input.phone !== undefined) lead.phone = input.phone;
     if (input.context !== undefined) lead.context = input.context;
+    if (input.outcome !== undefined) {
+      lead.outcome = input.outcome;
+      lead.status =
+        input.outcome === "referral" ? "REFERRED" : input.outcome === "declined" ? "DISQUALIFIED" : "QUALIFIED";
+      lead.qualified = input.outcome === "lead";
+      lead.referral = input.outcome === "referral";
+    }
     await persist();
     return lead;
   },

@@ -375,6 +375,12 @@ export const prismaStore: PlatformStore = {
     if (input.email !== undefined) data.email = input.email;
     if (input.phone !== undefined) data.phone = input.phone;
     if (input.context !== undefined) data.context = input.context as object;
+    if (input.outcome !== undefined) {
+      data.status =
+        input.outcome === "referral" ? "REFERRED" : input.outcome === "declined" ? "DISQUALIFIED" : "QUALIFIED";
+      data.qualified = input.outcome === "lead";
+      data.referral = input.outcome === "referral";
+    }
     const lead = await prisma.lead.update({
       where: { id: existing.id },
       data,

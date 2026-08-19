@@ -1881,6 +1881,23 @@ export function JourneyEditor({
                       </span>
                     </span>
                   </label>
+                  <label className="mt-3 flex items-start gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={page.markReferral ?? false}
+                      onChange={(e) =>
+                        mutate((d) => void (d.pages[pi]!.markReferral = e.target.checked || undefined))
+                      }
+                    />
+                    <span>
+                      Tag as a referral
+                      <span className="block text-xs font-normal text-gray-400">
+                        When the visitor reaches this screen, classify them as a referral instead of a lead (and post the
+                        referral to Slack). Use this on the referral question/screen.
+                      </span>
+                    </span>
+                  </label>
                 </div>
                 <div className="mt-3 border-t border-gray-200 pt-3">
                   <div className="text-[11px] font-medium text-gray-500">Button colors</div>
