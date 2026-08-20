@@ -1258,7 +1258,9 @@ function BelowFold({
   const showContent = Boolean(content?.enabled && (content.body?.trim() || content.heading?.trim()));
   if (!showFaq && !showReviews && !showContent && !callback) return null;
   const callbackNode = callback ? (
-    <section className="mx-auto w-full max-w-md px-6 py-10">{callback}</section>
+    // Tight top padding so the card sits close under the trust stats / actions;
+    // keep room below before the next section (reviews).
+    <section className="mx-auto w-full max-w-md px-6 pb-10 pt-2">{callback}</section>
   ) : null;
   const nodes: Record<string, React.ReactNode> = {
     content: showContent ? <ContentSection content={content!} locale={locale} /> : null,
