@@ -555,6 +555,24 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
     ? L(tk.cta(page!.id, callCtaIndex), pageCallCta.label)
     : theme.banner?.phoneLabel || (locale === "es" ? "Llamar ahora" : "Call Now");
 
+  // Shared "Request callback" handler used by both the desktop card (in the
+  // action area) and the mobile card (below the fold, above reviews): validate
+  // the card's own required fields, then submit the lead straight to thank-you.
+  const submitCallback = () => {
+    markStarted();
+    for (const c of callbackFields) {
+      if (!c.key || !c.validation?.required) continue;
+      const v = answers[c.key];
+      if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) {
+        setCbError(`Please answer: ${L(tk.label(c.id), c.label) || c.key}`);
+        return;
+      }
+    }
+    setCbError(null);
+    trackFormSubmit();
+    void finishLead(answers);
+  };
+
   return (
     <main
       style={{
@@ -802,23 +820,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
                   L={L}
                   error={cbError}
                   onField={(key, v) => set(key, v)}
-                  onSubmit={() => {
-                    // "Request callback" is an explicit completion: validate the
-                    // card's own fields, then submit the lead and go straight to
-                    // the thank-you — never route into further journey steps.
-                    markStarted();
-                    for (const c of callbackFields) {
-                      if (!c.key || !c.validation?.required) continue;
-                      const v = answers[c.key];
-                      if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) {
-                        setCbError(`Please answer: ${L(tk.label(c.id), c.label) || c.key}`);
-                        return;
-                      }
-                    }
-                    setCbError(null);
-                    trackFormSubmit();
-                    void finishLead(answers);
-                  }}
+                  onSubmit={submitCallback}
                   busy={busy}
                 />
               )}
@@ -850,6 +852,22 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
           theme={theme}
           L={L}
           locale={locale}
+          callback={
+            callbackFields.length > 0 ? (
+              <CallbackCard
+                mobile
+                fields={callbackFields}
+                answers={answers}
+                definition={definition}
+                theme={theme}
+                L={L}
+                error={cbError}
+                onField={(key, v) => set(key, v)}
+                onSubmit={submitCallback}
+                busy={busy}
+              />
+            ) : undefined
+          }
           cta={
             theme.belowFold?.showCta ? (
               <>
@@ -1221,11 +1239,16 @@ function BelowFold({
   L,
   locale,
   cta,
+  callback,
 }: {
   theme: NonNullable<JourneyDefinition["theme"]>;
   L: Localize;
   locale: string;
   cta?: React.ReactNode;
+  // Mobile-only "quick callback" card. Rendered directly above the reviews
+  // section (or first, if there are no reviews) so phone visitors get the same
+  // contact form desktop has.
+  callback?: React.ReactNode;
 }) {
   const faq = theme.faq;
   const reviews = theme.reviews;
@@ -1233,7 +1256,10 @@ function BelowFold({
   const showFaq = Boolean(faq?.enabled && (faq.items?.length ?? 0) > 0);
   const showReviews = Boolean(reviews?.enabled && (reviews.items?.length ?? 0) > 0);
   const showContent = Boolean(content?.enabled && (content.body?.trim() || content.heading?.trim()));
-  if (!showFaq && !showReviews && !showContent) return null;
+  if (!showFaq && !showReviews && !showContent && !callback) return null;
+  const callbackNode = callback ? (
+    <section className="mx-auto w-full max-w-md px-6 py-10">{callback}</section>
+  ) : null;
   const nodes: Record<string, React.ReactNode> = {
     content: showContent ? <ContentSection content={content!} locale={locale} /> : null,
     faq: showFaq ? <FaqSection faq={faq!} L={L} locale={locale} /> : null,
@@ -1249,11 +1275,19 @@ function BelowFold({
     seen.add(k);
     return true;
   });
+  // Anchor the mobile callback directly above the reviews section; if reviews
+  // aren't shown, it leads the below-the-fold content.
+  const reviewsIdx = renderOrder.indexOf("reviews");
+  const callbackAt = reviewsIdx === -1 ? 0 : reviewsIdx;
   return (
     <div>
-      {renderOrder.map((k) => (
-        <Fragment key={k}>{nodes[k]}</Fragment>
+      {renderOrder.map((k, i) => (
+        <Fragment key={k}>
+          {callbackNode && i === callbackAt ? callbackNode : null}
+          {nodes[k]}
+        </Fragment>
       ))}
+      {callbackNode && renderOrder.length === 0 ? callbackNode : null}
       {cta && (
         <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-16">
           <div className="mx-auto flex w-full max-w-md flex-col gap-3">{cta}</div>
@@ -1617,6 +1651,7 @@ function CallbackCard({
   onSubmit,
   busy,
   error,
+  mobile = false,
 }: {
   fields: Component[];
   answers: Answers;
@@ -1627,6 +1662,9 @@ function CallbackCard({
   onSubmit: () => void;
   busy: boolean;
   error?: string | null;
+  // Mobile renders the same card in a single-column layout, shown only on
+  // phones (md:hidden); the default desktop card is hidden below md.
+  mobile?: boolean;
 }) {
   const heading =
     L(tk.callbackHeading(), theme.callback?.heading) || "Prefer a quick callback? Leave your information.";
@@ -1654,11 +1692,11 @@ function CallbackCard({
     ? (theme.callback?.buttonActiveBorderColor ?? theme.callback?.buttonBorderColor)
     : theme.callback?.buttonBorderColor;
   return (
-    <div className="hidden md:block">
+    <div className={mobile ? "md:hidden" : "hidden md:block"}>
       {/* Labeled divider — the "top border" of the callback section. */}
       <div className="flex items-center gap-3 text-sm opacity-75">
         <span className={rule} />
-        <span className="flex items-center gap-2 font-medium">
+        <span className="flex items-center gap-2 text-center font-medium">
           <MailIcon />
           {heading}
         </span>
@@ -1667,7 +1705,7 @@ function CallbackCard({
 
       <div
         className="mt-3 grid gap-2.5"
-        style={{ gridTemplateColumns: `repeat(${Math.min(shortFields.length, 3)}, minmax(0, 1fr))` }}
+        style={mobile ? undefined : { gridTemplateColumns: `repeat(${Math.min(shortFields.length, 3)}, minmax(0, 1fr))` }}
       >
         {shortFields.map((f) => (
           <CallbackField
@@ -1680,7 +1718,7 @@ function CallbackCard({
         ))}
       </div>
 
-      <div className={`mt-2.5 grid gap-2.5 ${longField ? "md:grid-cols-3" : ""}`}>
+      <div className={`mt-2.5 grid gap-2.5 ${longField && !mobile ? "md:grid-cols-3" : ""}`}>
         {longField && (
           <div className="md:col-span-2">
             <CallbackField
