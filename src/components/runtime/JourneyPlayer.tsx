@@ -16,7 +16,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
 import { ctaHref, telDigits } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
-import { CALLBACK_TEXT_DEFAULTS } from "@/modules/settings/callbackDefaults";
+import { CALLBACK_FIELD_IDS, CALLBACK_TEXT_DEFAULTS } from "@/modules/settings/callbackDefaults";
 import { deriveAttribution } from "@/modules/leads/attribution";
 import {
   isComponentVisible,
@@ -514,11 +514,14 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
   // it's simply turned on (theme.callback.enabled) on the landing screen — in
   // which case a default name / phone / email / message set is used.
   const es = locale === "es";
+  // Labels fall back to the built-in defaults (locale-aware); the org's master
+  // callback text overrides them via i18n (see applyCallbackDefaults).
+  const cd = CALLBACK_TEXT_DEFAULTS;
   const defaultCallbackFields: Component[] = [
-    { id: "cb-name", type: "shortText", key: "full_name", label: es ? "Tu nombre" : "Your name", validation: { required: true } },
-    { id: "cb-phone", type: "phone", key: "phone", label: es ? "Número de teléfono" : "Phone number", validation: { required: true } },
-    { id: "cb-email", type: "email", key: "email", label: es ? "Correo electrónico (opcional)" : "Email address (optional)" },
-    { id: "cb-msg", type: "longText", key: "description", label: es ? "¿Cómo podemos ayudarte?" : "How can we help?" },
+    { id: CALLBACK_FIELD_IDS.name, type: "shortText", key: "full_name", label: es ? cd.nameLabelEs : cd.nameLabel, validation: { required: true } },
+    { id: CALLBACK_FIELD_IDS.phone, type: "phone", key: "phone", label: es ? cd.phoneLabelEs : cd.phoneLabel, validation: { required: true } },
+    { id: CALLBACK_FIELD_IDS.email, type: "email", key: "email", label: es ? cd.emailLabelEs : cd.emailLabel },
+    { id: CALLBACK_FIELD_IDS.message, type: "longText", key: "description", label: es ? cd.messageLabelEs : cd.messageLabel },
   ];
   const callbackFields =
     belowFields.length > 0

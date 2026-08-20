@@ -6,6 +6,15 @@
 import { tk } from "@/modules/journeys/domain/i18n";
 import type { JourneyDefinition } from "@/modules/journeys/domain/schema";
 
+// The default field IDs used by the built-in callback card (see JourneyPlayer's
+// defaultCallbackFields). Field labels are localized under these ids.
+export const CALLBACK_FIELD_IDS = {
+  name: "cb-name",
+  phone: "cb-phone",
+  email: "cb-email",
+  message: "cb-msg",
+} as const;
+
 // The wording shown when nothing is configured. Also used to pre-fill the
 // Settings form and as the runtime fallback so Spanish visitors always see
 // Spanish copy even before an org customizes it.
@@ -18,75 +27,81 @@ export const CALLBACK_TEXT_DEFAULTS = {
   buttonSubtitleEs: "Nos comunicaremos en breve",
   secureText: "Your information is secure and will never be shared.",
   secureTextEs: "Su información es segura y nunca será compartida.",
+  nameLabel: "Your name",
+  nameLabelEs: "Tu nombre",
+  phoneLabel: "Phone number",
+  phoneLabelEs: "Número de teléfono",
+  emailLabel: "Email address (optional)",
+  emailLabelEs: "Correo electrónico (opcional)",
+  messageLabel: "How can we help?",
+  messageLabelEs: "¿Cómo podemos ayudarte?",
 } as const;
 
-export interface CallbackDefaults {
-  heading: string;
-  headingEs: string;
-  buttonLabel: string;
-  buttonLabelEs: string;
-  buttonSubtitle: string;
-  buttonSubtitleEs: string;
-  secureText: string;
-  secureTextEs: string;
-}
+export type CallbackDefaults = { -readonly [K in keyof typeof CALLBACK_TEXT_DEFAULTS]: string };
 
 /** The org's saved callback text (blank fields = "use the built-in default"). */
 export function readCallbackDefaults(settings: Record<string, unknown> | undefined): CallbackDefaults {
   const s = settings?.callback;
   const o = s && typeof s === "object" ? (s as Record<string, unknown>) : {};
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
-  return {
-    heading: str(o.heading),
-    headingEs: str(o.headingEs),
-    buttonLabel: str(o.buttonLabel),
-    buttonLabelEs: str(o.buttonLabelEs),
-    buttonSubtitle: str(o.buttonSubtitle),
-    buttonSubtitleEs: str(o.buttonSubtitleEs),
-    secureText: str(o.secureText),
-    secureTextEs: str(o.secureTextEs),
-  };
+  const out = {} as CallbackDefaults;
+  for (const k of Object.keys(CALLBACK_TEXT_DEFAULTS) as Array<keyof CallbackDefaults>) out[k] = str(o[k]);
+  return out;
 }
 
-/**
- * Return a copy of the definition with the org's callback text applied to the
- * card: English onto `theme.callback.*` and Spanish injected as `i18n.es`
- * overrides for the callback keys (so the existing localizer resolves both).
- * Master text wins over any per-journey wording — this is the single source.
- * Only set fields override; blanks leave the built-in default in place. Done
- * immutably (never mutate the cached definition).
- */
-export function applyCallbackDefaults(def: JourneyDefinition, d: CallbackDefaults): JourneyDefinition {
-  // Each field is an English + Spanish pair. When the org has set *either*
-  // language for a field, we write *both* — the set value, and the built-in
-  // default for the other language — so a Spanish visitor never sees English
-  // just because the Spanish box was left blank (and vice-versa). Fields the
-  // org didn't touch at all are left for the card's own locale-aware fallback.
-  const pairs: Array<[keyof typeof callbackKeyMap, string, string, string, string]> = [
-    ["heading", d.heading, d.headingEs, CALLBACK_TEXT_DEFAULTS.heading, CALLBACK_TEXT_DEFAULTS.headingEs],
-    ["buttonLabel", d.buttonLabel, d.buttonLabelEs, CALLBACK_TEXT_DEFAULTS.buttonLabel, CALLBACK_TEXT_DEFAULTS.buttonLabelEs],
-    ["buttonSubtitle", d.buttonSubtitle, d.buttonSubtitleEs, CALLBACK_TEXT_DEFAULTS.buttonSubtitle, CALLBACK_TEXT_DEFAULTS.buttonSubtitleEs],
-    ["secureText", d.secureText, d.secureTextEs, CALLBACK_TEXT_DEFAULTS.secureText, CALLBACK_TEXT_DEFAULTS.secureTextEs],
-  ];
-  if (!pairs.some(([, en, es]) => en || es)) return def;
-
-  const theme = { ...(def.theme ?? {}) };
-  const callback = { ...(theme.callback ?? {}) };
-  const es = { ...(def.i18n?.es ?? {}) };
-  for (const [field, en, esVal, defEn, defEs] of pairs) {
-    if (!en && !esVal) continue; // untouched — leave the card's built-in fallback
-    callback[field] = en || defEn;
-    es[callbackKeyMap[field]] = esVal || defEs;
-  }
-  theme.callback = callback;
-
-  return { ...def, theme, i18n: { ...(def.i18n ?? {}), es } };
-}
-
-// Maps each callback text field to its localization key (see i18n.ts).
-const callbackKeyMap = {
+// Theme-level text keys (heading / button / secure), resolved by the localizer.
+const themeKeyMap = {
   heading: tk.callbackHeading(),
   buttonLabel: tk.callbackButton(),
   buttonSubtitle: tk.callbackButtonSub(),
   secureText: tk.callbackSecure(),
 } as const;
+
+// Field-label keys (name / phone / email / message), resolved by the localizer.
+const fieldKeyMap = {
+  nameLabel: tk.label(CALLBACK_FIELD_IDS.name),
+  phoneLabel: tk.label(CALLBACK_FIELD_IDS.phone),
+  emailLabel: tk.label(CALLBACK_FIELD_IDS.email),
+  messageLabel: tk.label(CALLBACK_FIELD_IDS.message),
+} as const;
+
+/**
+ * Return a copy of the definition with the org's callback text applied. Each
+ * field is an English + Spanish pair; when the org has set *either* language for
+ * a field, we write *both* — the set value and the built-in default for the
+ * other language — so a Spanish visitor never sees English from a blank Spanish
+ * box (and vice-versa). Fields the org didn't touch are left for the card's own
+ * locale-aware fallback. English theme text goes onto `theme.callback`; Spanish
+ * theme text and both languages of the field labels go into `i18n`. Master text
+ * wins over any per-journey wording. Done immutably.
+ */
+export function applyCallbackDefaults(def: JourneyDefinition, d: CallbackDefaults): JourneyDefinition {
+  const touched = (Object.keys(CALLBACK_TEXT_DEFAULTS) as Array<keyof CallbackDefaults>).some((k) => d[k]);
+  if (!touched) return def;
+
+  const theme = { ...(def.theme ?? {}) };
+  const callback = { ...(theme.callback ?? {}) };
+  const en = { ...(def.i18n?.en ?? {}) };
+  const es = { ...(def.i18n?.es ?? {}) };
+
+  const val = (k: keyof CallbackDefaults) => d[k] || CALLBACK_TEXT_DEFAULTS[k];
+
+  // Theme text: English on the theme object, Spanish via i18n.
+  for (const [field, key] of Object.entries(themeKeyMap) as Array<[keyof typeof themeKeyMap, string]>) {
+    const esField = `${field}Es` as keyof CallbackDefaults;
+    if (!d[field] && !d[esField]) continue;
+    callback[field] = val(field);
+    es[key] = val(esField);
+  }
+  theme.callback = callback;
+
+  // Field labels: both languages via i18n (labels aren't on the theme object).
+  for (const [field, key] of Object.entries(fieldKeyMap) as Array<[keyof typeof fieldKeyMap, string]>) {
+    const esField = `${field}Es` as keyof CallbackDefaults;
+    if (!d[field] && !d[esField]) continue;
+    en[key] = val(field);
+    es[key] = val(esField);
+  }
+
+  return { ...def, theme, i18n: { ...(def.i18n ?? {}), en, es } };
+}

@@ -5,7 +5,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { auth, authEnabled } from "@/auth";
-import { readCallbackDefaults } from "@/modules/settings/callbackDefaults";
+import { CALLBACK_TEXT_DEFAULTS, readCallbackDefaults } from "@/modules/settings/callbackDefaults";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -25,16 +25,11 @@ export async function GET() {
   return NextResponse.json({ ok: true, ...readCallbackDefaults(await store.getOrgSettings(g.org.id)) });
 }
 
-const bodySchema = z.object({
-  heading: z.string(),
-  headingEs: z.string(),
-  buttonLabel: z.string(),
-  buttonLabelEs: z.string(),
-  buttonSubtitle: z.string(),
-  buttonSubtitleEs: z.string(),
-  secureText: z.string(),
-  secureTextEs: z.string(),
-});
+// Accept every callback text key (heading/button/secure + field labels), each an
+// optional string, so the shape stays in sync with the defaults.
+const bodySchema = z.object(
+  Object.fromEntries(Object.keys(CALLBACK_TEXT_DEFAULTS).map((k) => [k, z.string().optional()])),
+);
 
 export async function PUT(req: NextRequest) {
   const g = await guard();
@@ -49,10 +44,12 @@ export async function PUT(req: NextRequest) {
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
 
-  // Trim each field; store only non-empty ones (blank = fall back to built-in).
+  // Normalize every known key to a trimmed string; store only non-empty ones
+  // (blank = fall back to the built-in default).
+  const data = parsed.data as Record<string, string | undefined>;
   const trimmed = Object.fromEntries(
-    Object.entries(parsed.data).map(([k, v]) => [k, v.trim()]),
-  ) as z.infer<typeof bodySchema>;
+    Object.keys(CALLBACK_TEXT_DEFAULTS).map((k) => [k, (data[k] ?? "").trim()]),
+  );
   const callback = Object.fromEntries(Object.entries(trimmed).filter(([, v]) => v !== ""));
 
   const settings = await store.getOrgSettings(g.org.id);
