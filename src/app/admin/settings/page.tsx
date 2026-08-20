@@ -1,9 +1,11 @@
 import { BusinessPhoneSettings } from "@/components/admin/BusinessPhoneSettings";
+import { CallbackTextSettings } from "@/components/admin/CallbackTextSettings";
 import { CallRailSettings } from "@/components/admin/CallRailSettings";
 import { GtmSettings } from "@/components/admin/GtmSettings";
 import { SigningDefaultsSettings } from "@/components/admin/SigningDefaultsSettings";
 import { callRailConfig } from "@/modules/integrations/callrail";
 import { readBusinessPhone } from "@/modules/settings/businessPhone";
+import { readCallbackDefaults } from "@/modules/settings/callbackDefaults";
 import { readSigningDefaults } from "@/modules/settings/signingDefaults";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
@@ -31,6 +33,8 @@ export default async function Settings() {
   const gtmGa4Id = (gtm?.ga4Id ?? "").trim();
   const businessPhone = readBusinessPhone(settings);
   const signingDefaults = readSigningDefaults(settings);
+  const callbackText = readCallbackDefaults(settings);
+  const callbackSet = Object.values(callbackText).some((v) => v);
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -86,6 +90,27 @@ export default async function Settings() {
         </p>
         <div className="mt-5">
           <SigningDefaultsSettings initialEn={signingDefaults.templateIdEn} initialEs={signingDefaults.templateIdEs} />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">Callback form text</h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              callbackSet ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {callbackSet ? "Customized" : "Using defaults"}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-gray-400">
+          The wording on the &ldquo;Prefer a quick callback?&rdquo; contact card — heading, button, and secure footer,
+          in English and Spanish. Set it once and every journey&apos;s callback card uses it, so you don&apos;t edit
+          each journey.
+        </p>
+        <div className="mt-5">
+          <CallbackTextSettings initial={callbackText} />
         </div>
       </div>
 

@@ -16,6 +16,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
 import { ctaHref, telDigits } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
+import { CALLBACK_TEXT_DEFAULTS } from "@/modules/settings/callbackDefaults";
 import { deriveAttribution } from "@/modules/leads/attribution";
 import {
   isComponentVisible,
@@ -818,6 +819,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
                   definition={definition}
                   theme={theme}
                   L={L}
+                  locale={locale}
                   error={cbError}
                   onField={(key, v) => set(key, v)}
                   onSubmit={submitCallback}
@@ -861,6 +863,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
                 definition={definition}
                 theme={theme}
                 L={L}
+                locale={locale}
                 error={cbError}
                 onField={(key, v) => set(key, v)}
                 onSubmit={submitCallback}
@@ -1653,6 +1656,7 @@ function CallbackCard({
   onSubmit,
   busy,
   error,
+  locale,
   mobile = false,
 }: {
   fields: Component[];
@@ -1664,16 +1668,20 @@ function CallbackCard({
   onSubmit: () => void;
   busy: boolean;
   error?: string | null;
+  locale: string;
   // Mobile renders the same card in a single-column layout, shown only on
   // phones (md:hidden); the default desktop card is hidden below md.
   mobile?: boolean;
 }) {
-  const heading =
-    L(tk.callbackHeading(), theme.callback?.heading) || "Prefer a quick callback? Leave your information.";
-  const buttonLabel = L(tk.callbackButton(), theme.callback?.buttonLabel) || "Request callback";
-  const buttonSub = L(tk.callbackButtonSub(), theme.callback?.buttonSubtitle) || "We'll reach out shortly";
-  const secure =
-    L(tk.callbackSecure(), theme.callback?.secureText) || "Your information is secure and will never be shared.";
+  // Built-in fallbacks are locale-aware so Spanish visitors get Spanish copy
+  // even before the org sets its master text (which overrides these).
+  const es = locale?.toLowerCase().startsWith("es");
+  const d = CALLBACK_TEXT_DEFAULTS;
+  const heading = L(tk.callbackHeading(), theme.callback?.heading) || (es ? d.headingEs : d.heading);
+  const buttonLabel = L(tk.callbackButton(), theme.callback?.buttonLabel) || (es ? d.buttonLabelEs : d.buttonLabel);
+  const buttonSub =
+    L(tk.callbackButtonSub(), theme.callback?.buttonSubtitle) || (es ? d.buttonSubtitleEs : d.buttonSubtitle);
+  const secure = L(tk.callbackSecure(), theme.callback?.secureText) || (es ? d.secureTextEs : d.secureText);
   const shortFields = fields.filter((f) => f.type !== "longText");
   const longField = fields.find((f) => f.type === "longText");
   const rule = "h-px flex-1 bg-[color:color-mix(in_srgb,var(--text)_16%,transparent)]";

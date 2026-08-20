@@ -946,11 +946,11 @@ export function JourneyEditor({
             </div>
           </div>
 
-          {/* Desktop callback card — a quick contact form shown under the
-              action buttons on desktop (hidden on mobile). */}
+          {/* Callback card — a quick contact form shown under the action buttons
+              on desktop and above the reviews on mobile. */}
           <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-medium text-gray-500">Desktop callback card</div>
+              <div className="text-xs font-medium text-gray-500">Callback card</div>
               <label className="flex items-center gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
@@ -964,55 +964,18 @@ export function JourneyEditor({
               </label>
             </div>
             <p className="mt-0.5 text-xs text-gray-400">
-              A name / phone / email / message form under the buttons on desktop (hidden on mobile). Turn it on
-              here — no need to add fields to the page.
+              A name / phone / email / message form under the buttons (on mobile it appears above the reviews). Turn
+              it on here — no need to add fields to the page.
             </p>
             <div className="mt-2 space-y-2">
-              <input
-                className={input}
-                placeholder="Divider heading — Prefer a quick callback? Leave your information."
-                value={def.theme?.callback?.heading ?? ""}
-                onChange={(e) =>
-                  mutate((d) => void (((d.theme ??= {}).callback ??= {}).heading = e.target.value || undefined))
-                }
-              />
-              <EsBox es={es} k={tk.callbackHeading()} placeholder="Divider heading — Spanish" />
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div>
-                  <input
-                    className={input}
-                    placeholder="Button label — Request callback"
-                    value={def.theme?.callback?.buttonLabel ?? ""}
-                    onChange={(e) =>
-                      mutate((d) => void (((d.theme ??= {}).callback ??= {}).buttonLabel = e.target.value || undefined))
-                    }
-                  />
-                  <EsBox es={es} k={tk.callbackButton()} placeholder="Button label — Spanish" />
-                </div>
-                <div>
-                  <input
-                    className={input}
-                    placeholder="Button second line — We'll reach out shortly"
-                    value={def.theme?.callback?.buttonSubtitle ?? ""}
-                    onChange={(e) =>
-                      mutate(
-                        (d) =>
-                          void (((d.theme ??= {}).callback ??= {}).buttonSubtitle = e.target.value || undefined),
-                      )
-                    }
-                  />
-                  <EsBox es={es} k={tk.callbackButtonSub()} placeholder="Second line — Spanish" />
-                </div>
-              </div>
-              <input
-                className={input}
-                placeholder="Secure footer — Your information is secure and will never be shared."
-                value={def.theme?.callback?.secureText ?? ""}
-                onChange={(e) =>
-                  mutate((d) => void (((d.theme ??= {}).callback ??= {}).secureText = e.target.value || undefined))
-                }
-              />
-              <EsBox es={es} k={tk.callbackSecure()} placeholder="Secure footer — Spanish" />
+              <p className="rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
+                The card&apos;s wording (heading, button, secure footer — English &amp; Spanish) is set once for the
+                whole business in{" "}
+                <a href="/admin/settings" className="font-medium text-blue-600 hover:underline">
+                  Settings → Callback form text
+                </a>
+                , so it stays consistent across every journey.
+              </p>
 
               <div className="mt-1 flex flex-wrap items-start gap-6 border-t border-gray-200 pt-3">
                 <ColorField

@@ -14,6 +14,7 @@ import { localeFromAcceptLanguage, localeFromParam } from "@/modules/journeys/do
 import { findFaqSet } from "@/modules/faq/faqSets";
 import { findContentBlock } from "@/modules/content/contentBlocks";
 import { applyBusinessPhone } from "@/modules/settings/businessPhone";
+import { applyCallbackDefaults, readCallbackDefaults } from "@/modules/settings/callbackDefaults";
 import { preloadHero } from "@/modules/journeys/og";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store } from "@/server/store";
@@ -41,10 +42,10 @@ export async function JourneyRuntime({
   // immutably — the cached journey definition must not be mutated. If a set was
   // deleted, fall back to any inline content (usually none).
   let definition = journey.definition;
+  const settings = await store.getOrgSettings(org.id);
   const faq = definition.theme?.faq;
   const content = definition.theme?.content;
   if (faq?.setId || content?.setId) {
-    const settings = await store.getOrgSettings(org.id);
     const theme = { ...definition.theme };
     if (faq?.setId) {
       const set = findFaqSet(settings, faq.setId);
@@ -92,6 +93,9 @@ export async function JourneyRuntime({
   // Apply the org's one master phone number to every call/text button + top bar,
   // so all journeys stay in sync with the CallRail swap target.
   if (phone) definition = applyBusinessPhone(definition, phone);
+  // Apply the org's master callback-card text (English + Spanish) so the wording
+  // is identical across every journey, edited in one place.
+  definition = applyCallbackDefaults(definition, readCallbackDefaults(settings));
   const languages = journey.definition.languages ?? ["en"];
   const initialLocale =
     localeFromParam(pick("lang") ?? pick("hl") ?? pick("locale"), languages) ??
