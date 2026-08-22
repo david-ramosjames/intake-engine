@@ -325,8 +325,8 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
   // defines none, force a built-in thank-you rather than dropping the visitor
   // back on a form. Returns false when the submit itself failed.
   const finishLead = useCallback(
-    async (ans: Answers): Promise<boolean> => {
-      const outcome = await submit(ans);
+    async (ans: Answers, endingType?: string): Promise<boolean> => {
+      const outcome = await submit(ans, endingType);
       if (!outcome) return false;
       const wantType = outcome === "referral" ? "referral" : outcome === "declined" ? "decline" : "success";
       const end =
@@ -574,7 +574,11 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
     }
     setCbError(null);
     trackFormSubmit();
-    void finishLead(answers);
+    // A completed callback form is a person actively asking to be contacted, so
+    // always record it as a lead (and post to Slack) — never scored as "not a
+    // fit" for skipping the qualifying questions. "success" maps to a lead
+    // outcome; a referral screen still takes precedence if one was reached.
+    void finishLead(answers, "success");
   };
 
   return (
