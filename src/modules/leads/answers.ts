@@ -35,3 +35,28 @@ export function answerRows(
       return { key, label: meta?.label ?? key, value: display };
     });
 }
+
+/**
+ * True when the answers include a selected option flagged `markReferral` — i.e.
+ * the visitor affirmatively chose to be referred (the "Yes" answer on a "Want a
+ * referral?" question). Server-authoritative signal for tagging a referral, so a
+ * "No" answer is never treated as a referral.
+ */
+export function answersIndicateReferral(
+  def: JourneyDefinition | undefined,
+  answers: Record<string, unknown>,
+): boolean {
+  const optsByKey = new Map<string, { value: string; markReferral?: boolean }[]>();
+  for (const page of def?.pages ?? []) {
+    for (const c of page.components) {
+      if (c.key && c.options) optsByKey.set(c.key, c.options);
+    }
+  }
+  for (const [key, raw] of Object.entries(answers)) {
+    const opts = optsByKey.get(key);
+    if (!opts) continue;
+    const chosen = Array.isArray(raw) ? raw : [raw];
+    if (chosen.some((val) => opts.some((o) => o.value === String(val) && o.markReferral))) return true;
+  }
+  return false;
+}

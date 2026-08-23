@@ -58,6 +58,10 @@ export const optionSchema = z.object({
   score: z.number().optional(),
   // Flow-builder branching: jump to this page id when this option is chosen.
   goTo: z.string().optional(),
+  // When this option is chosen, classify the lead as a referral (posts to
+  // Slack as a referral). Use it on the affirmative answer of a "Want a
+  // referral?" question so only a successful referral is tagged.
+  markReferral: z.boolean().optional(),
 });
 export type Option = z.infer<typeof optionSchema>;
 
@@ -199,11 +203,6 @@ export const pageSchema = z.object({
   // has no "convert" milestone. The submit is guarded to run once per session,
   // so a later terminal screen won't fire it a second time.
   submitLeadOnAdvance: z.boolean().optional(),
-  // Marks this screen as the referral point: any visitor who reaches it is
-  // recorded as a referral (not a lead), even if the lead was already submitted
-  // at an earlier conversion point. Use it on the "we can't take this case, but
-  // can refer you" screen.
-  markReferral: z.boolean().optional(),
   // Call-to-action buttons, shown on terminal/ending screens (call, website…).
   cta: z.array(ctaSchema).optional(),
   // Signing config for a "sign" page. `url` is a DocuSeal link/embed to open

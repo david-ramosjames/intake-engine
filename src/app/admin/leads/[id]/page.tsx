@@ -15,8 +15,8 @@ function Row({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
     <div className="flex justify-between gap-6 border-b border-gray-100 py-2.5 text-sm last:border-0">
-      <span className="shrink-0 text-gray-500">{label}</span>
-      <span className="break-all text-right font-medium text-gray-900">{value}</span>
+      <span className="min-w-0 flex-1 break-words text-gray-500">{label}</span>
+      <span className="min-w-0 flex-1 break-words text-right font-medium text-gray-900">{value}</span>
     </div>
   );
 }

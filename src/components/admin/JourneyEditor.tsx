@@ -1844,23 +1844,6 @@ export function JourneyEditor({
                       </span>
                     </span>
                   </label>
-                  <label className="mt-3 flex items-start gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={page.markReferral ?? false}
-                      onChange={(e) =>
-                        mutate((d) => void (d.pages[pi]!.markReferral = e.target.checked || undefined))
-                      }
-                    />
-                    <span>
-                      Tag as a referral
-                      <span className="block text-xs font-normal text-gray-400">
-                        When the visitor reaches this screen, classify them as a referral instead of a lead (and post the
-                        referral to Slack). Use this on the referral question/screen.
-                      </span>
-                    </span>
-                  </label>
                 </div>
                 <div className="mt-3 border-t border-gray-200 pt-3">
                   <div className="text-[11px] font-medium text-gray-500">Button colors</div>
@@ -1951,6 +1934,11 @@ export function JourneyEditor({
                   onOptionGoTo={(oi, goTo) =>
                     mutate((d) => {
                       d.pages[pi]!.components[ci]!.options![oi]!.goTo = goTo || undefined;
+                    })
+                  }
+                  onOptionReferral={(oi, checked) =>
+                    mutate((d) => {
+                      d.pages[pi]!.components[ci]!.options![oi]!.markReferral = checked || undefined;
                     })
                   }
                   onAddOption={() =>
@@ -2098,6 +2086,7 @@ function ComponentEditor({
   onFull,
   onOptionLabel,
   onOptionGoTo,
+  onOptionReferral,
   onAddOption,
   onRemoveOption,
   onMoveOption,
@@ -2114,6 +2103,7 @@ function ComponentEditor({
   onFull: (full: boolean) => void;
   onOptionLabel: (oi: number, value: string) => void;
   onOptionGoTo: (oi: number, goTo: string) => void;
+  onOptionReferral: (oi: number, checked: boolean) => void;
   onAddOption: () => void;
   onRemoveOption: (oi: number) => void;
   onMoveOption: (oi: number, dir: -1 | 1) => void;
@@ -2350,6 +2340,15 @@ function ComponentEditor({
                 </button>
               </div>
               <EsBox es={es} k={tk.option(component.id, o.value)} placeholder="Option — Spanish" />
+              <label className="flex items-center gap-1.5 pl-1 text-xs text-gray-500">
+                <input
+                  type="checkbox"
+                  className="accent-blue-600"
+                  checked={o.markReferral ?? false}
+                  onChange={(e) => onOptionReferral(oi, e.target.checked)}
+                />
+                Tag as a referral when chosen (posts to Slack as a referral)
+              </label>
             </div>
           ))}
           <button onClick={onAddOption} className="text-sm text-blue-600 hover:text-blue-700">

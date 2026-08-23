@@ -5,6 +5,7 @@
 
 import { extractContact, scoreLead, type Answers } from "@/modules/journeys/runtime/engine";
 import { deriveAttribution } from "@/modules/leads/attribution";
+import { answersIndicateReferral } from "@/modules/leads/answers";
 import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/schema";
 import { runLeadAutomations } from "@/modules/automations/run";
 import { callRailConfig, forwardLeadToCallRail } from "@/modules/integrations/callrail";
@@ -29,16 +30,18 @@ export async function submitLead(
   attribution: Attribution = {},
   endingType?: string,
   context: Record<string, string> = {},
-  referral?: boolean,
 ): Promise<SubmitResult> {
   const def = journey.definition;
   const { score, qualified } = scoreLead(def, answers);
   const contact = extractContact(def, answers);
 
-  // Outcome precedence: passing through a referral screen wins (it's a referral,
-  // not a lead, even if submitted early); then the ending the flow reached;
-  // otherwise fall back to score/qualification (lead vs declined).
+  // A referral is a *successful* referral only: the visitor chose the affirmative
+  // answer on a "Want a referral?" question (an option flagged markReferral), or
+  // the flow reached a referral-type ending. A "No" answer is never a referral.
   const byEnding = endingType ? outcomeForPageType(endingType as PageType) : null;
+  const referral = byEnding === "referral" || answersIndicateReferral(def, answers);
+  // Outcome precedence: a successful referral wins; then the ending the flow
+  // reached; otherwise fall back to score/qualification (lead vs declined).
   const outcome: LeadOutcome = referral ? "referral" : (byEnding ?? (qualified ? "lead" : "declined"));
 
   // Resolve source/medium/campaign: explicit UTMs win, else infer from click
@@ -96,13 +99,14 @@ export async function enrichLead(
   leadId: string,
   answers: Answers,
   context: Record<string, string> = {},
-  referral?: boolean,
 ): Promise<boolean> {
   const def = journey.definition;
   const { score } = scoreLead(def, answers);
   const contact = extractContact(def, answers);
   const current = await store.getLead(journey.orgId, leadId);
-  const becomesReferral = Boolean(referral) && current?.outcome !== "referral";
+  // Promote to a referral if the fuller answers now include the affirmative
+  // referral choice — but never downgrade one already recorded as a referral.
+  const becomesReferral = answersIndicateReferral(def, answers) && current?.outcome !== "referral";
   const updated = await store.updateLead(journey.orgId, leadId, {
     answers,
     score,
