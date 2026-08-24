@@ -101,6 +101,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
               );
             })()}
             <Row label="Referrer" value={ctx.referrer || "—"} />
+            <Row label="CallRail session" value={ctx.callrailSessionId} />
             <Row label="Click ID — gclid (Google)" value={ctx.gclid} />
             <Row label="Click ID — gbraid (Google)" value={ctx.gbraid} />
             <Row label="Click ID — wbraid (Google)" value={ctx.wbraid} />

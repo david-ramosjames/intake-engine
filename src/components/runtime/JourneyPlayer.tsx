@@ -18,6 +18,7 @@ import { ctaHref, telDigits } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
 import { CALLBACK_FIELD_IDS, CALLBACK_TEXT_DEFAULTS } from "@/modules/settings/callbackDefaults";
 import { deriveAttribution } from "@/modules/leads/attribution";
+import { collectContext, snapshotFirstTouch } from "@/modules/leads/browserContext";
 import {
   isComponentVisible,
   isConvertType,
@@ -75,39 +76,6 @@ const COMPACT_FIELDS = new Set<Component["type"]>([
   "time",
 ]);
 
-// Capture attribution/source context from the browser at submit time.
-function collectContext(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const ctx: Record<string, string> = {
-    pageUrl: window.location.href,
-    landingPage: window.location.href,
-    referrer: document.referrer || "",
-    userAgent: navigator.userAgent,
-  };
-  const params = new URL(window.location.href).searchParams;
-  // Ad attribution: UTMs plus click ids (gclid for Google Ads, etc.). These
-  // flow through to integrations like CallRail for conversion attribution.
-  for (const k of [
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "utm_term",
-    "utm_content",
-    "gclid",
-    "fbclid",
-    "msclkid",
-    // Google Ads auto-tagging often has no UTMs — these identify a paid click.
-    "gbraid",
-    "wbraid",
-    "gad_source",
-    "gad_campaignid",
-    "campaignid",
-  ]) {
-    const v = params.get(k);
-    if (v) ctx[k] = v;
-  }
-  return ctx;
-}
 
 export function JourneyPlayer({ slug, definition, attribution, initialLocale }: Props) {
   const pages = definition.pages;
@@ -220,6 +188,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
       sid = Math.random().toString(36).slice(2);
     }
     sessionRef.current = sid;
+    snapshotFirstTouch();
     emit("opened");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
