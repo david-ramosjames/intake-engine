@@ -84,13 +84,17 @@ function callRailReferrerName(context: Record<string, string>, lead: StoredLead)
   if (source === "google" && (medium === "cpc" || medium === "ppc" || medium === "paid")) return "google_paid";
   if (source === "google") return "google";
   if (source) return source;
-  try {
-    const host = new URL(context.referrer).hostname.replace(/^www\./, "");
-    if (host) return host;
-  } catch {
-    /* not a URL */
+  const referring = context.referrer;
+  if (referring) {
+    try {
+      const host = new URL(referring).hostname.replace(/^www\./, "");
+      if (host) return host;
+    } catch {
+      /* not a URL */
+    }
+    return referring;
   }
-  return context.referrer || "direct";
+  return "direct";
 }
 
 /**
