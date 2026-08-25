@@ -2,8 +2,10 @@ import { BusinessPhoneSettings } from "@/components/admin/BusinessPhoneSettings"
 import { CallbackTextSettings } from "@/components/admin/CallbackTextSettings";
 import { CallRailSettings } from "@/components/admin/CallRailSettings";
 import { GtmSettings } from "@/components/admin/GtmSettings";
+import { OpenAIAdsSettings } from "@/components/admin/OpenAIAdsSettings";
 import { SigningDefaultsSettings } from "@/components/admin/SigningDefaultsSettings";
 import { callRailConfig } from "@/modules/integrations/callrail";
+import { openaiAdsConfig } from "@/modules/integrations/openaiAds";
 import { readBusinessPhone } from "@/modules/settings/businessPhone";
 import { readCallbackDefaults } from "@/modules/settings/callbackDefaults";
 import { readSigningDefaults } from "@/modules/settings/signingDefaults";
@@ -28,6 +30,7 @@ export default async function Settings() {
 
   const settings = await store.getOrgSettings(org.id);
   const cr = callRailConfig(settings);
+  const oai = openaiAdsConfig(settings);
   const gtm = settings.gtm as { containerId?: string; ga4Id?: string } | undefined;
   const gtmContainerId = (gtm?.containerId ?? "").trim();
   const gtmGa4Id = (gtm?.ga4Id ?? "").trim();
@@ -195,6 +198,29 @@ export default async function Settings() {
             Each event carries a <code>journey</code> parameter (the journey slug); <code>consult_flow_complete</code>{" "}
             includes the <code>outcome</code>.
           </p>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">ChatGPT Ads pixel</h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              oai?.pixelId ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {oai?.pixelId ? "Installed" : "Off"}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-gray-400">
+          Installs OpenAI&apos;s Measurement Pixel on this business&apos;s journey pages and fires{" "}
+          <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-xs">lead_created</code> when a visitor
+          completes a form or callback request. In Ads Manager, create a conversion event for{" "}
+          <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-xs">lead_created</code> so campaign reporting
+          can count it.
+        </p>
+        <div className="mt-5">
+          <OpenAIAdsSettings initialPixelId={oai?.pixelId ?? ""} initialHasKey={Boolean(oai?.apiKey)} />
         </div>
       </div>
 

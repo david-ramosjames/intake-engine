@@ -17,6 +17,7 @@ export const ATTRIBUTION_KEYS = [
   "gad_source",
   "gad_campaignid",
   "campaignid",
+  "oppref",
 ] as const;
 
 const FIRST_TOUCH_KEY = "ie_first_touch";
@@ -164,5 +165,11 @@ export function collectContext(): Record<string, string> {
   }
   const sessionId = callRailSessionId();
   if (sessionId) ctx.callrailSessionId = sessionId;
+  if (!ctx.oppref) {
+    const fromCookie = cookieValue("__oppref");
+    if (fromCookie) ctx.oppref = fromCookie;
+  }
+  const obref = cookieValue("__obref");
+  if (obref) ctx.openaiObref = obref;
   return ctx;
 }

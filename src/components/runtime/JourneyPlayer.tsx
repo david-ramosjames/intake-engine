@@ -19,6 +19,7 @@ import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
 import { CALLBACK_FIELD_IDS, CALLBACK_TEXT_DEFAULTS } from "@/modules/settings/callbackDefaults";
 import { deriveAttribution } from "@/modules/leads/attribution";
 import { collectContext, snapshotFirstTouch } from "@/modules/leads/browserContext";
+import { measureOpenAILead } from "@/components/runtime/OpenAIAdsPixel";
 import {
   isComponentVisible,
   isConvertType,
@@ -254,6 +255,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
         const outcome = data.outcome ?? "lead";
         leadIdRef.current = data.leadId ?? null;
         outcomeRef.current = outcome;
+        if (data.leadId) measureOpenAILead(data.leadId);
         emit("completed", { outcome });
         return outcome;
       } catch (e) {

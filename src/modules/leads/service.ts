@@ -9,6 +9,7 @@ import { answersIndicateReferral } from "@/modules/leads/answers";
 import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/schema";
 import { runLeadAutomations } from "@/modules/automations/run";
 import { callRailConfig, forwardLeadToCallRail } from "@/modules/integrations/callrail";
+import { openaiAdsConfig, forwardLeadToOpenAIAds } from "@/modules/integrations/openaiAds";
 import { store, type LeadOutcome, type StoredJourney } from "@/server/store";
 
 export interface SubmitResult {
@@ -76,13 +77,24 @@ export async function submitLead(
     console.error("[automation] runLeadAutomations threw", e);
   }
 
+  const settings = await store.getOrgSettings(journey.orgId);
+
   // Forward to CallRail as a form submission (attribution for Google Ads), when
   // the org has configured the integration. Best-effort.
   try {
-    const cfg = callRailConfig(await store.getOrgSettings(journey.orgId));
+    const cfg = callRailConfig(settings);
     if (cfg) await forwardLeadToCallRail(cfg, lead, context);
   } catch (e) {
     console.error("[callrail] forward failed", e);
+  }
+
+  // ChatGPT Ads Conversions API (same lead_created event the browser pixel
+  // sends, keyed by lead id so OpenAI can dedupe). Best-effort.
+  try {
+    const cfg = openaiAdsConfig(settings);
+    if (cfg) await forwardLeadToOpenAIAds(cfg, lead, context);
+  } catch (e) {
+    console.error("[openai-ads] forward failed", e);
   }
 
   return { leadId: lead.id, score, qualified: outcome === "lead", outcome };

@@ -9,6 +9,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { CallRailScript } from "@/components/runtime/CallRailScript";
 import { GoogleTagManager } from "@/components/runtime/GoogleTagManager";
+import { OpenAIAdsPixel } from "@/components/runtime/OpenAIAdsPixel";
 import { JourneyPlayer } from "@/components/runtime/JourneyPlayer";
 import { localeFromAcceptLanguage, localeFromParam } from "@/modules/journeys/domain/i18n";
 import { findFaqSet } from "@/modules/faq/faqSets";
@@ -89,7 +90,7 @@ export async function JourneyRuntime({
   attribution.org = org.slug; // so the submit endpoint resolves the same tenant
   attribution.firm = org.name; // logo fallback text
 
-  const { gtmId, callRailSwapUrl, phone } = await getPublicSiteConfig(org.id);
+  const { gtmId, callRailSwapUrl, phone, openaiPixelId } = await getPublicSiteConfig(org.id);
   // Apply the org's one master phone number to every call/text button + top bar,
   // so all journeys stay in sync with the CallRail swap target.
   if (phone) definition = applyBusinessPhone(definition, phone);
@@ -104,6 +105,7 @@ export async function JourneyRuntime({
   return (
     <>
       <GoogleTagManager gtmId={gtmId} />
+      <OpenAIAdsPixel pixelId={openaiPixelId} />
       <CallRailScript src={callRailSwapUrl} />
       {/* A strong, keyword-relevant H1 in the server HTML for search engines and
           Google Ads text customization. Visually hidden so it doesn't disturb the
