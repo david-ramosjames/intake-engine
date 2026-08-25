@@ -1,8 +1,9 @@
 "use client";
 
 // Injects a firm's ChatGPT Ads Measurement Pixel on public journey pages.
-// Renders nothing when no Pixel ID is configured. Conversion events are fired
-// from the journey player via measureOpenAILead().
+// Snippet matches the loader used on the firm's other sites (oaiq queue +
+// bzrcdn SDK). Pixel ID comes from Settings — not hardcoded. Conversion
+// events are fired from the journey player via measureOpenAILead().
 
 import Script from "next/script";
 
@@ -13,7 +14,7 @@ export function OpenAIAdsPixel({ pixelId }: { pixelId?: string }) {
       id="openai-ads-pixel"
       strategy="afterInteractive"
       dangerouslySetInnerHTML={{
-        __html: `(function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments);};q.q=[];w.oaiq=q;var js=d.createElement(s);js.async=true;js.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(js,f);})(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");oaiq("init",{pixelId:${JSON.stringify(pixelId)}});`,
+        __html: `!function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");oaiq("init",{pixelId:${JSON.stringify(pixelId)},debug:true});`,
       }}
     />
   );
