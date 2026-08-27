@@ -543,13 +543,16 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
 
   return (
     <main
+      className="flex flex-col"
       style={{
         ...styleVars,
         background: theme.colorBackground ?? "#ffffff",
         color: theme.colorText ?? "#0b1f3a",
         fontFamily: theme.fontFamily,
+        // Desktop first screen is 100dvh minus the sticky banner, so the hero
+        // overlay stays on the fold instead of riding the taller form column.
+        ["--ie-banner-h"]: showBanner ? "3rem" : "0px",
       }}
-      className="flex flex-col"
     >
       {/* The top banner is a page-level child (outside the first-screen wrapper)
           so it can stick to the top across the whole page on desktop. */}
@@ -562,12 +565,15 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
         setLocale={setLocale}
         logoMobileHidden={mobileHero}
       />
-      {/* Above-the-fold fills the screen exactly as before; optional sections
-          (FAQ / reviews) append below this wrapper on the landing screen. */}
-      <div className="flex min-h-dvh flex-col">
+      {/* Above-the-fold fills the remaining viewport under the sticky banner;
+          optional sections (FAQ / reviews) append below this wrapper. */}
+      <div className="flex min-h-dvh flex-col md:min-h-[calc(100dvh-var(--ie-banner-h))]">
       <div className="flex flex-1 flex-col md:flex-row">
       {theme.sideImageUrl && (
-        <aside className="relative hidden bg-center md:block md:w-[38%] lg:w-[40%]" style={heroBgStyleDesktop}>
+        <aside
+          className="relative hidden bg-center md:sticky md:top-[var(--ie-banner-h)] md:block md:h-[calc(100dvh-var(--ie-banner-h))] md:w-[38%] md:shrink-0 md:self-start md:overflow-hidden lg:w-[40%]"
+          style={heroBgStyleDesktop}
+        >
           {/* Cinematic edge blend — the photo dissolves left→right into the page
               background so the seam between the image and the content reads like
               a movie poster, not a hard column split. */}
@@ -677,8 +683,8 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
       )}
 
       <section
-        className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 md:py-3 ${
-          mobileHero ? "z-10 animate-card-rise -mt-1 pt-0 md:mt-0 md:animate-none md:pt-6" : ""
+        className={`relative flex flex-1 flex-col px-6 py-6 md:px-14 md:py-2 ${
+          mobileHero ? "z-10 animate-card-rise -mt-1 pt-0 md:mt-0 md:animate-none md:pt-3" : ""
         }`}
       >
         {showHeader && (
@@ -718,8 +724,8 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
               <FallbackEnding locale={locale} />
             )
           ) : (
-            <div key={page?.id} className="animate-fade-up space-y-4 md:space-y-3">
-              <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2 md:gap-y-3">
+            <div key={page?.id} className="animate-fade-up space-y-4 md:space-y-2.5">
+              <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2 md:gap-y-2.5">
                 {mainComps.map((c) => {
                   const isChoice = soleChoice && c.id === soleChoice.id;
                   // Compact inputs (name, phone, email…) share a row two-up on
@@ -750,8 +756,8 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
               {/* Call CTA sits above the primary intake button (the call is the
                   top action), both full-width and the same size on every
                   screen. */}
-              <div className="space-y-3">
-                <div className="flex flex-col gap-3">
+              <div className="space-y-3 md:space-y-2">
+                <div className="flex flex-col gap-3 md:gap-2">
                   {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
                   {!soleChoice && (
                     <ActionButton
@@ -1174,7 +1180,7 @@ function CountUp({ raw }: { raw: string }) {
 function StatsBar({ stats }: { stats: StatItem[] }) {
   return (
     <div
-      className="animate-fade-up rounded-2xl border px-5 py-6 shadow-sm sm:px-8 sm:py-4"
+      className="animate-fade-up rounded-2xl border px-5 py-6 shadow-sm sm:px-8 sm:py-4 md:py-3"
       style={{
         borderColor: "color-mix(in srgb, var(--text) 12%, transparent)",
         // Tint from the page background (not --surface) so the card floats on
