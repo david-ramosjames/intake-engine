@@ -390,6 +390,9 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
       ["--cta2"]: theme.ctaSecondaryColor ?? theme.colorAccent ?? text,
       ["--cta2-hover"]: theme.ctaSecondaryHoverBg ?? theme.ctaSecondaryColor ?? theme.colorAccent ?? text,
       ["--cta2-hover-text"]: theme.ctaSecondaryHoverText ?? bg,
+      // Desktop first screen is 100dvh minus the sticky banner, so the hero
+      // overlay stays on the fold instead of riding the taller form column.
+      ["--ie-banner-h"]: bannerShown(theme) ? "3rem" : "0px",
     } as React.CSSProperties;
   }, [theme]);
 
@@ -549,9 +552,6 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
         background: theme.colorBackground ?? "#ffffff",
         color: theme.colorText ?? "#0b1f3a",
         fontFamily: theme.fontFamily,
-        // Desktop first screen is 100dvh minus the sticky banner, so the hero
-        // overlay stays on the fold instead of riding the taller form column.
-        ["--ie-banner-h"]: showBanner ? "3rem" : "0px",
       }}
     >
       {/* The top banner is a page-level child (outside the first-screen wrapper)
