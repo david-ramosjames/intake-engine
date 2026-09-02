@@ -2151,6 +2151,7 @@ function ComponentEditor({
                   ✕
                 </button>
               </div>
+              <EsBox es={es} k={tk.statLabel(component.id, i)} placeholder="Label — Spanish" />
               <div className="flex flex-wrap items-center gap-1 pl-1">
                 <span className="mr-1 text-[11px] text-gray-400">Icon:</span>
                 {ICON_CHOICES.map((emo) => (

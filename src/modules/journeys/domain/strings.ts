@@ -30,6 +30,7 @@ export function collectStrings(def: JourneyDefinition): TranslatableString[] {
       push(tk.label(comp.id), comp.label);
       push(tk.help(comp.id), comp.helpText);
       for (const opt of comp.options ?? []) push(tk.option(comp.id, opt.value), opt.label);
+      (comp.stats ?? []).forEach((s, i) => push(tk.statLabel(comp.id, i), s.label));
     }
   }
 

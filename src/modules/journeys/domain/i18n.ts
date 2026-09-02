@@ -21,6 +21,8 @@ export const tk = {
   content: (componentId: string) => `c:${componentId}:content`,
   help: (componentId: string) => `c:${componentId}:help`,
   option: (componentId: string, value: string) => `o:${componentId}:${value}`,
+  // Trust-bar labels (type "stats"). Values stay untranslated — they're figures.
+  statLabel: (componentId: string, index: number) => `c:${componentId}:stat:${index}:label`,
   cta: (pageId: string, index: number) => `cta:${pageId}:${index}`,
   ctaSubtitle: (pageId: string, index: number) => `cta:${pageId}:${index}:sub`,
   ctaNote: (pageId: string, index: number) => `cta:${pageId}:${index}:note`,

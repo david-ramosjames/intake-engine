@@ -10,9 +10,11 @@
 //    (can't help) — each terminal, with call-to-action buttons (Call/Text/…).
 //    The lead's outcome is recorded from whichever ending is reached.
 //  • Bilingual: when the journey has >1 language, a toggle switches all text
-//    instantly (translations resolved from definition.i18n).
+//    instantly (translations resolved from definition.i18n) and writes ?lang=
+//    into the URL (replaceState, so in-progress answers are kept) so the chat
+//    widget can re-read the language.
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
 import { ctaHref, telDigits } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
@@ -43,6 +45,27 @@ interface Props {
 }
 
 type Outcome = "lead" | "referral" | "declined";
+
+// Put the active language on the URL (?lang=es) so the chat widget — which
+// reads window.location once at boot — can pick it up. Uses replaceState, not
+// a Next navigation: a real route change would remount this player and wipe
+// in-progress answers. Also stamps <html lang> (the widget's fallback).
+function syncLocaleToUrl(locale: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("lang", locale);
+    for (const alias of ["hl", "locale"] as const) {
+      if (url.searchParams.has(alias)) url.searchParams.set(alias, locale);
+    }
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    const cur = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (next !== cur) window.history.replaceState(window.history.state, "", next);
+    document.documentElement.lang = locale.toLowerCase().split(/[-_]/)[0] || locale;
+  } catch {
+    /* ignore */
+  }
+}
 
 // Compact input types that can share a row two-up on wider screens. Longer
 // inputs (long text, address, uploads) and all content/choice blocks stay
@@ -90,9 +113,17 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
 
   const [answers, setAnswers] = useState<Answers>({});
   const [history, setHistory] = useState<string[]>([firstId]);
-  const [locale, setLocale] = useState<string>(
+  const [locale, setLocaleState] = useState<string>(
     initialLocale && languages.includes(initialLocale) ? initialLocale : languages[0]!,
   );
+  const setLocale = useCallback((next: string) => {
+    if (next === locale || !languages.includes(next)) return;
+    syncLocaleToUrl(next);
+    setLocaleState(next);
+  }, [locale, languages]);
+  useLayoutEffect(() => {
+    document.documentElement.lang = locale.toLowerCase().split(/[-_]/)[0] || locale;
+  }, [locale]);
   const [error, setError] = useState<string | null>(null);
   // The desktop callback card has its own error slot so a card validation
   // message shows only at the card, not also in the main CTA error line.
@@ -720,6 +751,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                 <EndingView
                   page={terminalPage}
                   L={L}
+                  locale={locale}
                   onCtaClick={() => emit("cta_click")}
                   onPhoneClick={trackPhoneClick}
                 />
@@ -747,6 +779,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                           answers={answers}
                           definition={definition}
                           L={L}
+                          locale={locale}
                           onChange={(v) => c.key && set(c.key, v)}
                         />
                       )}
@@ -810,13 +843,16 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                     answers={answers}
                     definition={definition}
                     L={L}
+                    locale={locale}
                     onChange={(v) => c.key && set(c.key, v)}
                   />
                 </div>
               ))}
 
               {/* Trust metrics card under the CTAs. */}
-              {statsComps.map((c) => (c.stats ? <StatsBar key={c.id} stats={c.stats} /> : null))}
+              {statsComps.map((c) =>
+                c.stats ? <StatsBar key={c.id} stats={c.stats} componentId={c.id} L={L} locale={locale} /> : null,
+              )}
             </div>
           )}
         </div>
@@ -891,7 +927,12 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
         </div>
       )}
       {siteChat ? (
-        <SiteChatScript src={siteChat.src} clientId={siteChat.clientId} placement={siteChat.placement} />
+        <SiteChatScript
+          src={siteChat.src}
+          clientId={siteChat.clientId}
+          placement={siteChat.placement}
+          locale={locale}
+        />
       ) : null}
     </main>
   );
@@ -1047,12 +1088,14 @@ function ContentOrField({
   answers,
   definition,
   L,
+  locale,
   onChange,
 }: {
   component: Component;
   answers: Answers;
   definition: JourneyDefinition;
   L: Localize;
+  locale: string;
   onChange: (v: unknown) => void;
 }) {
   switch (component.type) {
@@ -1084,7 +1127,9 @@ function ContentOrField({
         <img src={component.src} alt="" className="max-h-72 w-full rounded-2xl object-cover" />
       ) : null;
     case "stats":
-      return component.stats && component.stats.length > 0 ? <StatsBar stats={component.stats} /> : null;
+      return component.stats && component.stats.length > 0 ? (
+        <StatsBar stats={component.stats} componentId={component.id} L={L} locale={locale} />
+      ) : null;
     case "review":
       return <ReviewView answers={answers} definition={definition} label={L(tk.label(component.id), component.label)} />;
     default: {
@@ -1152,14 +1197,34 @@ function formatPhone(raw: string): string {
   return raw;
 }
 
-// Animated count-up for a trust figure like "$50M+", "200+", "4.9", "$1,273,000".
+// Animated count-up for a trust figure like "$50M+", "200+", "4.9".
+// Always finish on the authored string. Never use the browser's default locale
+// (Spanish would render 4.9 as "4,9" and a language-toggle remount would
+// restart from 0 — which is how ES can flash "22+" / "0.5" / "$5M+").
+const countedUp = new Set<string>();
+
 function CountUp({ raw }: { raw: string }) {
   const m = raw.match(/^([^\d]*)([\d.,]+)(.*)$/);
-  const target = m ? parseFloat(m[2]!.replace(/,/g, "")) : 0;
-  const decimals = m ? (m[2]!.split(".")[1]?.length ?? 0) : 0;
-  const [val, setVal] = useState(0);
+  const digits = m ? m[2]!.replace(/,/g, "") : "";
+  const target = m ? parseFloat(digits) : 0;
+  const decimals = m ? (digits.split(".")[1]?.length ?? 0) : 0;
+  const skip = countedUp.has(raw);
+  const [val, setVal] = useState(skip ? target : 0);
+  const [done, setDone] = useState(skip);
   useEffect(() => {
-    if (!m) return;
+    if (!m || countedUp.has(raw)) {
+      setDone(true);
+      return;
+    }
+    const reduced =
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      countedUp.add(raw);
+      setVal(target);
+      setDone(true);
+      return;
+    }
+    setDone(false);
     let raf = 0;
     const start = performance.now();
     const dur = 1800;
@@ -1167,12 +1232,18 @@ function CountUp({ raw }: { raw: string }) {
       const p = Math.min(1, (t - start) / dur);
       setVal(target * (1 - Math.pow(1 - p, 3)));
       if (p < 1) raf = requestAnimationFrame(tick);
+      else {
+        countedUp.add(raw);
+        setDone(true);
+      }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [raw]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!m) return <>{raw}</>;
-  const shown = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString();
+  if (!m || done) return <>{raw}</>;
+  // Locale-invariant so Spanish visitors never see a comma decimal or "." grouping
+  // while the number is still counting.
+  const shown = decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString("en-US");
   return (
     <>
       {m[1]}
@@ -1182,9 +1253,31 @@ function CountUp({ raw }: { raw: string }) {
   );
 }
 
+// Built-in Spanish for the stock PI trust labels so published journeys show
+// Spanish on ?lang=es without a re-translate. Custom i18n.es entries win.
+const STAT_LABEL_ES: Record<string, string> = {
+  "Google Reviews": "Reseñas de Google",
+  "Average Client Rating": "Calificación promedio",
+  "Won for our Clients": "Ganado para nuestros clientes",
+  "Google Rating": "Calificación de Google",
+  "5-Star Reviews": "Reseñas de 5 estrellas",
+  Recovered: "Recuperado",
+};
+
 // Trust metrics as one elevated, bordered card — icon over a counting number
 // over a label, split by subtle dividers (Apple/Stripe-style stat row).
-function StatsBar({ stats }: { stats: StatItem[] }) {
+function StatsBar({
+  stats,
+  componentId,
+  L,
+  locale,
+}: {
+  stats: StatItem[];
+  componentId?: string;
+  L?: Localize;
+  locale?: string;
+}) {
+  const es = locale?.toLowerCase().startsWith("es");
   return (
     <div
       className="animate-fade-up rounded-2xl border px-5 py-6 shadow-sm sm:px-8 sm:py-4 md:py-3"
@@ -1196,19 +1289,23 @@ function StatsBar({ stats }: { stats: StatItem[] }) {
       }}
     >
       <div className="grid" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
-        {stats.map((s, i) => (
-          <div
-            key={i}
-            className={`px-3 text-center sm:px-5 ${i > 0 ? "border-l" : ""}`}
-            style={{ borderColor: "color-mix(in srgb, var(--text) 10%, transparent)" }}
-          >
-            {s.icon && <div className="mb-2 text-2xl leading-none">{s.icon}</div>}
-            <div className="text-[26px] font-bold leading-none sm:text-3xl">
-              <CountUp raw={s.value} />
+        {stats.map((s, i) => {
+          const fromI18n = L && componentId ? L(tk.statLabel(componentId, i), s.label) : s.label;
+          const label = es && fromI18n === s.label ? (STAT_LABEL_ES[s.label] ?? s.label) : fromI18n;
+          return (
+            <div
+              key={i}
+              className={`px-3 text-center sm:px-5 ${i > 0 ? "border-l" : ""}`}
+              style={{ borderColor: "color-mix(in srgb, var(--text) 10%, transparent)" }}
+            >
+              {s.icon && <div className="mb-2 text-2xl leading-none">{s.icon}</div>}
+              <div className="text-[26px] font-bold leading-none sm:text-3xl">
+                <CountUp raw={s.value} />
+              </div>
+              <div className="mt-2.5 text-[11px] leading-tight opacity-60 sm:text-xs">{label}</div>
             </div>
-            <div className="mt-2.5 text-[11px] leading-tight opacity-60 sm:text-xs">{s.label}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -2249,11 +2346,13 @@ function FallbackEnding({ locale }: { locale: string }) {
 function EndingView({
   page,
   L,
+  locale,
   onCtaClick,
   onPhoneClick,
 }: {
   page: Page;
   L: Localize;
+  locale: string;
   onCtaClick?: () => void;
   onPhoneClick?: () => void;
 }) {
@@ -2265,7 +2364,7 @@ function EndingView({
             {L(tk.content(c.id), c.content)}
           </h1>
         ) : c.type === "stats" && c.stats ? (
-          <StatsBar key={c.id} stats={c.stats} />
+          <StatsBar key={c.id} stats={c.stats} componentId={c.id} L={L} locale={locale} />
         ) : (
           <p key={c.id} className="whitespace-pre-line text-lg leading-relaxed opacity-70">
             {L(tk.content(c.id), c.content)}

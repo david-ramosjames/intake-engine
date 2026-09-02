@@ -43,10 +43,14 @@ export function SiteChatScript({
   src,
   clientId,
   placement = DEFAULT_SITE_CHAT_PLACEMENT,
+  locale,
 }: {
   src?: string;
   clientId?: string;
   placement?: SiteChatPlacement;
+  // When the visitor toggles EN/ES the host URL's ?lang= changes; the widget
+  // only reads that at boot, so we remount it. The journey itself is not remounted.
+  locale?: string;
 }) {
   useEffect(() => {
     if (!src || !clientId) return;
@@ -156,7 +160,7 @@ export function SiteChatScript({
         /* ignore */
       }
     };
-  }, [src, clientId, placement.desktop, placement.mobile, placement.content, placement.faq]);
+  }, [src, clientId, locale, placement.desktop, placement.mobile, placement.content, placement.faq]);
 
   return null;
 }
