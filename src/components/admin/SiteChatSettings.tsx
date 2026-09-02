@@ -107,7 +107,7 @@ export function SiteChatSettings({
         <div className="text-xs font-medium text-gray-500">Selected sections</div>
         <p className="mt-0.5 text-xs text-gray-400">
           Used when Desktop or Mobile is set to Selected sections. The bubble shows while any checked block is on
-          screen.
+          screen, and always hides over the landing-page Call / Start buttons at the bottom.
         </p>
         <div className="mt-2 flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-sm text-gray-700">

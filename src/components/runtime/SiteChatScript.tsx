@@ -7,6 +7,7 @@
 import { useEffect } from "react";
 import {
   DEFAULT_SITE_CHAT_PLACEMENT,
+  SITE_CHAT_FOOTER_ID,
   siteChatSectionIds,
   type SiteChatPlacement,
 } from "@/modules/integrations/siteChat";
@@ -68,10 +69,16 @@ export function SiteChatScript({
 
     const ids = siteChatSectionIds(placement);
     const visible = new Set<Element>();
+    let footerInView = false;
     const deviceMode = () => (isMobile() ? placement.mobile : placement.desktop);
     const sync = () => {
       if (chatPanelOpen()) {
         setChatOn(true);
+        return;
+      }
+      // The landing Call/Start strip sits in the same corner as the bubble.
+      if (footerInView) {
+        setChatOn(false);
         return;
       }
       const mode = deviceMode();
@@ -90,9 +97,12 @@ export function SiteChatScript({
       ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => Boolean(el));
 
     let io: IntersectionObserver | null = null;
+    let footerIo: IntersectionObserver | null = null;
     const observe = () => {
       io?.disconnect();
+      footerIo?.disconnect();
       visible.clear();
+      footerInView = false;
       io = new IntersectionObserver(
         (entries) => {
           for (const e of entries) {
@@ -104,11 +114,22 @@ export function SiteChatScript({
         { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
       );
       const targets = sectionTargets();
-      if (!targets.length) {
+      if (targets.length) {
+        for (const t of targets) io.observe(t);
+      } else {
         sync();
-        return;
       }
-      for (const t of targets) io.observe(t);
+      const footer = document.getElementById(SITE_CHAT_FOOTER_ID);
+      if (footer) {
+        footerIo = new IntersectionObserver(
+          (entries) => {
+            footerInView = entries.some((e) => e.isIntersecting);
+            sync();
+          },
+          { threshold: 0 },
+        );
+        footerIo.observe(footer);
+      }
     };
     observe();
 
@@ -122,6 +143,7 @@ export function SiteChatScript({
     };
 
     let sectionCount = sectionTargets().length;
+    let hadFooter = Boolean(document.getElementById(SITE_CHAT_FOOTER_ID));
     const mo = new MutationObserver((mutations) => {
       for (const m of mutations) {
         for (const node of Array.from(m.addedNodes)) {
@@ -129,8 +151,10 @@ export function SiteChatScript({
         }
       }
       const nextCount = sectionTargets().length;
-      if (nextCount !== sectionCount) {
+      const nextFooter = Boolean(document.getElementById(SITE_CHAT_FOOTER_ID));
+      if (nextCount !== sectionCount || nextFooter !== hadFooter) {
         sectionCount = nextCount;
+        hadFooter = nextFooter;
         observe();
       }
       sync();
@@ -145,6 +169,7 @@ export function SiteChatScript({
       mq.removeEventListener("change", onMq);
       mo.disconnect();
       io?.disconnect();
+      footerIo?.disconnect();
       shadowObservers.forEach((o) => o.disconnect());
       setChatOn(false);
       script.remove();

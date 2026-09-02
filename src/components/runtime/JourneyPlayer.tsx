@@ -24,7 +24,7 @@ import { deriveAttribution } from "@/modules/leads/attribution";
 import { collectContext, snapshotFirstTouch } from "@/modules/leads/browserContext";
 import { measureOpenAILead } from "@/components/runtime/OpenAIAdsPixel";
 import { SiteChatScript } from "@/components/runtime/SiteChatScript";
-import { SITE_CHAT_CONTENT_ID, SITE_CHAT_FAQ_ID, type PublicSiteChat } from "@/modules/integrations/siteChat";
+import { SITE_CHAT_CONTENT_ID, SITE_CHAT_FAQ_ID, SITE_CHAT_FOOTER_ID, type PublicSiteChat } from "@/modules/integrations/siteChat";
 import {
   isComponentVisible,
   isConvertType,
@@ -1368,7 +1368,10 @@ function BelowFold({
       ))}
       {callbackNode && renderOrder.length === 0 ? callbackNode : null}
       {cta && (
-        <section className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-16">
+        <section
+          id={SITE_CHAT_FOOTER_ID}
+          className="border-t border-[color:color-mix(in_srgb,var(--text)_10%,transparent)] px-6 py-14 md:py-16"
+        >
           <div className="mx-auto flex w-full max-w-md flex-col gap-3">{cta}</div>
         </section>
       )}

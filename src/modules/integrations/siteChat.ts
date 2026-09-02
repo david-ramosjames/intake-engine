@@ -22,6 +22,7 @@ export interface SiteChatConfig {
 
 export const SITE_CHAT_CONTENT_ID = "ie-content-section";
 export const SITE_CHAT_FAQ_ID = "ie-faq-section";
+export const SITE_CHAT_FOOTER_ID = "ie-cta-footer";
 
 export const DEFAULT_SITE_CHAT_PLACEMENT: SiteChatPlacement = {
   desktop: "always",
