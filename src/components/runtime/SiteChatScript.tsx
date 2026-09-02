@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import {
   DEFAULT_SITE_CHAT_PLACEMENT,
   SITE_CHAT_FOOTER_ID,
+  SITE_CHAT_LOCALE_EVENT,
   siteChatSectionIds,
   type SiteChatPlacement,
 } from "@/modules/integrations/siteChat";
@@ -40,6 +41,14 @@ function setChatOn(on: boolean) {
   document.body.classList.toggle(ON_CLASS, on);
 }
 
+function safeRemove(el: Element | null | undefined) {
+  try {
+    el?.remove();
+  } catch {
+    /* already gone — React and the vendor script both touch <body> */
+  }
+}
+
 export function SiteChatScript({
   src,
   clientId,
@@ -52,134 +61,156 @@ export function SiteChatScript({
   useEffect(() => {
     if (!src || !clientId) return;
 
-    const style = document.createElement("style");
-    style.id = HIDE_STYLE_ID;
-    style.textContent =
-      `body:not(.${ON_CLASS}) [data-rjl-chat], body:not(.${ON_CLASS}) [data-rjl-side-stack] {` +
-      `visibility:hidden!important;pointer-events:none!important;}`;
-    document.head.appendChild(style);
+    let disposed = false;
+    let stop: (() => void) | null = null;
 
-    const script = document.createElement("script");
-    script.id = SCRIPT_ID;
-    script.src = src;
-    script.async = true;
-    script.setAttribute("data-client-id", clientId);
-    script.setAttribute("data-open-on-load", "false");
-    document.body.appendChild(script);
+    const start = () => {
+      const style = document.createElement("style");
+      style.id = HIDE_STYLE_ID;
+      style.textContent =
+        `body:not(.${ON_CLASS}) [data-rjl-chat], body:not(.${ON_CLASS}) [data-rjl-side-stack] {` +
+        `visibility:hidden!important;pointer-events:none!important;}`;
+      document.head.appendChild(style);
 
-    const ids = siteChatSectionIds(placement);
-    const visible = new Set<Element>();
-    let footerInView = false;
-    const deviceMode = () => (isMobile() ? placement.mobile : placement.desktop);
-    const sync = () => {
-      if (chatPanelOpen()) {
-        setChatOn(true);
-        return;
-      }
-      // The landing Call/Start strip sits in the same corner as the bubble.
-      if (footerInView) {
-        setChatOn(false);
-        return;
-      }
-      const mode = deviceMode();
-      if (mode === "always") {
-        setChatOn(true);
-        return;
-      }
-      if (mode === "off") {
-        setChatOn(false);
-        return;
-      }
-      setChatOn(visible.size > 0);
-    };
+      const script = document.createElement("script");
+      script.id = SCRIPT_ID;
+      script.src = src;
+      script.async = true;
+      script.setAttribute("data-client-id", clientId);
+      script.setAttribute("data-open-on-load", "false");
+      document.body.appendChild(script);
 
-    const sectionTargets = () =>
-      ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => Boolean(el));
+      const ids = siteChatSectionIds(placement);
+      const visible = new Set<Element>();
+      let footerInView = false;
+      const deviceMode = () => (isMobile() ? placement.mobile : placement.desktop);
+      const sync = () => {
+        if (chatPanelOpen()) {
+          setChatOn(true);
+          return;
+        }
+        // The landing Call/Start strip sits in the same corner as the bubble.
+        if (footerInView) {
+          setChatOn(false);
+          return;
+        }
+        const mode = deviceMode();
+        if (mode === "always") {
+          setChatOn(true);
+          return;
+        }
+        if (mode === "off") {
+          setChatOn(false);
+          return;
+        }
+        setChatOn(visible.size > 0);
+      };
 
-    let io: IntersectionObserver | null = null;
-    let footerIo: IntersectionObserver | null = null;
-    const observe = () => {
-      io?.disconnect();
-      footerIo?.disconnect();
-      visible.clear();
-      footerInView = false;
-      io = new IntersectionObserver(
-        (entries) => {
-          for (const e of entries) {
-            if (e.isIntersecting) visible.add(e.target);
-            else visible.delete(e.target);
-          }
-          sync();
-        },
-        { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
-      );
-      const targets = sectionTargets();
-      if (targets.length) {
-        for (const t of targets) io.observe(t);
-      } else {
-        sync();
-      }
-      const footer = document.getElementById(SITE_CHAT_FOOTER_ID);
-      if (footer) {
-        footerIo = new IntersectionObserver(
+      const sectionTargets = () =>
+        ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => Boolean(el));
+
+      let io: IntersectionObserver | null = null;
+      let footerIo: IntersectionObserver | null = null;
+      const observe = () => {
+        io?.disconnect();
+        footerIo?.disconnect();
+        visible.clear();
+        footerInView = false;
+        io = new IntersectionObserver(
           (entries) => {
-            footerInView = entries.some((e) => e.isIntersecting);
+            for (const e of entries) {
+              if (e.isIntersecting) visible.add(e.target);
+              else visible.delete(e.target);
+            }
             sync();
           },
-          { threshold: 0 },
+          { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
         );
-        footerIo.observe(footer);
-      }
-    };
-    observe();
-
-    const shadowObservers: MutationObserver[] = [];
-    const watchHost = (host: HTMLElement) => {
-      const root = host.shadowRoot;
-      if (!root) return;
-      const smo = new MutationObserver(() => sync());
-      smo.observe(root, { childList: true, subtree: true });
-      shadowObservers.push(smo);
-    };
-
-    let sectionCount = sectionTargets().length;
-    let hadFooter = Boolean(document.getElementById(SITE_CHAT_FOOTER_ID));
-    const mo = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        for (const node of Array.from(m.addedNodes)) {
-          if (node instanceof HTMLElement && node.hasAttribute("data-rjl-chat")) watchHost(node);
+        const targets = sectionTargets();
+        if (targets.length) {
+          for (const t of targets) io.observe(t);
+        } else {
+          sync();
         }
-      }
-      const nextCount = sectionTargets().length;
-      const nextFooter = Boolean(document.getElementById(SITE_CHAT_FOOTER_ID));
-      if (nextCount !== sectionCount || nextFooter !== hadFooter) {
-        sectionCount = nextCount;
-        hadFooter = nextFooter;
-        observe();
-      }
-      sync();
-    });
-    mo.observe(document.body, { childList: true, subtree: true });
+        const footer = document.getElementById(SITE_CHAT_FOOTER_ID);
+        if (footer) {
+          footerIo = new IntersectionObserver(
+            (entries) => {
+              footerInView = entries.some((e) => e.isIntersecting);
+              sync();
+            },
+            { threshold: 0 },
+          );
+          footerIo.observe(footer);
+        }
+      };
+      observe();
 
-    const mq = window.matchMedia(MOBILE_MQ);
-    const onMq = () => sync();
-    mq.addEventListener("change", onMq);
+      const shadowObservers: MutationObserver[] = [];
+      const watchHost = (host: HTMLElement) => {
+        const root = host.shadowRoot;
+        if (!root) return;
+        const smo = new MutationObserver(() => sync());
+        smo.observe(root, { childList: true, subtree: true });
+        shadowObservers.push(smo);
+      };
+
+      let sectionCount = sectionTargets().length;
+      let hadFooter = Boolean(document.getElementById(SITE_CHAT_FOOTER_ID));
+      const mo = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          for (const node of Array.from(m.addedNodes)) {
+            if (node instanceof HTMLElement && node.hasAttribute("data-rjl-chat")) watchHost(node);
+          }
+        }
+        const nextCount = sectionTargets().length;
+        const nextFooter = Boolean(document.getElementById(SITE_CHAT_FOOTER_ID));
+        if (nextCount !== sectionCount || nextFooter !== hadFooter) {
+          sectionCount = nextCount;
+          hadFooter = nextFooter;
+          observe();
+        }
+        sync();
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+
+      const mq = window.matchMedia(MOBILE_MQ);
+      const onMq = () => sync();
+      mq.addEventListener("change", onMq);
+
+      return () => {
+        mq.removeEventListener("change", onMq);
+        mo.disconnect();
+        io?.disconnect();
+        footerIo?.disconnect();
+        shadowObservers.forEach((o) => o.disconnect());
+        setChatOn(false);
+        safeRemove(script);
+        safeRemove(style);
+        chatHosts().forEach((n) => safeRemove(n));
+        try {
+          delete (window as unknown as { __rjlChatLoaded?: boolean }).__rjlChatLoaded;
+        } catch {
+          /* ignore */
+        }
+      };
+    };
+
+    stop = start();
+
+    const onLocale = () => {
+      window.setTimeout(() => {
+        if (disposed) return;
+        stop?.();
+        stop = start();
+      }, 0);
+    };
+    window.addEventListener(SITE_CHAT_LOCALE_EVENT, onLocale);
 
     return () => {
-      mq.removeEventListener("change", onMq);
-      mo.disconnect();
-      io?.disconnect();
-      footerIo?.disconnect();
-      shadowObservers.forEach((o) => o.disconnect());
-      setChatOn(false);
-      script.remove();
-      style.remove();
-      chatHosts().forEach((n) => n.remove());
-      try {
-        delete (window as unknown as { __rjlChatLoaded?: boolean }).__rjlChatLoaded;
-      } catch {
-        /* ignore */
-      }
+      disposed = true;
+      window.removeEventListener(SITE_CHAT_LOCALE_EVENT, onLocale);
+      stop?.();
     };
   }, [src, clientId, placement.desktop, placement.mobile, placement.content, placement.faq]);
 

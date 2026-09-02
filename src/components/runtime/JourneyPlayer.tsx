@@ -10,10 +10,9 @@
 //    (can't help) — each terminal, with call-to-action buttons (Call/Text/…).
 //    The lead's outcome is recorded from whichever ending is reached.
 //  • Bilingual: when the journey has >1 language, a toggle switches all text
-//    instantly (translations resolved from definition.i18n). On the landing
-//    screen it reloads with ?lang= so the chat widget (which reads the URL at
-//    boot) picks up Spanish; once the visitor is in the flow, only React state
-//    changes so they keep their place.
+//    instantly (translations resolved from definition.i18n). ?lang= is written
+//    with the native History API (Next's patched replaceState would remount
+//    the page and crash). The chat widget is told after React commits.
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
@@ -24,7 +23,7 @@ import { deriveAttribution } from "@/modules/leads/attribution";
 import { collectContext, snapshotFirstTouch } from "@/modules/leads/browserContext";
 import { measureOpenAILead } from "@/components/runtime/OpenAIAdsPixel";
 import { SiteChatScript } from "@/components/runtime/SiteChatScript";
-import { SITE_CHAT_CONTENT_ID, SITE_CHAT_FAQ_ID, SITE_CHAT_FOOTER_ID, type PublicSiteChat } from "@/modules/integrations/siteChat";
+import { SITE_CHAT_CONTENT_ID, SITE_CHAT_FAQ_ID, SITE_CHAT_FOOTER_ID, SITE_CHAT_LOCALE_EVENT, type PublicSiteChat } from "@/modules/integrations/siteChat";
 import {
   isComponentVisible,
   isConvertType,
@@ -47,11 +46,11 @@ interface Props {
 
 type Outcome = "lead" | "referral" | "declined";
 
-// Full navigation to the same path with ?lang= set. Used only on the landing
-// screen — the chat widget reads lang from the URL once at boot. Must not use
-// history.replaceState: Next's App Router patches that and re-renders the
-// server page, which races React's <html>/<body> and throws removeChild.
-function reloadWithLang(locale: string) {
+// Write ?lang= without Next App Router noticing. Next patches
+// window.history.replaceState and treats it as a navigation, which remounts
+// this player and races the chat widget's nodes on <body> (removeChild crash).
+// History.prototype.replaceState is the unpatched native method.
+function writeLangQuery(locale: string) {
   if (typeof window === "undefined") return;
   try {
     const url = new URL(window.location.href);
@@ -59,7 +58,8 @@ function reloadWithLang(locale: string) {
     for (const alias of ["hl", "locale"] as const) {
       if (url.searchParams.has(alias)) url.searchParams.set(alias, locale);
     }
-    window.location.replace(url.toString());
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    History.prototype.replaceState.call(window.history, window.history.state, "", next);
   } catch {
     /* ignore */
   }
@@ -437,14 +437,13 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
   const setLocale = useCallback(
     (next: string) => {
       if (next === locale || !languages.includes(next)) return;
-      // Landing: real reload so chat boots against ?lang=. In-flow: React only.
-      if (isLanding) {
-        reloadWithLang(next);
-        return;
-      }
+      writeLangQuery(next);
       setLocaleState(next);
+      // After React commits the new copy, tell the chat widget to re-boot
+      // against the updated URL. Doing that in the same turn races <body>.
+      window.setTimeout(() => window.dispatchEvent(new Event(SITE_CHAT_LOCALE_EVENT)), 0);
     },
-    [locale, languages, isLanding],
+    [locale, languages],
   );
   const mobileHero = isLanding && Boolean(theme.sideImageUrl);
   // Hero framing (position + zoom). The mobile hero and the desktop side image

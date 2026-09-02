@@ -23,6 +23,8 @@ export interface SiteChatConfig {
 export const SITE_CHAT_CONTENT_ID = "ie-content-section";
 export const SITE_CHAT_FAQ_ID = "ie-faq-section";
 export const SITE_CHAT_FOOTER_ID = "ie-cta-footer";
+/** Journey language toggle fires this after React commits so the widget can re-read ?lang=. */
+export const SITE_CHAT_LOCALE_EVENT = "ie-site-chat-locale";
 
 export const DEFAULT_SITE_CHAT_PLACEMENT: SiteChatPlacement = {
   desktop: "always",
