@@ -10,11 +10,12 @@
 //    (can't help) — each terminal, with call-to-action buttons (Call/Text/…).
 //    The lead's outcome is recorded from whichever ending is reached.
 //  • Bilingual: when the journey has >1 language, a toggle switches all text
-//    instantly (translations resolved from definition.i18n) and writes ?lang=
-//    into the URL (replaceState, so in-progress answers are kept) so the chat
-//    widget can re-read the language.
+//    instantly (translations resolved from definition.i18n). On the landing
+//    screen it reloads with ?lang= so the chat widget (which reads the URL at
+//    boot) picks up Spanish; once the visitor is in the flow, only React state
+//    changes so they keep their place.
 
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Component, JourneyDefinition, Option, Page, StatItem } from "@/modules/journeys/domain/schema";
 import { ctaHref, telDigits } from "@/modules/journeys/domain/schema";
 import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
@@ -46,11 +47,11 @@ interface Props {
 
 type Outcome = "lead" | "referral" | "declined";
 
-// Put the active language on the URL (?lang=es) so the chat widget — which
-// reads window.location once at boot — can pick it up. Uses replaceState, not
-// a Next navigation: a real route change would remount this player and wipe
-// in-progress answers. Also stamps <html lang> (the widget's fallback).
-function syncLocaleToUrl(locale: string) {
+// Full navigation to the same path with ?lang= set. Used only on the landing
+// screen — the chat widget reads lang from the URL once at boot. Must not use
+// history.replaceState: Next's App Router patches that and re-renders the
+// server page, which races React's <html>/<body> and throws removeChild.
+function reloadWithLang(locale: string) {
   if (typeof window === "undefined") return;
   try {
     const url = new URL(window.location.href);
@@ -58,10 +59,7 @@ function syncLocaleToUrl(locale: string) {
     for (const alias of ["hl", "locale"] as const) {
       if (url.searchParams.has(alias)) url.searchParams.set(alias, locale);
     }
-    const next = `${url.pathname}${url.search}${url.hash}`;
-    const cur = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    if (next !== cur) window.history.replaceState(window.history.state, "", next);
-    document.documentElement.lang = locale.toLowerCase().split(/[-_]/)[0] || locale;
+    window.location.replace(url.toString());
   } catch {
     /* ignore */
   }
@@ -116,14 +114,6 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
   const [locale, setLocaleState] = useState<string>(
     initialLocale && languages.includes(initialLocale) ? initialLocale : languages[0]!,
   );
-  const setLocale = useCallback((next: string) => {
-    if (next === locale || !languages.includes(next)) return;
-    syncLocaleToUrl(next);
-    setLocaleState(next);
-  }, [locale, languages]);
-  useLayoutEffect(() => {
-    document.documentElement.lang = locale.toLowerCase().split(/[-_]/)[0] || locale;
-  }, [locale]);
   const [error, setError] = useState<string | null>(null);
   // The desktop callback card has its own error slot so a card validation
   // message shows only at the card, not also in the main CTA error line.
@@ -444,6 +434,18 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
   // App-onboarding treatment on phones: the first (landing) screen shows the
   // attorney photo as an edge-to-edge hero with the content floating over it.
   const isLanding = !terminal && history.length <= 1;
+  const setLocale = useCallback(
+    (next: string) => {
+      if (next === locale || !languages.includes(next)) return;
+      // Landing: real reload so chat boots against ?lang=. In-flow: React only.
+      if (isLanding) {
+        reloadWithLang(next);
+        return;
+      }
+      setLocaleState(next);
+    },
+    [locale, languages, isLanding],
+  );
   const mobileHero = isLanding && Boolean(theme.sideImageUrl);
   // Hero framing (position + zoom). The mobile hero and the desktop side image
   // are framed independently so tuning the phone crop never shifts the desktop
@@ -927,12 +929,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
         </div>
       )}
       {siteChat ? (
-        <SiteChatScript
-          src={siteChat.src}
-          clientId={siteChat.clientId}
-          placement={siteChat.placement}
-          locale={locale}
-        />
+        <SiteChatScript src={siteChat.src} clientId={siteChat.clientId} placement={siteChat.placement} />
       ) : null}
     </main>
   );
