@@ -20,6 +20,8 @@ import { CALLBACK_FIELD_IDS, CALLBACK_TEXT_DEFAULTS } from "@/modules/settings/c
 import { deriveAttribution } from "@/modules/leads/attribution";
 import { collectContext, snapshotFirstTouch } from "@/modules/leads/browserContext";
 import { measureOpenAILead } from "@/components/runtime/OpenAIAdsPixel";
+import { SiteChatScript } from "@/components/runtime/SiteChatScript";
+import { SITE_CHAT_CONTENT_ID, SITE_CHAT_FAQ_ID, type PublicSiteChat } from "@/modules/integrations/siteChat";
 import {
   isComponentVisible,
   isConvertType,
@@ -36,6 +38,8 @@ interface Props {
   // Starting language (e.g. from a ?lang=es ad URL). Falls back to the journey's
   // default when unset or not an available language.
   initialLocale?: string;
+  // Per-business chat widget from Settings.
+  siteChat?: PublicSiteChat;
 }
 
 type Outcome = "lead" | "referral" | "declined";
@@ -78,7 +82,7 @@ const COMPACT_FIELDS = new Set<Component["type"]>([
 ]);
 
 
-export function JourneyPlayer({ slug, definition, attribution, initialLocale }: Props) {
+export function JourneyPlayer({ slug, definition, attribution, initialLocale, siteChat }: Props) {
   const pages = definition.pages;
   const theme = definition.theme ?? {};
   const firstId = pages[0]?.id ?? "";
@@ -886,6 +890,9 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale }: 
           </a>
         </div>
       )}
+      {siteChat ? (
+        <SiteChatScript src={siteChat.src} clientId={siteChat.clientId} placement={siteChat.placement} />
+      ) : null}
     </main>
   );
 }
@@ -1329,7 +1336,7 @@ function ContentSection({
   const tokens = parseContentBody(body);
   if (!heading && tokens.length === 0) return null;
   return (
-    <section className="mx-auto w-full max-w-5xl px-6 py-10 md:py-12">
+    <section id={SITE_CHAT_CONTENT_ID} className="mx-auto w-full max-w-5xl px-6 py-10 md:py-12">
       {heading && <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>}
       <div className={`${heading ? "mt-6" : ""} space-y-4`}>
         {tokens.map((t, i) =>
@@ -1392,7 +1399,7 @@ function FaqSection({
   const [open, setOpen] = useState<number | null>(null);
   const divide = "border-t border-[color:color-mix(in_srgb,var(--text)_12%,transparent)]";
   return (
-    <section className="mx-auto w-full max-w-5xl px-6 py-10 md:py-12">
+    <section id={SITE_CHAT_FAQ_ID} className="mx-auto w-full max-w-5xl px-6 py-10 md:py-12">
       <h2 className="text-2xl font-semibold sm:text-3xl">{heading}</h2>
       <div className="mt-6">
         {items.map((it, i) => {

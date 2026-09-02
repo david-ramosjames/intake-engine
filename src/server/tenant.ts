@@ -8,6 +8,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { callRailConfig, callRailSwapScriptUrl } from "@/modules/integrations/callrail";
 import { openaiAdsConfig, sanitizePixelId } from "@/modules/integrations/openaiAds";
+import { publicSiteChat, siteChatConfig, type PublicSiteChat } from "@/modules/integrations/siteChat";
 import { readBusinessPhone } from "@/modules/settings/businessPhone";
 import { getPrisma, hasDatabase } from "./db";
 import { store } from "./store";
@@ -47,18 +48,26 @@ export const resolveCustomDomain = cache(async function resolveCustomDomain(): P
 // request so the page render doesn't add an extra round-trip.
 export const getPublicSiteConfig = cache(async function getPublicSiteConfig(
   orgId: string,
-): Promise<{ gtmId?: string; callRailSwapUrl?: string; phone?: string; openaiPixelId?: string }> {
+): Promise<{
+  gtmId?: string;
+  callRailSwapUrl?: string;
+  phone?: string;
+  openaiPixelId?: string;
+  siteChat?: PublicSiteChat;
+}> {
   const settings = await store.getOrgSettings(orgId);
   const gtm = settings.gtm as { containerId?: string } | undefined;
   const gtmId = gtm?.containerId?.trim();
   const callRailSwapUrl = callRailSwapScriptUrl(callRailConfig(settings));
   const phone = readBusinessPhone(settings);
   const openaiPixelId = sanitizePixelId(openaiAdsConfig(settings)?.pixelId);
+  const siteChat = publicSiteChat(siteChatConfig(settings));
   return {
     gtmId: gtmId || undefined,
     callRailSwapUrl,
     phone: phone || undefined,
     openaiPixelId,
+    siteChat,
   };
 });
 

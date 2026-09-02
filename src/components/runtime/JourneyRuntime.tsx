@@ -90,7 +90,7 @@ export async function JourneyRuntime({
   attribution.org = org.slug; // so the submit endpoint resolves the same tenant
   attribution.firm = org.name; // logo fallback text
 
-  const { gtmId, callRailSwapUrl, phone, openaiPixelId } = await getPublicSiteConfig(org.id);
+  const { gtmId, callRailSwapUrl, phone, openaiPixelId, siteChat } = await getPublicSiteConfig(org.id);
   // Apply the org's one master phone number to every call/text button + top bar,
   // so all journeys stay in sync with the CallRail swap target.
   if (phone) definition = applyBusinessPhone(definition, phone);
@@ -121,6 +121,7 @@ export async function JourneyRuntime({
         definition={definition}
         attribution={attribution}
         initialLocale={initialLocale}
+        siteChat={siteChat}
       />
     </>
   );

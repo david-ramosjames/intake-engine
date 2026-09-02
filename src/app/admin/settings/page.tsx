@@ -4,8 +4,10 @@ import { CallRailSettings } from "@/components/admin/CallRailSettings";
 import { GtmSettings } from "@/components/admin/GtmSettings";
 import { OpenAIAdsSettings } from "@/components/admin/OpenAIAdsSettings";
 import { SigningDefaultsSettings } from "@/components/admin/SigningDefaultsSettings";
+import { SiteChatSettings } from "@/components/admin/SiteChatSettings";
 import { callRailConfig } from "@/modules/integrations/callrail";
 import { openaiAdsConfig } from "@/modules/integrations/openaiAds";
+import { normalizeSiteChatPlacement, publicSiteChat, siteChatConfig } from "@/modules/integrations/siteChat";
 import { readBusinessPhone } from "@/modules/settings/businessPhone";
 import { readCallbackDefaults } from "@/modules/settings/callbackDefaults";
 import { readSigningDefaults } from "@/modules/settings/signingDefaults";
@@ -31,6 +33,8 @@ export default async function Settings() {
   const settings = await store.getOrgSettings(org.id);
   const cr = callRailConfig(settings);
   const oai = openaiAdsConfig(settings);
+  const chat = siteChatConfig(settings);
+  const chatPublic = publicSiteChat(chat);
   const gtm = settings.gtm as { containerId?: string; ga4Id?: string } | undefined;
   const gtmContainerId = (gtm?.containerId ?? "").trim();
   const gtmGa4Id = (gtm?.ga4Id ?? "").trim();
@@ -221,6 +225,31 @@ export default async function Settings() {
         </p>
         <div className="mt-5">
           <OpenAIAdsSettings initialPixelId={oai?.pixelId ?? ""} initialHasKey={Boolean(oai?.apiKey)} />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">Chat widget</h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              chatPublic ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {chatPublic ? `On — ${chatPublic.clientId}` : "Off"}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-gray-400">
+          Loads this business&apos;s chat bot on journey pages. Paste the firm&apos;s script, then choose Desktop,
+          Mobile, and which landing sections (content block, FAQ) it can appear in. Each business pastes its own
+          script so the chat flow can differ.
+        </p>
+        <div className="mt-5">
+          <SiteChatSettings
+            initialSnippet={chat?.snippet ?? ""}
+            initialClientId={chatPublic?.clientId ?? ""}
+            initialPlacement={normalizeSiteChatPlacement(chat?.placement)}
+          />
         </div>
       </div>
 
