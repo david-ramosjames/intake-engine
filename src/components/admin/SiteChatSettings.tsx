@@ -215,5 +215,3 @@ function sectionList(content: boolean, faq: boolean): string {
   if (faq) parts.push("FAQ");
   return parts.length ? parts.join(", ") : "none selected";
 }
-
-void DEFAULT_SITE_CHAT_PLACEMENT;
