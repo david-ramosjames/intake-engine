@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AnalyticsDimFilter } from "@/components/admin/AnalyticsSourceFilter";
-import { analyticsHref, prettyMedium, prettySource } from "@/components/admin/analyticsQuery";
+import { analyticsHref, landingLang, landingPageKey, prettyLang, prettyMedium, prettyPage, prettySource } from "@/components/admin/analyticsQuery";
+import { deriveAttribution } from "@/modules/leads/attribution";
+import { isCallbackFormLead } from "@/modules/leads/answers";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -31,7 +33,15 @@ function pct(n: number, d: number) {
 export default async function Analytics({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; from?: string; to?: string; source?: string; medium?: string }>;
+  searchParams: Promise<{
+    range?: string;
+    from?: string;
+    to?: string;
+    source?: string;
+    medium?: string;
+    lang?: string;
+    page?: string;
+  }>;
 }) {
   const org = await getAdminOrg();
   if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
@@ -42,6 +52,8 @@ export default async function Analytics({
   const range = typeof sp.range === "string" ? sp.range : "30";
   const sourceFilter = typeof sp.source === "string" ? sp.source.trim() : "";
   const mediumFilter = typeof sp.medium === "string" ? sp.medium.trim() : "";
+  const langFilter = typeof sp.lang === "string" && (sp.lang === "en" || sp.lang === "es") ? sp.lang : "";
+  const pageFilter = typeof sp.page === "string" ? sp.page.trim() : "";
 
   // Resolve the window: a custom from/to wins, else a preset (default 30 days).
   let sinceISO: string | undefined;
@@ -63,20 +75,35 @@ export default async function Analytics({
 
   const allEvents = await store.listEvents(org.id, sinceISO);
   const inWindow = untilMs === Infinity ? allEvents : allEvents.filter((e) => new Date(e.createdAt).getTime() <= untilMs);
+  const sinceMs = sinceISO ? new Date(sinceISO).getTime() : 0;
+  const allLeads = await store.listLeads(org.id);
 
   // Attribute each session from its opened event (else the first value we saw).
   const sessionSource = new Map<string, string>();
   const sessionMedium = new Map<string, string>();
+  const sessionLang = new Map<string, string>();
+  const sessionPage = new Map<string, string>();
   for (const e of inWindow) {
     if (e.type === "opened") {
       sessionSource.set(e.sessionId, e.source?.trim() || "direct");
       sessionMedium.set(e.sessionId, e.medium?.trim() || "none");
+      sessionLang.set(e.sessionId, landingLang(e.pageUrl));
+      sessionPage.set(e.sessionId, landingPageKey(e.pageUrl));
     }
   }
   for (const e of inWindow) {
     if (!sessionSource.has(e.sessionId)) sessionSource.set(e.sessionId, e.source?.trim() || "direct");
     if (!sessionMedium.has(e.sessionId)) sessionMedium.set(e.sessionId, e.medium?.trim() || "none");
+    if (!sessionLang.has(e.sessionId)) sessionLang.set(e.sessionId, landingLang(e.pageUrl));
+    if (!sessionPage.has(e.sessionId)) sessionPage.set(e.sessionId, landingPageKey(e.pageUrl));
   }
+  const matchesDims = (sid: string, skip?: "source" | "medium" | "lang" | "page") => {
+    if (skip !== "source" && sourceFilter && (sessionSource.get(sid) ?? "direct") !== sourceFilter) return false;
+    if (skip !== "medium" && mediumFilter && (sessionMedium.get(sid) ?? "none") !== mediumFilter) return false;
+    if (skip !== "lang" && langFilter && (sessionLang.get(sid) ?? "en") !== langFilter) return false;
+    if (skip !== "page" && pageFilter && (sessionPage.get(sid) ?? "—") !== pageFilter) return false;
+    return true;
+  };
   const countKeys = (keys: Map<string, string>, include: (sid: string) => boolean) => {
     const counts = new Map<string, number>();
     for (const [sid, key] of keys) {
@@ -87,18 +114,11 @@ export default async function Analytics({
       .map(([key, n]) => ({ key, n }))
       .sort((a, b) => b.n - a.n || a.key.localeCompare(b.key));
   };
-  const sourceOptions = countKeys(sessionSource, (sid) =>
-    mediumFilter ? (sessionMedium.get(sid) ?? "none") === mediumFilter : true,
-  );
-  const mediumOptions = countKeys(sessionMedium, (sid) =>
-    sourceFilter ? (sessionSource.get(sid) ?? "direct") === sourceFilter : true,
-  );
-  const events = inWindow.filter((e) => {
-    const sid = e.sessionId;
-    if (sourceFilter && (sessionSource.get(sid) ?? "direct") !== sourceFilter) return false;
-    if (mediumFilter && (sessionMedium.get(sid) ?? "none") !== mediumFilter) return false;
-    return true;
-  });
+  const sourceOptions = countKeys(sessionSource, (sid) => matchesDims(sid, "source"));
+  const mediumOptions = countKeys(sessionMedium, (sid) => matchesDims(sid, "medium"));
+  const langOptions = countKeys(sessionLang, (sid) => matchesDims(sid, "lang"));
+  const pageOptions = countKeys(sessionPage, (sid) => matchesDims(sid, "page"));
+  const events = inWindow.filter((e) => matchesDims(e.sessionId));
 
   // Distinct sessions per funnel stage.
   const s = {
@@ -111,17 +131,11 @@ export default async function Analytics({
     referral: new Set<string>(),
     declined: new Set<string>(),
   };
-  const byPageOpen = new Map<string, Set<string>>();
   const byDay = new Map<string, { opened: number; started: number; completed: number; cta: number }>();
   const addDay = (day: string, k: "opened" | "started" | "completed" | "cta") => {
     const d = byDay.get(day) ?? { opened: 0, started: 0, completed: 0, cta: 0 };
     d[k]++;
     byDay.set(day, d);
-  };
-  const addSet = (m: Map<string, Set<string>>, key: string, sid: string) => {
-    const set = m.get(key) ?? new Set<string>();
-    set.add(sid);
-    m.set(key, set);
   };
 
   for (const e of events) {
@@ -129,7 +143,6 @@ export default async function Analytics({
     if (e.type === "opened") {
       s.opened.add(e.sessionId);
       addDay(day, "opened");
-      addSet(byPageOpen, e.pageUrl || "—", e.sessionId);
     } else if (e.type === "started") {
       s.started.add(e.sessionId);
       addDay(day, "started");
@@ -149,13 +162,31 @@ export default async function Analytics({
 
   const opened = s.opened.size;
   const started = s.started.size;
-  const nForm = s.form.size;
-  const nJourneyLead = [...s.lead].filter((id) => !s.form.has(id)).length;
-  const nReferral = s.referral.size;
-  const nDeclined = s.declined.size;
   const cta = s.cta.size;
   const converted = new Set<string>([...s.cta, ...s.completed, ...s.form]);
   const nConverted = converted.size;
+
+  // Journey vs form vs referral vs not-a-fit come from lead records so a
+  // callback (name/phone/message only, no qualifying questions) counts as a
+  // form submit — including older leads from before we recorded form_submit.
+  const inWindowLeads = allLeads.filter((l) => {
+    const t = new Date(l.createdAt).getTime();
+    if (t < sinceMs || t > untilMs) return false;
+    const d = l.source
+      ? { source: l.source.trim() || "direct", medium: (l.medium ?? "").trim() || "none" }
+      : deriveAttribution({}, l.context ?? {});
+    const src = (d.source ?? "direct").trim() || "direct";
+    const med = (d.medium ?? "none").trim() || "none";
+    if (sourceFilter && src !== sourceFilter) return false;
+    if (mediumFilter && med !== mediumFilter) return false;
+    if (langFilter && landingLang(l.context?.landingPage || l.context?.pageUrl) !== langFilter) return false;
+    if (pageFilter && landingPageKey(l.context?.landingPage || l.context?.pageUrl) !== pageFilter) return false;
+    return true;
+  });
+  const nForm = inWindowLeads.filter((l) => isCallbackFormLead(l)).length;
+  const nJourneyLead = inWindowLeads.filter((l) => l.outcome === "lead" && !isCallbackFormLead(l)).length;
+  const nReferral = inWindowLeads.filter((l) => l.outcome === "referral").length;
+  const nDeclined = inWindowLeads.filter((l) => l.outcome === "declined").length;
 
   const funnel: Array<{ stage: string; n: number; ofOpens: string; step: string; indent?: boolean }> = [
     { stage: "Opened", n: opened, ofOpens: "100.0%", step: "—" },
@@ -172,8 +203,18 @@ export default async function Analytics({
   const topMediums = mediumOptions.map((row) => [row.key, row.n] as const);
   const sourceTotal = sourceOptions.reduce((n, row) => n + row.n, 0);
   const mediumTotal = mediumOptions.reduce((n, row) => n + row.n, 0);
-  const topPages = [...byPageOpen.entries()].map(([k, v]) => [k, v.size] as const).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const topPages = pageOptions.map((row) => [row.key, row.n] as const);
+  const pageTotal = pageOptions.reduce((n, row) => n + row.n, 0);
   const days = [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14);
+  const hrefBase = {
+    range,
+    from,
+    to,
+    source: sourceFilter || undefined,
+    medium: mediumFilter || undefined,
+    lang: langFilter || undefined,
+    page: pageFilter || undefined,
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-8 py-10">
@@ -181,7 +222,9 @@ export default async function Analytics({
       <p className="mt-1 text-sm text-gray-500">
         Conversion funnel for {org.name} · {rangeLabel}
         {sourceFilter ? ` · ${prettySource(sourceFilter)}` : ""}
-        {mediumFilter ? ` · ${prettyMedium(mediumFilter)}` : ""}.
+        {mediumFilter ? ` · ${prettyMedium(mediumFilter)}` : ""}
+        {langFilter ? ` · ${prettyLang(langFilter)}` : ""}
+        {pageFilter ? ` · ${prettyPage(pageFilter)}` : ""}.
       </p>
 
       {/* Date range: quick presets + a custom from/to. */}
@@ -192,9 +235,10 @@ export default async function Analytics({
             <Link
               key={value}
               href={analyticsHref({
+                ...hrefBase,
                 range: value,
-                source: sourceFilter || undefined,
-                medium: mediumFilter || undefined,
+                from: undefined,
+                to: undefined,
               })}
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                 active
@@ -225,6 +269,8 @@ export default async function Analytics({
           />
           {sourceFilter ? <input type="hidden" name="source" value={sourceFilter} /> : null}
           {mediumFilter ? <input type="hidden" name="medium" value={mediumFilter} /> : null}
+          {langFilter ? <input type="hidden" name="lang" value={langFilter} /> : null}
+          {pageFilter ? <input type="hidden" name="page" value={pageFilter} /> : null}
           <button
             type="submit"
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
@@ -244,6 +290,8 @@ export default async function Analytics({
           to={to}
           source={sourceFilter || undefined}
           medium={mediumFilter || undefined}
+          lang={langFilter || undefined}
+          page={pageFilter || undefined}
         />
         <AnalyticsDimFilter
           label="Medium"
@@ -255,7 +303,50 @@ export default async function Analytics({
           to={to}
           source={sourceFilter || undefined}
           medium={mediumFilter || undefined}
+          lang={langFilter || undefined}
+          page={pageFilter || undefined}
         />
+        <AnalyticsDimFilter
+          label="Page"
+          param="page"
+          options={pageOptions}
+          selected={pageFilter}
+          range={range}
+          from={from}
+          to={to}
+          source={sourceFilter || undefined}
+          medium={mediumFilter || undefined}
+          lang={langFilter || undefined}
+          page={pageFilter || undefined}
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-gray-500">Landing</span>
+        {(
+          [
+            ["", "All", langOptions.reduce((n, r) => n + r.n, 0)],
+            ["en", "English", langOptions.find((r) => r.key === "en")?.n ?? 0],
+            ["es", "Spanish", langOptions.find((r) => r.key === "es")?.n ?? 0],
+          ] as const
+        ).map(([value, label, n]) => {
+          const active = langFilter === value;
+          return (
+            <Link
+              key={label}
+              href={analyticsHref({
+                ...hrefBase,
+                lang: value || undefined,
+              })}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                active
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-gray-300 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {label} <span className={active ? "opacity-80" : "text-gray-400"}>{n}</span>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -289,10 +380,12 @@ export default async function Analytics({
       <section className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="font-medium text-gray-900">Conversion funnel</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Each row counts unique sessions. <strong>Took an action</strong> is conversion: anyone who called, submitted
-          the callback form, or finished the questions (lead, referral, or not a fit). A person who both called and
-          finished the flow counts once. Journey leads vs form submits only split after this change — older callback
-          submits sit in journey leads.
+          Each row counts unique sessions except the action breakdown (journey
+          lead, form submit, referral, not a fit), which counts unique leads.
+          <strong> Took an action</strong> is conversion: anyone who called,
+          submitted the callback form, or finished the questions. A callback
+          request (name / phone / message, no qualifying questions) is a form
+          submit — still a lead, not a journey lead.
         </p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
@@ -362,11 +455,8 @@ export default async function Analytics({
             pretty={prettySource}
             hrefFor={(k) =>
               analyticsHref({
-                range,
-                from,
-                to,
+                ...hrefBase,
                 source: k === sourceFilter ? undefined : k,
-                medium: mediumFilter || undefined,
               })
             }
             activeKey={sourceFilter}
@@ -378,16 +468,25 @@ export default async function Analytics({
             pretty={prettyMedium}
             hrefFor={(k) =>
               analyticsHref({
-                range,
-                from,
-                to,
-                source: sourceFilter || undefined,
+                ...hrefBase,
                 medium: k === mediumFilter ? undefined : k,
               })
             }
             activeKey={mediumFilter}
           />
-          <Breakdown title="Unique sessions by page" rows={topPages} total={opened} />
+          <Breakdown
+            title="Unique sessions by page"
+            rows={topPages}
+            total={pageTotal}
+            pretty={prettyPage}
+            hrefFor={(k) =>
+              analyticsHref({
+                ...hrefBase,
+                page: k === pageFilter ? undefined : k,
+              })
+            }
+            activeKey={pageFilter}
+          />
         </div>
       </div>
     </div>

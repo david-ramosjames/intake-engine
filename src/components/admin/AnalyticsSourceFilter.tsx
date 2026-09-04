@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { analyticsHref, prettyMedium, prettySource } from "@/components/admin/analyticsQuery";
+import { analyticsHref, prettyMedium, prettyPage, prettySource } from "@/components/admin/analyticsQuery";
 
 export function AnalyticsDimFilter({
   label,
@@ -12,6 +12,8 @@ export function AnalyticsDimFilter({
   to,
   source,
   medium,
+  lang,
+  page,
   param,
 }: {
   label: string;
@@ -22,15 +24,20 @@ export function AnalyticsDimFilter({
   to: string;
   source?: string;
   medium?: string;
-  param: "source" | "medium";
+  lang?: string;
+  page?: string;
+  param: "source" | "medium" | "page";
 }) {
   const router = useRouter();
-  const pretty = param === "source" ? prettySource : prettyMedium;
+  const pretty = param === "source" ? prettySource : param === "medium" ? prettyMedium : prettyPage;
+  const allLabel = param === "source" ? "All sources" : param === "medium" ? "All mediums" : "All pages";
   return (
     <label className="flex items-center gap-2 text-xs text-gray-500">
       {label}
       <select
-        className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700"
+        className={`rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 ${
+          param === "page" ? "max-w-[min(100%,24rem)]" : ""
+        }`}
         value={selected}
         aria-label={`Filter by ${label.toLowerCase()}`}
         onChange={(e) => {
@@ -42,11 +49,13 @@ export function AnalyticsDimFilter({
               to,
               source: param === "source" ? v : source,
               medium: param === "medium" ? v : medium,
+              lang,
+              page: param === "page" ? v : page,
             }),
           );
         }}
       >
-        <option value="">{param === "source" ? "All sources" : "All mediums"}</option>
+        <option value="">{allLabel}</option>
         {selected && !options.some((s) => s.key === selected) ? (
           <option value={selected}>{pretty(selected)}</option>
         ) : null}

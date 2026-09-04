@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { OutcomeBadge } from "@/components/admin/OutcomeBadge";
+import { OutcomeBadge, FormSubmitBadge } from "@/components/admin/OutcomeBadge";
 import { deriveAttribution } from "@/modules/leads/attribution";
+import { isCallbackFormLead } from "@/modules/leads/answers";
 import { formatCentral } from "@/lib/datetime";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
@@ -86,8 +87,9 @@ export default async function Leads({ searchParams }: { searchParams: Promise<{ 
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/leads/${l.id}`}>
+                    <Link href={`/admin/leads/${l.id}`} className="flex flex-wrap items-center gap-1.5">
                       <OutcomeBadge outcome={l.outcome} />
+                      {isCallbackFormLead(l) ? <FormSubmitBadge /> : null}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-600">

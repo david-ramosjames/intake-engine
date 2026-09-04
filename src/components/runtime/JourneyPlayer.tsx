@@ -242,7 +242,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
   const pageById = useCallback((id: string) => pages.find((p) => p.id === id), [pages]);
 
   const submit = useCallback(
-    async (ans: Answers, endingType?: string): Promise<Outcome | null> => {
+    async (ans: Answers, endingType?: string, extraContext?: Record<string, string>): Promise<Outcome | null> => {
       // Already submitted (e.g. at a mid-flow conversion point). Enrich that same
       // lead with the answers gathered since, then report the original outcome so
       // the flow still lands on the right ending. Fire-and-forget; never blocks.
@@ -256,7 +256,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
               slug,
               org: attribution?.org,
               answers: ans,
-              context: collectContext(),
+              context: { ...collectContext(), ...extraContext },
             }),
           }).catch(() => {});
         }
@@ -274,7 +274,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
             answers: ans,
             attribution,
             endingType,
-            context: collectContext(),
+            context: { ...collectContext(), ...extraContext },
           }),
         });
         const data = (await res.json()) as { ok: boolean; leadId?: string; outcome?: Outcome; error?: string };
@@ -312,8 +312,8 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
   // defines none, force a built-in thank-you rather than dropping the visitor
   // back on a form. Returns false when the submit itself failed.
   const finishLead = useCallback(
-    async (ans: Answers, endingType?: string): Promise<boolean> => {
-      const outcome = await submit(ans, endingType);
+    async (ans: Answers, endingType?: string, extraContext?: Record<string, string>): Promise<boolean> => {
+      const outcome = await submit(ans, endingType, extraContext);
       if (!outcome) return false;
       const wantType = outcome === "referral" ? "referral" : outcome === "declined" ? "decline" : "success";
       const end =
@@ -586,7 +586,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
     // always record it as a lead (and post to Slack) — never scored as "not a
     // fit" for skipping the qualifying questions. "success" maps to a lead
     // outcome; a referral screen still takes precedence if one was reached.
-    void finishLead(answers, "success");
+    void finishLead(answers, "success", { intake: "callback" });
   };
 
   return (

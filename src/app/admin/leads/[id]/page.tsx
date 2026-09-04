@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deleteLead } from "@/app/admin/actions";
-import { OutcomeBadge } from "@/components/admin/OutcomeBadge";
+import { OutcomeBadge, FormSubmitBadge } from "@/components/admin/OutcomeBadge";
 import { formatCentral } from "@/lib/datetime";
 import { deriveAttribution } from "@/modules/leads/attribution";
-import { answerRows } from "@/modules/leads/answers";
+import { answerRows, isCallbackFormLead } from "@/modules/leads/answers";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -32,6 +32,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
   const journey = await store.getJourney(org.id, lead.journeySlug);
   const rows = answerRows(journey?.definition, lead.answers);
   const ctx = lead.context ?? {};
+  const fromForm = isCallbackFormLead(lead);
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-10">
@@ -44,6 +45,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-gray-900">{lead.displayName ?? "Anonymous lead"}</h1>
             <OutcomeBadge outcome={lead.outcome} />
+            {fromForm ? <FormSubmitBadge /> : null}
           </div>
           <p className="mt-1 text-sm text-gray-500">
             {formatCentral(lead.createdAt)} · {lead.journeySlug}

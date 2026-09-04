@@ -10,3 +10,11 @@ export function OutcomeBadge({ outcome }: { outcome: LeadOutcome }) {
   const o = MAP[outcome] ?? MAP.declined;
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${o.cls}`}>{o.label}</span>;
 }
+
+export function FormSubmitBadge() {
+  return (
+    <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 ring-1 ring-inset ring-sky-600/20">
+      Form submit
+    </span>
+  );
+}

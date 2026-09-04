@@ -60,3 +60,25 @@ export function answersIndicateReferral(
   }
   return false;
 }
+
+// Keys on the landing "Request a callback" card. A lead whose filled answers
+// are only these did not go through the qualifying questions.
+const CALLBACK_ANSWER_KEYS = new Set(["full_name", "phone", "email", "description"]);
+
+function answerFilled(v: unknown): boolean {
+  if (v == null || v === "") return false;
+  if (Array.isArray(v) && v.length === 0) return false;
+  return true;
+}
+
+/** True when this record came from the callback form, not the question flow. */
+export function isCallbackFormLead(lead: {
+  answers?: Record<string, unknown>;
+  context?: Record<string, string>;
+}): boolean {
+  if (lead.context?.intake === "callback") return true;
+  const filled = Object.entries(lead.answers ?? {})
+    .filter(([, v]) => answerFilled(v))
+    .map(([k]) => k);
+  return filled.length > 0 && filled.every((k) => CALLBACK_ANSWER_KEYS.has(k));
+}
