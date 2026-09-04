@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AnalyticsSourceFilter, analyticsHref, prettySource } from "@/components/admin/AnalyticsSourceFilter";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -29,7 +30,7 @@ function pct(n: number, d: number) {
 export default async function Analytics({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ range?: string; from?: string; to?: string; source?: string }>;
 }) {
   const org = await getAdminOrg();
   if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
@@ -38,6 +39,7 @@ export default async function Analytics({
   const from = typeof sp.from === "string" ? sp.from : "";
   const to = typeof sp.to === "string" ? sp.to : "";
   const range = typeof sp.range === "string" ? sp.range : "30";
+  const sourceFilter = typeof sp.source === "string" ? sp.source.trim() : "";
 
   // Resolve the window: a custom from/to wins, else a preset (default 30 days).
   let sinceISO: string | undefined;
@@ -58,7 +60,25 @@ export default async function Analytics({
   const usingCustom = Boolean(from || to);
 
   const allEvents = await store.listEvents(org.id, sinceISO);
-  const events = untilMs === Infinity ? allEvents : allEvents.filter((e) => new Date(e.createdAt).getTime() <= untilMs);
+  const inWindow = untilMs === Infinity ? allEvents : allEvents.filter((e) => new Date(e.createdAt).getTime() <= untilMs);
+
+  // Attribute each session from its opened event (else the first source we saw).
+  const sessionSource = new Map<string, string>();
+  for (const e of inWindow) {
+    if (e.type === "opened") sessionSource.set(e.sessionId, e.source?.trim() || "direct");
+  }
+  for (const e of inWindow) {
+    if (!sessionSource.has(e.sessionId)) sessionSource.set(e.sessionId, e.source?.trim() || "direct");
+  }
+  const sourceCounts = new Map<string, number>();
+  for (const src of sessionSource.values()) sourceCounts.set(src, (sourceCounts.get(src) ?? 0) + 1);
+  const sourceOptions = [...sourceCounts.entries()]
+    .map(([key, n]) => ({ key, n }))
+    .sort((a, b) => b.n - a.n || a.key.localeCompare(b.key));
+
+  const events = sourceFilter
+    ? inWindow.filter((e) => (sessionSource.get(e.sessionId) ?? "direct") === sourceFilter)
+    : inWindow;
 
   // Distinct sessions per funnel stage.
   const s = {
@@ -70,7 +90,6 @@ export default async function Analytics({
     referral: new Set<string>(),
     declined: new Set<string>(),
   };
-  const bySourceOpen = new Map<string, Set<string>>();
   const byPageOpen = new Map<string, Set<string>>();
   const byDay = new Map<string, { opened: number; started: number; completed: number; cta: number }>();
   const addDay = (day: string, k: "opened" | "started" | "completed" | "cta") => {
@@ -89,7 +108,6 @@ export default async function Analytics({
     if (e.type === "opened") {
       s.opened.add(e.sessionId);
       addDay(day, "opened");
-      addSet(bySourceOpen, e.source || "direct", e.sessionId);
       addSet(byPageOpen, e.pageUrl || "—", e.sessionId);
     } else if (e.type === "started") {
       s.started.add(e.sessionId);
@@ -122,14 +140,17 @@ export default async function Analytics({
     { stage: "Clicked a CTA", n: cta, ofOpens: pct(cta, opened), step: pct(cta, completed) },
   ];
 
-  const topSources = [...bySourceOpen.entries()].map(([k, v]) => [k, v.size] as const).sort((a, b) => b[1] - a[1]);
+  const topSources = sourceOptions.map((s) => [s.key, s.n] as const);
   const topPages = [...byPageOpen.entries()].map(([k, v]) => [k, v.size] as const).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const days = [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14);
 
   return (
     <div className="mx-auto max-w-6xl px-8 py-10">
       <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
-      <p className="mt-1 text-sm text-gray-500">Conversion funnel for {org.name} · {rangeLabel}.</p>
+      <p className="mt-1 text-sm text-gray-500">
+        Conversion funnel for {org.name} · {rangeLabel}
+        {sourceFilter ? ` · ${prettySource(sourceFilter)}` : ""}.
+      </p>
 
       {/* Date range: quick presets + a custom from/to. */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -138,7 +159,7 @@ export default async function Analytics({
           return (
             <Link
               key={value}
-              href={`/admin/analytics?range=${value}`}
+              href={analyticsHref({ range: value, source: sourceFilter || undefined })}
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                 active
                   ? "border-blue-600 bg-blue-600 text-white"
@@ -166,6 +187,7 @@ export default async function Analytics({
             className="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-700"
             aria-label="To date"
           />
+          {sourceFilter ? <input type="hidden" name="source" value={sourceFilter} /> : null}
           <button
             type="submit"
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
@@ -175,6 +197,13 @@ export default async function Analytics({
             Apply
           </button>
         </form>
+        <AnalyticsSourceFilter
+          sources={sourceOptions}
+          selected={sourceFilter}
+          range={range}
+          from={from}
+          to={to}
+        />
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -253,7 +282,13 @@ export default async function Analytics({
         </section>
 
         <div className="space-y-6">
-          <Breakdown title="Unique sessions by source" rows={topSources} total={opened} />
+          <Breakdown
+            title="Unique sessions by source"
+            rows={topSources}
+            total={sourceOptions.reduce((n, s) => n + s.n, 0)}
+            hrefFor={(k) => analyticsHref({ range, from, to, source: k === sourceFilter ? undefined : k })}
+            activeKey={sourceFilter}
+          />
           <Breakdown title="Unique sessions by page" rows={topPages} total={opened} />
         </div>
       </div>
@@ -261,23 +296,49 @@ export default async function Analytics({
   );
 }
 
-function Breakdown({ title, rows, total }: { title: string; rows: readonly (readonly [string, number])[]; total: number }) {
+function Breakdown({
+  title,
+  rows,
+  total,
+  hrefFor,
+  activeKey,
+}: {
+  title: string;
+  rows: readonly (readonly [string, number])[];
+  total: number;
+  hrefFor?: (key: string) => string;
+  activeKey?: string;
+}) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-medium text-gray-700">{title}</h2>
       <div className="mt-4 space-y-3">
         {rows.length === 0 && <p className="text-sm text-gray-300">No data.</p>}
-        {rows.map(([k, n]) => (
-          <div key={k}>
-            <div className="flex justify-between gap-3 text-sm">
-              <span className="truncate text-gray-700">{k}</span>
-              <span className="shrink-0 text-gray-400">{n}</span>
-            </div>
-            <div className="mt-1 h-1.5 rounded-full bg-gray-100">
-              <div className="h-full rounded-full bg-blue-600" style={{ width: `${total ? (n / total) * 100 : 0}%` }} />
-            </div>
-          </div>
-        ))}
+        {rows.map(([k, n]) => {
+          const label = prettySource(k);
+          const active = Boolean(activeKey) && activeKey === k;
+          const inner = (
+            <>
+              <div className="flex justify-between gap-3 text-sm">
+                <span className={`truncate ${active ? "font-medium text-blue-700" : "text-gray-700"}`}>{label}</span>
+                <span className="shrink-0 text-gray-400">{n}</span>
+              </div>
+              <div className="mt-1 h-1.5 rounded-full bg-gray-100">
+                <div
+                  className={`h-full rounded-full ${active ? "bg-blue-700" : "bg-blue-600"}`}
+                  style={{ width: `${total ? (n / total) * 100 : 0}%` }}
+                />
+              </div>
+            </>
+          );
+          return hrefFor ? (
+            <Link key={k} href={hrefFor(k)} className="block rounded-md hover:bg-gray-50">
+              {inner}
+            </Link>
+          ) : (
+            <div key={k}>{inner}</div>
+          );
+        })}
       </div>
     </div>
   );
