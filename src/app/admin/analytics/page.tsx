@@ -166,6 +166,21 @@ export default async function Analytics({
   const converted = new Set<string>([...s.cta, ...s.completed, ...s.form]);
   const nConverted = converted.size;
 
+  // Conversion by landing page, ignoring the page filter so every URL's rate
+  // is comparable (same source / medium / language window).
+  const convertedOnPage = new Map<string, number>();
+  {
+    const acted = new Set<string>();
+    for (const e of inWindow) {
+      if (!matchesDims(e.sessionId, "page")) continue;
+      if (e.type === "cta_click" || e.type === "completed" || e.type === "form_submit") acted.add(e.sessionId);
+    }
+    for (const sid of acted) {
+      const page = sessionPage.get(sid) ?? "—";
+      convertedOnPage.set(page, (convertedOnPage.get(page) ?? 0) + 1);
+    }
+  }
+
   // Journey vs form vs referral vs not-a-fit come from lead records so a
   // callback (name/phone/message only, no qualifying questions) counts as a
   // form submit — including older leads from before we recorded form_submit.
@@ -476,9 +491,11 @@ export default async function Analytics({
           />
           <Breakdown
             title="Unique sessions by page"
+            hint="Sessions and % who took an action"
             rows={topPages}
             total={pageTotal}
             pretty={prettyPage}
+            rateFor={(k, n) => pct(convertedOnPage.get(k) ?? 0, n)}
             hrefFor={(k) =>
               analyticsHref({
                 ...hrefBase,
@@ -495,32 +512,41 @@ export default async function Analytics({
 
 function Breakdown({
   title,
+  hint,
   rows,
   total,
   hrefFor,
   activeKey,
   pretty = prettySource,
+  rateFor,
 }: {
   title: string;
+  hint?: string;
   rows: readonly (readonly [string, number])[];
   total: number;
   hrefFor?: (key: string) => string;
   activeKey?: string;
   pretty?: (key: string) => string;
+  rateFor?: (key: string, n: number) => string;
 }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-medium text-gray-700">{title}</h2>
+      {hint ? <p className="mt-0.5 text-xs text-gray-400">{hint}</p> : null}
       <div className="mt-4 space-y-3">
         {rows.length === 0 && <p className="text-sm text-gray-300">No data.</p>}
         {rows.map(([k, n]) => {
           const label = pretty(k);
           const active = Boolean(activeKey) && activeKey === k;
+          const rate = rateFor?.(k, n);
           const inner = (
             <>
               <div className="flex justify-between gap-3 text-sm">
                 <span className={`truncate ${active ? "font-medium text-blue-700" : "text-gray-700"}`}>{label}</span>
-                <span className="shrink-0 text-gray-400">{n}</span>
+                <span className="shrink-0 tabular-nums text-gray-400">
+                  {n}
+                  {rate ? <span className="ml-2 text-green-700">{rate}</span> : null}
+                </span>
               </div>
               <div className="mt-1 h-1.5 rounded-full bg-gray-100">
                 <div
