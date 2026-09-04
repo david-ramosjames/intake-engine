@@ -362,6 +362,7 @@ model JourneyEvent {
   type           JourneyEventType
   outcome        String?  // for COMPLETED: lead / referral / declined
   source         String?  // utm_source
+  medium         String?  // utm_medium / inferred: cpc, organic, referral
   pageUrl        String?
   createdAt      DateTime @default(now())
 

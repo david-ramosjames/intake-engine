@@ -286,6 +286,7 @@ export const prismaStore: PlatformStore = {
         type: input.type.toUpperCase(),
         outcome: input.outcome,
         source: input.source,
+        medium: input.medium,
         pageUrl: input.pageUrl,
       },
     });
@@ -306,6 +307,7 @@ export const prismaStore: PlatformStore = {
         type: String(e.type).toLowerCase() as StoredEvent["type"],
         outcome: (e.outcome ?? undefined) as StoredEvent["outcome"],
         source: e.source ?? undefined,
+        medium: e.medium ?? undefined,
         pageUrl: e.pageUrl ?? undefined,
         createdAt: e.createdAt?.toISOString?.() ?? String(e.createdAt),
       }),

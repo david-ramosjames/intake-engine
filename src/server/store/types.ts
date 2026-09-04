@@ -179,6 +179,7 @@ export interface StoredEvent {
   type: EventType;
   outcome?: LeadOutcome;
   source?: string;
+  medium?: string;
   pageUrl?: string;
   createdAt: string;
 }
@@ -190,6 +191,7 @@ export interface RecordEventInput {
   type: EventType;
   outcome?: LeadOutcome;
   source?: string;
+  medium?: string;
   pageUrl?: string;
 }
 

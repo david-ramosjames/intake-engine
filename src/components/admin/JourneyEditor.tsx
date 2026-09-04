@@ -753,6 +753,10 @@ export function JourneyEditor({
                 mutate((d) => void ((d.theme ??= {}).sideImageUrl = e.target.value || undefined))
               }
             />
+            <p className="mt-1 text-xs text-gray-400">
+              On phones the photo is a full-screen hero on landing/statement screens. Question screens skip it
+              so visitors go straight to the answers.
+            </p>
             <div className="mt-2">
               <label className="mb-1 block text-xs font-medium text-gray-500">
                 Social preview image URL{" "}

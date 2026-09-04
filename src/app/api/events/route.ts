@@ -13,7 +13,8 @@ const bodySchema = z.object({
   sessionId: z.string().min(1).max(100),
   type: z.enum(["opened", "started", "completed", "cta_click"]),
   outcome: z.enum(["lead", "referral", "declined"]).optional(),
-  source: z.string().optional(),
+  source: z.string().max(100).optional(),
+  medium: z.string().max(100).optional(),
   pageUrl: z.string().optional(),
 });
 
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       type: parsed.data.type,
       outcome: parsed.data.outcome,
       source: parsed.data.source,
+      medium: parsed.data.medium,
       pageUrl: parsed.data.pageUrl,
     });
   } catch {

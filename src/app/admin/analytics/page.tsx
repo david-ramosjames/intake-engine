@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AnalyticsSourceFilter, analyticsHref, prettySource } from "@/components/admin/AnalyticsSourceFilter";
+import { AnalyticsDimFilter } from "@/components/admin/AnalyticsSourceFilter";
+import { analyticsHref, prettyMedium, prettySource } from "@/components/admin/analyticsQuery";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -30,7 +31,7 @@ function pct(n: number, d: number) {
 export default async function Analytics({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; from?: string; to?: string; source?: string }>;
+  searchParams: Promise<{ range?: string; from?: string; to?: string; source?: string; medium?: string }>;
 }) {
   const org = await getAdminOrg();
   if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
@@ -40,6 +41,7 @@ export default async function Analytics({
   const to = typeof sp.to === "string" ? sp.to : "";
   const range = typeof sp.range === "string" ? sp.range : "30";
   const sourceFilter = typeof sp.source === "string" ? sp.source.trim() : "";
+  const mediumFilter = typeof sp.medium === "string" ? sp.medium.trim() : "";
 
   // Resolve the window: a custom from/to wins, else a preset (default 30 days).
   let sinceISO: string | undefined;
@@ -62,23 +64,41 @@ export default async function Analytics({
   const allEvents = await store.listEvents(org.id, sinceISO);
   const inWindow = untilMs === Infinity ? allEvents : allEvents.filter((e) => new Date(e.createdAt).getTime() <= untilMs);
 
-  // Attribute each session from its opened event (else the first source we saw).
+  // Attribute each session from its opened event (else the first value we saw).
   const sessionSource = new Map<string, string>();
+  const sessionMedium = new Map<string, string>();
   for (const e of inWindow) {
-    if (e.type === "opened") sessionSource.set(e.sessionId, e.source?.trim() || "direct");
+    if (e.type === "opened") {
+      sessionSource.set(e.sessionId, e.source?.trim() || "direct");
+      sessionMedium.set(e.sessionId, e.medium?.trim() || "none");
+    }
   }
   for (const e of inWindow) {
     if (!sessionSource.has(e.sessionId)) sessionSource.set(e.sessionId, e.source?.trim() || "direct");
+    if (!sessionMedium.has(e.sessionId)) sessionMedium.set(e.sessionId, e.medium?.trim() || "none");
   }
-  const sourceCounts = new Map<string, number>();
-  for (const src of sessionSource.values()) sourceCounts.set(src, (sourceCounts.get(src) ?? 0) + 1);
-  const sourceOptions = [...sourceCounts.entries()]
-    .map(([key, n]) => ({ key, n }))
-    .sort((a, b) => b.n - a.n || a.key.localeCompare(b.key));
-
-  const events = sourceFilter
-    ? inWindow.filter((e) => (sessionSource.get(e.sessionId) ?? "direct") === sourceFilter)
-    : inWindow;
+  const countKeys = (keys: Map<string, string>, include: (sid: string) => boolean) => {
+    const counts = new Map<string, number>();
+    for (const [sid, key] of keys) {
+      if (!include(sid)) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([key, n]) => ({ key, n }))
+      .sort((a, b) => b.n - a.n || a.key.localeCompare(b.key));
+  };
+  const sourceOptions = countKeys(sessionSource, (sid) =>
+    mediumFilter ? (sessionMedium.get(sid) ?? "none") === mediumFilter : true,
+  );
+  const mediumOptions = countKeys(sessionMedium, (sid) =>
+    sourceFilter ? (sessionSource.get(sid) ?? "direct") === sourceFilter : true,
+  );
+  const events = inWindow.filter((e) => {
+    const sid = e.sessionId;
+    if (sourceFilter && (sessionSource.get(sid) ?? "direct") !== sourceFilter) return false;
+    if (mediumFilter && (sessionMedium.get(sid) ?? "none") !== mediumFilter) return false;
+    return true;
+  });
 
   // Distinct sessions per funnel stage.
   const s = {
@@ -140,7 +160,10 @@ export default async function Analytics({
     { stage: "Clicked a CTA", n: cta, ofOpens: pct(cta, opened), step: pct(cta, completed) },
   ];
 
-  const topSources = sourceOptions.map((s) => [s.key, s.n] as const);
+  const topSources = sourceOptions.map((row) => [row.key, row.n] as const);
+  const topMediums = mediumOptions.map((row) => [row.key, row.n] as const);
+  const sourceTotal = sourceOptions.reduce((n, row) => n + row.n, 0);
+  const mediumTotal = mediumOptions.reduce((n, row) => n + row.n, 0);
   const topPages = [...byPageOpen.entries()].map(([k, v]) => [k, v.size] as const).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const days = [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14);
 
@@ -149,7 +172,8 @@ export default async function Analytics({
       <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
       <p className="mt-1 text-sm text-gray-500">
         Conversion funnel for {org.name} · {rangeLabel}
-        {sourceFilter ? ` · ${prettySource(sourceFilter)}` : ""}.
+        {sourceFilter ? ` · ${prettySource(sourceFilter)}` : ""}
+        {mediumFilter ? ` · ${prettyMedium(mediumFilter)}` : ""}.
       </p>
 
       {/* Date range: quick presets + a custom from/to. */}
@@ -159,7 +183,11 @@ export default async function Analytics({
           return (
             <Link
               key={value}
-              href={analyticsHref({ range: value, source: sourceFilter || undefined })}
+              href={analyticsHref({
+                range: value,
+                source: sourceFilter || undefined,
+                medium: mediumFilter || undefined,
+              })}
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                 active
                   ? "border-blue-600 bg-blue-600 text-white"
@@ -188,6 +216,7 @@ export default async function Analytics({
             aria-label="To date"
           />
           {sourceFilter ? <input type="hidden" name="source" value={sourceFilter} /> : null}
+          {mediumFilter ? <input type="hidden" name="medium" value={mediumFilter} /> : null}
           <button
             type="submit"
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
@@ -197,12 +226,27 @@ export default async function Analytics({
             Apply
           </button>
         </form>
-        <AnalyticsSourceFilter
-          sources={sourceOptions}
+        <AnalyticsDimFilter
+          label="Source"
+          param="source"
+          options={sourceOptions}
           selected={sourceFilter}
           range={range}
           from={from}
           to={to}
+          source={sourceFilter || undefined}
+          medium={mediumFilter || undefined}
+        />
+        <AnalyticsDimFilter
+          label="Medium"
+          param="medium"
+          options={mediumOptions}
+          selected={mediumFilter}
+          range={range}
+          from={from}
+          to={to}
+          source={sourceFilter || undefined}
+          medium={mediumFilter || undefined}
         />
       </div>
 
@@ -285,9 +329,34 @@ export default async function Analytics({
           <Breakdown
             title="Unique sessions by source"
             rows={topSources}
-            total={sourceOptions.reduce((n, s) => n + s.n, 0)}
-            hrefFor={(k) => analyticsHref({ range, from, to, source: k === sourceFilter ? undefined : k })}
+            total={sourceTotal}
+            pretty={prettySource}
+            hrefFor={(k) =>
+              analyticsHref({
+                range,
+                from,
+                to,
+                source: k === sourceFilter ? undefined : k,
+                medium: mediumFilter || undefined,
+              })
+            }
             activeKey={sourceFilter}
+          />
+          <Breakdown
+            title="Unique sessions by medium"
+            rows={topMediums}
+            total={mediumTotal}
+            pretty={prettyMedium}
+            hrefFor={(k) =>
+              analyticsHref({
+                range,
+                from,
+                to,
+                source: sourceFilter || undefined,
+                medium: k === mediumFilter ? undefined : k,
+              })
+            }
+            activeKey={mediumFilter}
           />
           <Breakdown title="Unique sessions by page" rows={topPages} total={opened} />
         </div>
@@ -302,12 +371,14 @@ function Breakdown({
   total,
   hrefFor,
   activeKey,
+  pretty = prettySource,
 }: {
   title: string;
   rows: readonly (readonly [string, number])[];
   total: number;
   hrefFor?: (key: string) => string;
   activeKey?: string;
+  pretty?: (key: string) => string;
 }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -315,7 +386,7 @@ function Breakdown({
       <div className="mt-4 space-y-3">
         {rows.length === 0 && <p className="text-sm text-gray-300">No data.</p>}
         {rows.map(([k, n]) => {
-          const label = prettySource(k);
+          const label = pretty(k);
           const active = Boolean(activeKey) && activeKey === k;
           const inner = (
             <>

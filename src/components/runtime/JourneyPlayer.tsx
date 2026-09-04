@@ -5,7 +5,8 @@
 //  • Single-choice questions AUTO-ADVANCE on click and can branch per option
 //    (option.goTo). Multi-field screens use a Continue button. Back walks the
 //    visited-screen history.
-//  • Branding: optional side image (desktop) and logo, from the theme.
+//  • Branding: optional side image (desktop; on phones it's a full-screen hero
+//    on landing/statement screens, skipped when the first screen is a question).
 //  • Three ending types — success (it's a lead), referral (refer out), decline
 //    (can't help) — each terminal, with call-to-action buttons (Call/Text/…).
 //    The lead's outcome is recorded from whichever ending is reached.
@@ -166,7 +167,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
         // Resolve the source the same way leads do (gclid/gbraid → google, a
         // search-engine referrer → organic, etc.) so Analytics doesn't log paid
         // ad clicks as "direct" just because Google auto-tagging omits utm_source.
-        const source = deriveAttribution(attribution ?? {}, collectContext()).source;
+        const derived = deriveAttribution(attribution ?? {}, collectContext());
         void fetch("/api/events", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -176,7 +177,8 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
             slug,
             sessionId: sessionRef.current,
             type,
-            source,
+            source: derived.source,
+            medium: derived.medium,
             pageUrl: window.location.href,
             ...extra,
           }),
@@ -431,8 +433,11 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
   const toggleInHeader = !showBanner && languages.length > 1;
   const showHeader = logoInHeader || toggleInHeader;
 
-  // App-onboarding treatment on phones: the first (landing) screen shows the
-  // attorney photo as an edge-to-edge hero with the content floating over it.
+  // App-onboarding treatment on phones: a marketing landing shows the attorney
+  // photo as an edge-to-edge hero with the content floating over it. Question
+  // screens skip that so phone visitors go straight to the answers; desktop
+  // still shows the side image. Ads landings (headline + Call/Start, no bubbles)
+  // keep the photo.
   const isLanding = !terminal && history.length <= 1;
   const setLocale = useCallback(
     (next: string) => {
@@ -445,7 +450,10 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
     },
     [locale, languages],
   );
-  const mobileHero = isLanding && Boolean(theme.sideImageUrl);
+  const hasQuestionChoices = (page?.components ?? []).some(
+    (c) => c.type === "singleSelect" || c.type === "radio" || c.type === "multiSelect",
+  );
+  const mobileHero = isLanding && Boolean(theme.sideImageUrl) && !hasQuestionChoices;
   // Hero framing (position + zoom). The mobile hero and the desktop side image
   // are framed independently so tuning the phone crop never shifts the desktop
   // photo. Desktop falls back to a neutral centered crop when unset.
