@@ -11,7 +11,7 @@ const bodySchema = z.object({
   org: z.string().optional(),
   slug: z.string().optional(),
   sessionId: z.string().min(1).max(100),
-  type: z.enum(["opened", "started", "completed", "cta_click"]),
+  type: z.enum(["opened", "started", "completed", "cta_click", "form_submit"]),
   outcome: z.enum(["lead", "referral", "declined"]).optional(),
   source: z.string().max(100).optional(),
   medium: z.string().max(100).optional(),

@@ -106,6 +106,7 @@ export default async function Analytics({
     started: new Set<string>(),
     completed: new Set<string>(),
     cta: new Set<string>(),
+    form: new Set<string>(),
     lead: new Set<string>(),
     referral: new Set<string>(),
     declined: new Set<string>(),
@@ -135,29 +136,36 @@ export default async function Analytics({
     } else if (e.type === "completed") {
       s.completed.add(e.sessionId);
       addDay(day, "completed");
-      if (e.outcome) s[e.outcome].add(e.sessionId);
+      if (e.outcome === "lead") s.lead.add(e.sessionId);
+      else if (e.outcome === "referral") s.referral.add(e.sessionId);
+      else if (e.outcome === "declined") s.declined.add(e.sessionId);
     } else if (e.type === "cta_click") {
       s.cta.add(e.sessionId);
       addDay(day, "cta");
+    } else if (e.type === "form_submit") {
+      s.form.add(e.sessionId);
     }
   }
 
   const opened = s.opened.size;
   const started = s.started.size;
-  const completed = s.completed.size;
-  const nLead = s.lead.size;
+  const nForm = s.form.size;
+  const nJourneyLead = [...s.lead].filter((id) => !s.form.has(id)).length;
   const nReferral = s.referral.size;
   const nDeclined = s.declined.size;
   const cta = s.cta.size;
+  const converted = new Set<string>([...s.cta, ...s.completed, ...s.form]);
+  const nConverted = converted.size;
 
   const funnel: Array<{ stage: string; n: number; ofOpens: string; step: string; indent?: boolean }> = [
     { stage: "Opened", n: opened, ofOpens: "100.0%", step: "—" },
     { stage: "Started (first answer)", n: started, ofOpens: pct(started, opened), step: pct(started, opened) },
-    { stage: "Reached an ending", n: completed, ofOpens: pct(completed, opened), step: pct(completed, started) },
-    { stage: "…lead", n: nLead, ofOpens: pct(nLead, opened), step: pct(nLead, completed), indent: true },
-    { stage: "…referral", n: nReferral, ofOpens: pct(nReferral, opened), step: pct(nReferral, completed), indent: true },
-    { stage: "…not a fit", n: nDeclined, ofOpens: pct(nDeclined, opened), step: pct(nDeclined, completed), indent: true },
-    { stage: "Clicked a CTA", n: cta, ofOpens: pct(cta, opened), step: pct(cta, completed) },
+    { stage: "Took an action", n: nConverted, ofOpens: pct(nConverted, opened), step: pct(nConverted, opened) },
+    { stage: "…called (CTA)", n: cta, ofOpens: pct(cta, opened), step: pct(cta, nConverted), indent: true },
+    { stage: "…journey lead", n: nJourneyLead, ofOpens: pct(nJourneyLead, opened), step: pct(nJourneyLead, nConverted), indent: true },
+    { stage: "…form submit", n: nForm, ofOpens: pct(nForm, opened), step: pct(nForm, nConverted), indent: true },
+    { stage: "…referral", n: nReferral, ofOpens: pct(nReferral, opened), step: pct(nReferral, nConverted), indent: true },
+    { stage: "…not a fit", n: nDeclined, ofOpens: pct(nDeclined, opened), step: pct(nDeclined, nConverted), indent: true },
   ];
 
   const topSources = sourceOptions.map((row) => [row.key, row.n] as const);
@@ -250,20 +258,41 @@ export default async function Analytics({
         />
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Opened" value={String(opened)} sub="unique sessions" />
+        <Stat
+          label="Conversion"
+          value={String(nConverted)}
+          sub={`${pct(nConverted, opened)} of opens · unique people who took an action`}
+          tone="text-green-600"
+        />
         <Stat label="Started" value={String(started)} sub={`${pct(started, opened)} of opens`} />
-        <Stat label="Leads" value={String(nLead)} sub={`${pct(nLead, started)} of starts`} tone="text-green-600" />
-        <Stat label="Referrals" value={String(nReferral)} sub={`${pct(nReferral, started)} of starts`} tone="text-amber-600" />
-        <Stat label="Not a fit" value={String(nDeclined)} sub={`${pct(nDeclined, started)} of starts`} tone="text-gray-500" />
-        <Stat label="CTA clicks" value={String(cta)} sub={`${pct(cta, completed)} of completed`} tone="text-blue-600" />
+        <Stat label="Call clicks" value={String(cta)} sub={`${pct(cta, opened)} of opens`} tone="text-blue-600" />
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          label="Journey leads"
+          value={String(nJourneyLead)}
+          sub={`${pct(nJourneyLead, opened)} of opens`}
+          tone="text-green-600"
+        />
+        <Stat
+          label="Form submits"
+          value={String(nForm)}
+          sub={`${pct(nForm, opened)} of opens · request a callback`}
+          tone="text-green-700"
+        />
+        <Stat label="Referrals" value={String(nReferral)} sub={`${pct(nReferral, opened)} of opens`} tone="text-amber-600" />
+        <Stat label="Not a fit" value={String(nDeclined)} sub={`${pct(nDeclined, opened)} of opens`} tone="text-gray-500" />
       </div>
 
       <section className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="font-medium text-gray-900">Conversion funnel</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Each stage counts unique sessions. <strong>Clicked a CTA</strong> counts any call-to-action tap — call,
-          text, schedule, or link buttons (on these landing pages that&apos;s mostly the Call button).
+          Each row counts unique sessions. <strong>Took an action</strong> is conversion: anyone who called, submitted
+          the callback form, or finished the questions (lead, referral, or not a fit). A person who both called and
+          finished the flow counts once. Journey leads vs form submits only split after this change — older callback
+          submits sit in journey leads.
         </p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">

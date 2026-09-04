@@ -169,7 +169,7 @@ export interface UpdateAutomationInput {
   actions?: AutomationAction[];
 }
 
-export type EventType = "opened" | "started" | "completed" | "cta_click";
+export type EventType = "opened" | "started" | "completed" | "cta_click" | "form_submit";
 
 export interface StoredEvent {
   id: string;

@@ -376,6 +376,7 @@ enum JourneyEventType {
   STARTED
   COMPLETED
   CTA_CLICK
+  FORM_SUBMIT
 }
 
 // Normalized answer rows — enables querying/analytics without JSON gymnastics.

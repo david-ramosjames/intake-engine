@@ -152,7 +152,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
 
   // Fire-and-forget funnel event — recorded server-side AND surfaced to GTM.
   const emit = useCallback(
-    (type: "opened" | "started" | "completed" | "cta_click", extra?: Record<string, string>) => {
+    (type: "opened" | "started" | "completed" | "cta_click" | "form_submit", extra?: Record<string, string>) => {
       if (typeof window === "undefined" || !sessionRef.current) return;
       const gtmEvent =
         type === "opened"
@@ -581,6 +581,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
     }
     setCbError(null);
     trackFormSubmit();
+    emit("form_submit");
     // A completed callback form is a person actively asking to be contacted, so
     // always record it as a lead (and post to Slack) — never scored as "not a
     // fit" for skipping the qualifying questions. "success" maps to a lead
