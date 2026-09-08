@@ -3,6 +3,7 @@ import { AnalyticsDimFilter } from "@/components/admin/AnalyticsSourceFilter";
 import { analyticsHref, landingLang, landingPageKey, prettyLang, prettyMedium, prettyPage, prettySource } from "@/components/admin/analyticsQuery";
 import { deriveAttribution } from "@/modules/leads/attribution";
 import { isCallbackFormLead } from "@/modules/leads/answers";
+import { retagReferralLeads } from "@/modules/leads/service";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -76,7 +77,7 @@ export default async function Analytics({
   const allEvents = await store.listEvents(org.id, sinceISO);
   const inWindow = untilMs === Infinity ? allEvents : allEvents.filter((e) => new Date(e.createdAt).getTime() <= untilMs);
   const sinceMs = sinceISO ? new Date(sinceISO).getTime() : 0;
-  const allLeads = await store.listLeads(org.id);
+  const allLeads = await retagReferralLeads(org.id, await store.listLeads(org.id));
 
   // Attribute each session from its opened event (else the first value we saw).
   const sessionSource = new Map<string, string>();

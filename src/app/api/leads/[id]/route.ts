@@ -16,6 +16,7 @@ const bodySchema = z.object({
   org: z.string().optional(),
   answers: z.record(z.unknown()),
   context: z.record(z.string()).optional(),
+  endingType: z.string().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -32,14 +33,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
   }
 
-  const { slug, org: orgParam, answers, context = {} } = parsed.data;
+  const { slug, org: orgParam, answers, context = {}, endingType } = parsed.data;
   const org = await resolvePublicOrg(orgParam);
   if (!org) return NextResponse.json({ ok: false, error: "Unknown tenant." }, { status: 404 });
 
   const journey = await getPublishedJourneyCached(org.id, slug);
   if (!journey) return NextResponse.json({ ok: false, error: "Journey not found." }, { status: 404 });
 
-  const ok = await enrichLead(journey, id, answers, context);
+  const ok = await enrichLead(journey, id, answers, context, endingType);
   if (!ok) return NextResponse.json({ ok: false, error: "Lead not found." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

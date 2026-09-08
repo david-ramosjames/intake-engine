@@ -384,7 +384,7 @@ const general: JourneyTemplate = {
             key: "want_referral",
             label: "We can't take this case, but we can refer you to a trusted attorney. Want a referral?",
             options: [
-              { label: "Yes, please", value: "yes", goTo: "referral" },
+              { label: "Yes, please", value: "yes", goTo: "referral", markReferral: true },
               { label: "No, thanks", value: "no", goTo: "cant_help" },
             ],
           },

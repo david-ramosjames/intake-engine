@@ -247,6 +247,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
       // lead with the answers gathered since, then report the original outcome so
       // the flow still lands on the right ending. Fire-and-forget; never blocks.
       if (submittedRef.current) {
+        if (endingType === "referral") outcomeRef.current = "referral";
         if (leadIdRef.current) {
           void fetch(`/api/leads/${leadIdRef.current}`, {
             method: "PATCH",
@@ -256,6 +257,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
               slug,
               org: attribution?.org,
               answers: ans,
+              endingType,
               context: { ...collectContext(), ...extraContext },
             }),
           }).catch(() => {});

@@ -10,7 +10,7 @@ import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/sch
 import { runLeadAutomations } from "@/modules/automations/run";
 import { callRailConfig, forwardLeadToCallRail } from "@/modules/integrations/callrail";
 import { openaiAdsConfig, forwardLeadToOpenAIAds } from "@/modules/integrations/openaiAds";
-import { store, type LeadOutcome, type StoredJourney } from "@/server/store";
+import { store, type LeadOutcome, type StoredJourney, type StoredLead } from "@/server/store";
 
 export interface SubmitResult {
   leadId: string;
@@ -111,6 +111,7 @@ export async function enrichLead(
   leadId: string,
   answers: Answers,
   context: Record<string, string> = {},
+  endingType?: string,
 ): Promise<boolean> {
   const def = journey.definition;
   const { score } = scoreLead(def, answers);
@@ -118,7 +119,9 @@ export async function enrichLead(
   const current = await store.getLead(journey.orgId, leadId);
   // Promote to a referral if the fuller answers now include the affirmative
   // referral choice — but never downgrade one already recorded as a referral.
-  const becomesReferral = answersIndicateReferral(def, answers) && current?.outcome !== "referral";
+  const byEnding = endingType ? outcomeForPageType(endingType as PageType) : null;
+  const becomesReferral =
+    current?.outcome !== "referral" && (byEnding === "referral" || answersIndicateReferral(def, answers));
   const updated = await store.updateLead(journey.orgId, leadId, {
     answers,
     score,
@@ -136,4 +139,24 @@ export async function enrichLead(
     }
   }
   return Boolean(updated);
+}
+
+/** Promote a stored lead to referral when its answers say they wanted one. No Slack re-fire. */
+export async function retagLeadIfReferral(
+  orgId: string,
+  lead: StoredLead,
+  def: StoredJourney["definition"] | undefined,
+): Promise<StoredLead> {
+  if (lead.outcome === "referral") return lead;
+  if (!answersIndicateReferral(def, lead.answers)) return lead;
+  return (
+    (await store.updateLead(orgId, lead.id, { answers: lead.answers, outcome: "referral" })) ?? lead
+  );
+}
+
+/** Fix leads that took the referral path but were stored as a regular lead. */
+export async function retagReferralLeads(orgId: string, leads: StoredLead[]): Promise<StoredLead[]> {
+  const journeys = await store.listJourneys(orgId);
+  const defBySlug = new Map(journeys.map((j) => [j.slug, j.definition]));
+  return Promise.all(leads.map((lead) => retagLeadIfReferral(orgId, lead, defBySlug.get(lead.journeySlug))));
 }

@@ -36,27 +36,53 @@ export function answerRows(
     });
 }
 
+function isReferralOfferQuestion(key: string, label?: string): boolean {
+  if (key === "want_referral") return true;
+  return /want a referral/i.test(label ?? "");
+}
+
 /**
- * True when the answers include a selected option flagged `markReferral` — i.e.
- * the visitor affirmatively chose to be referred (the "Yes" answer on a "Want a
- * referral?" question). Server-authoritative signal for tagging a referral, so a
- * "No" answer is never treated as a referral.
+ * True when the answers include an affirmative referral choice. A "No" on the
+ * referral-offer question is never a referral. Signals, in order:
+ *   • option flagged `markReferral`
+ *   • option's `goTo` is a page of type `referral`
+ *   • "Want a referral?" / `want_referral` answered with anything except the
+ *     option that routes to a decline ending (so Yes still counts when it
+ *     goes to a contact page before the referral screen)
  */
 export function answersIndicateReferral(
   def: JourneyDefinition | undefined,
   answers: Record<string, unknown>,
 ): boolean {
-  const optsByKey = new Map<string, { value: string; markReferral?: boolean }[]>();
+  const referralPageIds = new Set(
+    (def?.pages ?? []).filter((p) => p.type === "referral").map((p) => p.id),
+  );
+  const declinePageIds = new Set(
+    (def?.pages ?? []).filter((p) => p.type === "decline").map((p) => p.id),
+  );
+  const questions = new Map<
+    string,
+    { label?: string; options: { value: string; markReferral?: boolean; goTo?: string }[] }
+  >();
   for (const page of def?.pages ?? []) {
     for (const c of page.components) {
-      if (c.key && c.options) optsByKey.set(c.key, c.options);
+      if (c.key && c.options) questions.set(c.key, { label: c.label, options: c.options });
     }
   }
   for (const [key, raw] of Object.entries(answers)) {
-    const opts = optsByKey.get(key);
-    if (!opts) continue;
     const chosen = Array.isArray(raw) ? raw : [raw];
-    if (chosen.some((val) => opts.some((o) => o.value === String(val) && o.markReferral))) return true;
+    const q = questions.get(key);
+    if (!q) {
+      if (key === "want_referral" && chosen.some((val) => /^yes/i.test(String(val)))) return true;
+      continue;
+    }
+    const picked = q.options.filter((o) => chosen.some((val) => o.value === String(val)));
+    if (picked.some((o) => o.markReferral || (o.goTo != null && referralPageIds.has(o.goTo)))) {
+      return true;
+    }
+    if (isReferralOfferQuestion(key, q.label) && picked.some((o) => !/^no/i.test(o.value) && (!o.goTo || !declinePageIds.has(o.goTo)))) {
+      return true;
+    }
   }
   return false;
 }

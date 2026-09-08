@@ -5,6 +5,7 @@ import { OutcomeBadge, FormSubmitBadge } from "@/components/admin/OutcomeBadge";
 import { formatCentral } from "@/lib/datetime";
 import { deriveAttribution } from "@/modules/leads/attribution";
 import { answerRows, isCallbackFormLead } from "@/modules/leads/answers";
+import { retagLeadIfReferral } from "@/modules/leads/service";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -26,10 +27,11 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
   const org = await getAdminOrg();
   if (!org) notFound();
 
-  const lead = await store.getLead(org.id, id);
-  if (!lead) notFound();
+  const found = await store.getLead(org.id, id);
+  if (!found) notFound();
 
-  const journey = await store.getJourney(org.id, lead.journeySlug);
+  const journey = await store.getJourney(org.id, found.journeySlug);
+  const lead = await retagLeadIfReferral(org.id, found, journey?.definition);
   const rows = answerRows(journey?.definition, lead.answers);
   const ctx = lead.context ?? {};
   const fromForm = isCallbackFormLead(lead);

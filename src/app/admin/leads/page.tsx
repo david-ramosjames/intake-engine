@@ -2,6 +2,7 @@ import Link from "next/link";
 import { OutcomeBadge, FormSubmitBadge } from "@/components/admin/OutcomeBadge";
 import { deriveAttribution } from "@/modules/leads/attribution";
 import { isCallbackFormLead } from "@/modules/leads/answers";
+import { retagReferralLeads } from "@/modules/leads/service";
 import { formatCentral } from "@/lib/datetime";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
@@ -17,7 +18,7 @@ export default async function Leads({ searchParams }: { searchParams: Promise<{ 
   if (!org) return <div className="px-8 py-10 text-gray-500">No business selected.</div>;
 
   const { outcome } = await searchParams;
-  const all = await store.listLeads(org.id);
+  const all = await retagReferralLeads(org.id, await store.listLeads(org.id));
   const leads = outcome ? all.filter((l) => l.outcome === outcome) : all;
 
   const counts = {

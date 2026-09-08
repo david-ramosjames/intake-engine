@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAdminOrg } from "@/server/currentOrg";
 import { hasDatabase } from "@/server/db";
 import { store } from "@/server/store";
+import { retagReferralLeads } from "@/modules/leads/service";
 import { industryLabel } from "@/server/store/types";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,8 @@ export default async function Overview() {
     );
   }
 
-  const [journeys, leads] = await Promise.all([store.listJourneys(org.id), store.listLeads(org.id)]);
+  const [journeys, rawLeads] = await Promise.all([store.listJourneys(org.id), store.listLeads(org.id)]);
+  const leads = await retagReferralLeads(org.id, rawLeads);
   const qualified = leads.filter((l) => l.qualified).length;
   const rate = leads.length ? Math.round((qualified / leads.length) * 100) : 0;
 
