@@ -448,6 +448,9 @@ export const journeyDefinitionSchema = z.object({
       titleEs: z.string().optional(),
       descriptionEs: z.string().optional(),
       h1Es: z.string().optional(),
+      // When set, overrides the business-level "hide from Google" setting for
+      // this journey only. Unset = follow Settings. Google Ads still works.
+      noindex: z.boolean().optional(),
     })
     .optional(),
   theme: themeTokensSchema.optional(),

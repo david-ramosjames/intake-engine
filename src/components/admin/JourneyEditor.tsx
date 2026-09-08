@@ -622,6 +622,28 @@ export function JourneyEditor({
                   />
                 )}
               </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Google indexing</label>
+                <select
+                  className={`${input} w-full max-w-md`}
+                  value={def.seo?.noindex === true ? "noindex" : def.seo?.noindex === false ? "index" : "default"}
+                  onChange={(e) =>
+                    mutate((d) => {
+                      d.seo ??= {};
+                      const v = e.target.value;
+                      if (v === "default") delete d.seo.noindex;
+                      else d.seo.noindex = v === "noindex";
+                    })
+                  }
+                >
+                  <option value="default">Same as Settings</option>
+                  <option value="noindex">Don&apos;t index this page</option>
+                  <option value="index">Allow Google to index this page</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-400">
+                  Default follows Settings → Search indexing. Google Ads still uses the title and description above.
+                </p>
+              </div>
             </div>
           </div>
 

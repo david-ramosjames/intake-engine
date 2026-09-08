@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { auth, authEnabled, signOut } from "@/auth";
@@ -8,6 +9,10 @@ import { industryLabel } from "@/server/store/types";
 import { selectOrganization } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = authEnabled ? await auth() : null;

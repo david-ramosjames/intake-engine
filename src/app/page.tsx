@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JourneyRuntime } from "@/components/runtime/JourneyRuntime";
-import { journeyMetadata } from "@/modules/journeys/og";
+import { journeyMetadataForOrg } from "@/modules/journeys/og";
 import { pickLocale } from "@/modules/journeys/domain/i18n";
 import { getAdminOrg } from "@/server/currentOrg";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
@@ -27,7 +27,7 @@ export async function generateMetadata({
         .map((k) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined))
         .find(Boolean);
       const locale = pickLocale(langParam, (await headers()).get("accept-language"), languages);
-      return journeyMetadata(journey.definition, custom.org.name, locale);
+      return journeyMetadataForOrg(journey.definition, custom.org, locale);
     }
   }
   return {};

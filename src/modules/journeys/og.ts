@@ -5,6 +5,8 @@
 import ReactDOM from "react-dom";
 import type { Metadata } from "next";
 import type { JourneyDefinition } from "./domain/schema";
+import { landingIsNoindex } from "@/modules/settings/indexing";
+import { getPublicSiteConfig } from "@/server/tenant";
 
 /** The page's main headline (first non-"prompt" heading), flattened to one line. */
 function journeyHeadline(def: JourneyDefinition): string | undefined {
@@ -33,7 +35,12 @@ export function preloadHero(def: JourneyDefinition): void {
   if (url) ReactDOM.preload(url, { as: "image", fetchPriority: "high" });
 }
 
-export function journeyMetadata(def: JourneyDefinition, firmName: string, locale?: string): Metadata {
+export function journeyMetadata(
+  def: JourneyDefinition,
+  firmName: string,
+  locale?: string,
+  opts?: { noindex?: boolean },
+): Metadata {
   const theme = def.theme ?? {};
   const firm = firmName || def.name;
   // The document <title> is what GA4 reports as page_title. Make it distinct per
@@ -56,6 +63,15 @@ export function journeyMetadata(def: JourneyDefinition, firmName: string, locale
   return {
     title: docTitle,
     description,
+    ...(opts?.noindex
+      ? {
+          robots: {
+            index: false,
+            follow: false,
+            googleBot: { index: false, follow: false, noimageindex: true },
+          },
+        }
+      : {}),
     openGraph: {
       type: "website",
       title: firm,
@@ -70,4 +86,15 @@ export function journeyMetadata(def: JourneyDefinition, firmName: string, locale
       images: image ? [image] : undefined,
     },
   };
+}
+
+export async function journeyMetadataForOrg(
+  def: JourneyDefinition,
+  org: { id: string; name: string },
+  locale?: string,
+): Promise<Metadata> {
+  const cfg = await getPublicSiteConfig(org.id);
+  return journeyMetadata(def, org.name, locale, {
+    noindex: landingIsNoindex(def, cfg.noindexLandings),
+  });
 }

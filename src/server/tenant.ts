@@ -10,6 +10,7 @@ import { callRailConfig, callRailSwapScriptUrl } from "@/modules/integrations/ca
 import { openaiAdsConfig, sanitizePixelId } from "@/modules/integrations/openaiAds";
 import { publicSiteChat, siteChatConfig, type PublicSiteChat } from "@/modules/integrations/siteChat";
 import { readBusinessPhone } from "@/modules/settings/businessPhone";
+import { readNoindexLandings } from "@/modules/settings/indexing";
 import { getPrisma, hasDatabase } from "./db";
 import { store } from "./store";
 import type { StoredOrg } from "./store/types";
@@ -54,6 +55,7 @@ export const getPublicSiteConfig = cache(async function getPublicSiteConfig(
   phone?: string;
   openaiPixelId?: string;
   siteChat?: PublicSiteChat;
+  noindexLandings: boolean;
 }> {
   const settings = await store.getOrgSettings(orgId);
   const gtm = settings.gtm as { containerId?: string } | undefined;
@@ -68,6 +70,7 @@ export const getPublicSiteConfig = cache(async function getPublicSiteConfig(
     phone: phone || undefined,
     openaiPixelId,
     siteChat,
+    noindexLandings: readNoindexLandings(settings),
   };
 });
 
