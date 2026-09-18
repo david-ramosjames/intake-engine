@@ -3,9 +3,18 @@
 // Injects a firm's ChatGPT Ads Measurement Pixel on public journey pages.
 // Snippet matches the loader used on the firm's other sites (oaiq queue +
 // bzrcdn SDK). Pixel ID comes from Settings — not hardcoded. Conversion
-// events are fired from the journey player via measureOpenAILead().
+// events are fired from the journey player via measureOpenAILead() /
+// measureOpenAIPhoneClick().
 
 import Script from "next/script";
+
+type Oaiq = (...args: unknown[]) => void;
+
+function oaiq(): Oaiq | undefined {
+  if (typeof window === "undefined") return undefined;
+  const fn = (window as unknown as { oaiq?: Oaiq }).oaiq;
+  return typeof fn === "function" ? fn : undefined;
+}
 
 export function OpenAIAdsPixel({ pixelId }: { pixelId?: string }) {
   if (!pixelId) return null;
@@ -22,11 +31,19 @@ export function OpenAIAdsPixel({ pixelId }: { pixelId?: string }) {
 
 /** Fire lead_created when a journey/callback form completes. No-op if the pixel isn't loaded. */
 export function measureOpenAILead(leadId: string): void {
-  if (typeof window === "undefined" || !leadId) return;
+  if (!leadId) return;
   try {
-    const oaiq = (window as unknown as { oaiq?: (...args: unknown[]) => void }).oaiq;
-    if (typeof oaiq !== "function") return;
-    oaiq("measure", "lead_created", { type: "customer_action" }, { event_id: leadId });
+    oaiq()?.("measure", "lead_created", { type: "customer_action" }, { event_id: leadId });
+  } catch {
+    /* pixel optional */
+  }
+}
+
+/** Fire a custom phone_click when someone taps a Call button. Distinct from lead_created. */
+export function measureOpenAIPhoneClick(eventId: string): void {
+  if (!eventId) return;
+  try {
+    oaiq()?.("measure", "custom", { type: "custom" }, { custom_event_name: "phone_click", event_id: eventId });
   } catch {
     /* pixel optional */
   }

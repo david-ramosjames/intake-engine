@@ -239,11 +239,11 @@ export default async function Settings() {
           </span>
         </div>
         <p className="mt-1 text-sm text-gray-400">
-          Installs OpenAI&apos;s Measurement Pixel on this business&apos;s journey pages and fires{" "}
+          Installs OpenAI&apos;s Measurement Pixel on this business&apos;s journey pages. It fires{" "}
           <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-xs">lead_created</code> when a visitor
-          completes a form or callback request. In Ads Manager, create a conversion event for{" "}
-          <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-xs">lead_created</code> so campaign reporting
-          can count it.
+          completes a form or callback request, and a custom{" "}
+          <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-xs">phone_click</code> event when they tap
+          Call. In Ads Manager, create conversion events for both so campaign reporting can count them.
         </p>
         <div className="mt-5">
           <OpenAIAdsSettings initialPixelId={oai?.pixelId ?? ""} initialHasKey={Boolean(oai?.apiKey)} />

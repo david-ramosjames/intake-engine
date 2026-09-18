@@ -22,7 +22,7 @@ import { LANGUAGE_LABELS, localize, tk } from "@/modules/journeys/domain/i18n";
 import { CALLBACK_FIELD_IDS, CALLBACK_TEXT_DEFAULTS } from "@/modules/settings/callbackDefaults";
 import { deriveAttribution } from "@/modules/leads/attribution";
 import { collectContext, snapshotFirstTouch } from "@/modules/leads/browserContext";
-import { measureOpenAILead } from "@/components/runtime/OpenAIAdsPixel";
+import { measureOpenAILead, measureOpenAIPhoneClick } from "@/components/runtime/OpenAIAdsPixel";
 import { SiteChatScript } from "@/components/runtime/SiteChatScript";
 import { SITE_CHAT_CONTENT_ID, SITE_CHAT_FAQ_ID, SITE_CHAT_FOOTER_ID, SITE_CHAT_LOCALE_EVENT, type PublicSiteChat } from "@/modules/integrations/siteChat";
 import {
@@ -190,13 +190,27 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
     [slug, attribution, pushDataLayer],
   );
 
+  const fireOpenAIPhoneClick = useCallback(() => {
+    const sid = sessionRef.current || "anon";
+    const uniq = crypto.randomUUID?.() ?? `${Date.now()}`;
+    measureOpenAIPhoneClick(`phone_${sid}_${uniq}`);
+  }, []);
+
   // A tap on the call button on the ending / thank-you screen only. In-flow
   // call buttons (banner, landing CTA, sticky bar) record the server beacon but
   // do NOT fire consult_flow_phone_click, so it stays an end-of-journey signal.
   const trackPhoneClick = useCallback(() => {
     pushDataLayer("consult_flow_phone_click");
     emit("cta_click");
-  }, [pushDataLayer, emit]);
+    fireOpenAIPhoneClick();
+  }, [pushDataLayer, emit, fireOpenAIPhoneClick]);
+
+  // Landing / banner / sticky Call buttons: same OpenAI phone_click, no GTM
+  // consult_flow_phone_click (that one stays end-of-journey).
+  const trackLandingCallClick = useCallback(() => {
+    emit("cta_click");
+    fireOpenAIPhoneClick();
+  }, [emit, fireOpenAIPhoneClick]);
   // A submit of the landing-page quick callback form.
   const trackFormSubmit = useCallback(() => {
     pushDataLayer("form_submission");
@@ -606,7 +620,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
       <Banner
         theme={theme}
         L={L}
-        onCtaClick={() => emit("cta_click")}
+        onCtaClick={trackLandingCallClick}
         languages={languages}
         locale={locale}
         setLocale={setLocale}
@@ -807,7 +821,14 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                   screen. */}
               <div className="space-y-3 md:space-y-2">
                 <div className="flex flex-col gap-3 md:gap-2">
-                  {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
+                  {page && (
+                    <CtaButtons
+                      page={page}
+                      L={L}
+                      onCtaClick={() => emit("cta_click")}
+                      onPhoneClick={trackLandingCallClick}
+                    />
+                  )}
                   {!soleChoice && (
                     <ActionButton
                       as="button"
@@ -899,7 +920,14 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
           cta={
             theme.belowFold?.showCta ? (
               <>
-                {page && <CtaButtons page={page} L={L} onCtaClick={() => emit("cta_click")} />}
+                {page && (
+                  <CtaButtons
+                    page={page}
+                    L={L}
+                    onCtaClick={() => emit("cta_click")}
+                    onPhoneClick={trackLandingCallClick}
+                  />
+                )}
                 {!soleChoice && (
                   <ActionButton
                     as="button"
@@ -930,7 +958,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
         >
           <a
             href={stickyCallHref}
-            onClick={() => emit("cta_click")}
+            onClick={trackLandingCallClick}
             className="j-cta j-cta-primary flex min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-[var(--radius)] text-lg font-semibold focus-ring"
           >
             <PhoneIcon />
