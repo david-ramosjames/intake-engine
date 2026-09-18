@@ -103,13 +103,13 @@ async function runSlack(action: SlackAction, ctx: Ctx): Promise<void> {
       : ctx.outcome === "declined"
         ? "🟠 *Not a fit — visitor left a message*"
         : "🟢 *New lead*";
-  // Build a complete message: label · journey, the person's name, then the full
-  // contact + source + every answer, so the intake team has it all in Slack.
+  // Build a complete message: label · journey, where it came from, the person's
+  // name, then the full contact + source + every answer.
   const header = `${label}${ctx.journey ? ` · ${ctx.journey}` : ""}`;
   const name = ctx.name?.trim();
   // An optional custom note the org configured (blank by default now).
   const note = renderTemplate(action.message, ctx).trim();
-  const text = [header, name ? `*${name}*` : "", note, ctx._detail]
+  const text = [header, "_From Intake Engine landing page_", name ? `*${name}*` : "", note, ctx._detail]
     .filter((s) => s && s.trim())
     .join("\n");
   const res = await fetch(url, {
