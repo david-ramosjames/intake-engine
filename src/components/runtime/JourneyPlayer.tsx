@@ -190,10 +190,16 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
     [slug, attribution, pushDataLayer],
   );
 
+  const openaiPhoneFiredRef = useRef(false);
+
   const fireOpenAIPhoneClick = useCallback(() => {
+    // One lead_created per session for Call taps so extra clicks don't inflate
+    // the same standard event ChatGPT Ads optimizes on. Distinct event_id from
+    // the form-submit lead so a call still counts if they never submitted.
+    if (openaiPhoneFiredRef.current) return;
+    openaiPhoneFiredRef.current = true;
     const sid = sessionRef.current || "anon";
-    const uniq = crypto.randomUUID?.() ?? `${Date.now()}`;
-    measureOpenAIPhoneClick(`phone_${sid}_${uniq}`);
+    measureOpenAIPhoneClick(`phone_${sid}`);
   }, []);
 
   // A tap on the call button on the ending / thank-you screen only. In-flow
@@ -205,7 +211,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
     fireOpenAIPhoneClick();
   }, [pushDataLayer, emit, fireOpenAIPhoneClick]);
 
-  // Landing / banner / sticky Call buttons: same OpenAI phone_click, no GTM
+  // Landing / banner / sticky Call buttons: same OpenAI lead_created, no GTM
   // consult_flow_phone_click (that one stays end-of-journey).
   const trackLandingCallClick = useCallback(() => {
     emit("cta_click");

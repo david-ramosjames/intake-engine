@@ -3,8 +3,8 @@
 // Injects a firm's ChatGPT Ads Measurement Pixel on public journey pages.
 // Snippet matches the loader used on the firm's other sites (oaiq queue +
 // bzrcdn SDK). Pixel ID comes from Settings — not hardcoded. Conversion
-// events are fired from the journey player via measureOpenAILead() /
-// measureOpenAIPhoneClick().
+// events are fired from the journey player: lead_created on form complete
+// and on Call taps (same standard event so ChatGPT Ads can optimize on it).
 
 import Script from "next/script";
 
@@ -39,12 +39,7 @@ export function measureOpenAILead(leadId: string): void {
   }
 }
 
-/** Fire a custom phone_click when someone taps a Call button. Distinct from lead_created. */
+/** Same standard lead_created event as a form complete — ChatGPT Ads can only optimize on standard events. */
 export function measureOpenAIPhoneClick(eventId: string): void {
-  if (!eventId) return;
-  try {
-    oaiq()?.("measure", "custom", { type: "custom" }, { custom_event_name: "phone_click", event_id: eventId });
-  } catch {
-    /* pixel optional */
-  }
+  measureOpenAILead(eventId);
 }
