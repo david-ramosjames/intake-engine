@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
 
   const org = await resolvePublicOrg(orgParam);
   if (!org) return NextResponse.json({ ok: false, error: "Unknown tenant." }, { status: 404 });
-  const journey = await getPublishedJourneyCached(org.id, slug);
+  const orgId = org.id;
+  const journey = await getPublishedJourneyCached(orgId, slug);
   if (!journey) return NextResponse.json({ ok: false, error: "Journey not found." }, { status: 404 });
 
   const page = journey.definition.pages.find((p) => p.id === pageId && p.type === "sign");
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   // step's own IDs win; when blank, fall back to the business-level default
   // contracts set in Settings — so contracts can be managed in one place.
   const isEs = locale.toLowerCase().startsWith("es");
-  const defaults = readSigningDefaults(await store.getOrgSettings(org.id));
+  const defaults = readSigningDefaults(await store.getOrgSettings(orgId));
   const templateIdEn = signing.templateIdEn || defaults.templateIdEn;
   const templateIdEs = signing.templateIdEs || defaults.templateIdEs;
   const templateId = (isEs ? templateIdEs : templateIdEn) || templateIdEn;
@@ -63,10 +64,10 @@ export async function POST(req: NextRequest) {
   async function respondWithSigningUrl(signingUrl: string) {
     if (leadId) {
       try {
-        const lead = await store.getLead(org.id, leadId);
+        const lead = await store.getLead(orgId, leadId);
         if (lead && lead.context?.contractSent !== "1") {
           await postSlackContractSent(journey, lead);
-          await store.updateLead(org.id, lead.id, {
+          await store.updateLead(orgId, lead.id, {
             answers: lead.answers,
             context: { ...lead.context, contractSent: "1" },
           });
