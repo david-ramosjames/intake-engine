@@ -342,6 +342,11 @@ function AutomationForm({
                 its answer. Extra details they add on the thank-you screen reply in the same Slack thread (when a bot
                 token and channel ID are set).
               </p>
+              <p className="mt-2 border-t border-gray-100 pt-2">
+                Journeys heading to <strong>Sign</strong> include <code>Contract path</code> on the first post. When the
+                contract is created, a threaded <code>Contract sent to be signed</code> follows — so an SMS follow-up
+                can wait and only text if they never get the contract.
+              </p>
             </div>
           </div>
         )}

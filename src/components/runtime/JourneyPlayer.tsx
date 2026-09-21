@@ -327,7 +327,10 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
       // Terminal screens and "convert" milestones both submit the lead (firing
       // CallRail / GA). A convert page isn't terminal, so the flow continues from
       // its Continue button; submit() is guarded to run only once.
-      if (target && (isTerminalType(target.type) || isConvertType(target.type))) void submit(ans, target.type);
+      if (target && (isTerminalType(target.type) || isConvertType(target.type))) {
+        const extra = target.type === "sign" ? { contractPath: "1" } : undefined;
+        void submit(ans, target.type, extra);
+      }
     },
     [pageById, submit],
   );
@@ -360,13 +363,18 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
       }
       // Conversion point: a screen (e.g. the one that captures contact info)
       // flagged to submit the lead when completed. This fires CallRail / Slack /
-      // GA as the visitor continues on to more questions — the role the removed
+      // GA as the visitor continues to more questions — the role the removed
       // "convert" milestone used to play. Passing "convert" records it as a lead
-      // (like that milestone did); submit() is guarded to run once.
-      if (from.submitLeadOnAdvance) void submit(ans, "convert");
+      // (like that milestone did); submit() is guarded to run once. When the next
+      // screen is Sign, tag Slack as contract path so SMS follow-up can wait.
+      if (from.submitLeadOnAdvance) {
+        const nextPage = pageById(target);
+        const extra = nextPage?.type === "sign" ? { contractPath: "1" } : undefined;
+        void submit(ans, "convert", extra);
+      }
       goTo(target, ans);
     },
-    [definition, finishLead, goTo, submit],
+    [definition, finishLead, goTo, submit, pageById],
   );
 
   const back = () => {
@@ -780,6 +788,12 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                   slug={slug}
                   answers={answers}
                   org={attribution?.org}
+                  leadId={savedLeadId}
+                  moreDetail={
+                    terminalPage.showMoreDetail !== false && savedLeadId
+                      ? { slug, org: attribution?.org, leadId: savedLeadId }
+                      : undefined
+                  }
                 />
               ) : (
                 <EndingView
@@ -789,7 +803,9 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                   onCtaClick={() => emit("cta_click")}
                   onPhoneClick={trackPhoneClick}
                   moreDetail={
-                    terminalPage.type === "success" && savedLeadId
+                    (terminalPage.type === "success" || terminalPage.type === "referral") &&
+                    terminalPage.showMoreDetail !== false &&
+                    savedLeadId
                       ? { slug, org: attribution?.org, leadId: savedLeadId }
                       : undefined
                   }
@@ -2277,6 +2293,8 @@ function SignView({
   slug,
   answers,
   org,
+  leadId,
+  moreDetail,
 }: {
   page: Page;
   L: Localize;
@@ -2284,6 +2302,8 @@ function SignView({
   slug: string;
   answers: Answers;
   org?: string;
+  leadId?: string | null;
+  moreDetail?: { slug: string; org?: string; leadId: string };
 }) {
   const signing = page.signing;
   const mode = signing?.mode ?? "embed";
@@ -2294,16 +2314,34 @@ function SignView({
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(false);
   const requestedRef = useRef(false);
+  const leadIdLatest = useRef(leadId);
+  leadIdLatest.current = leadId;
 
   useEffect(() => {
     if (requestedRef.current) return; // create the submission once (guards StrictMode double-run)
-    requestedRef.current = true;
+    let cancelled = false;
     (async () => {
+      // Lead submit often fires in the same tick as landing on Sign. Wait briefly
+      // so we can pass leadId and Slack can thread "Contract sent".
+      const deadline = Date.now() + 2500;
+      while (!leadIdLatest.current && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 100));
+        if (cancelled) return;
+      }
+      if (cancelled || requestedRef.current) return;
+      requestedRef.current = true;
       try {
         const res = await fetch(`/api/journeys/${slug}/sign`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ slug, pageId: page.id, locale, answers, org }),
+          body: JSON.stringify({
+            slug,
+            pageId: page.id,
+            locale,
+            answers,
+            org,
+            leadId: leadIdLatest.current ?? undefined,
+          }),
         });
         const data = (await res.json().catch(() => ({}))) as { signingUrl?: string };
         if (data.signingUrl) setUrl(data.signingUrl);
@@ -2314,6 +2352,9 @@ function SignView({
         setLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -2373,6 +2414,9 @@ function SignView({
           {err ? "" : ""}
         </p>
       )}
+      {/* Optional more-details sits below the contract so Sign stays the primary
+          action above the fold; same Slack thread as success/referral. */}
+      {moreDetail ? <MoreDetailForm locale={locale} {...moreDetail} /> : null}
     </div>
   );
 }

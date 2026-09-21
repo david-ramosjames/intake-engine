@@ -203,6 +203,9 @@ export const pageSchema = z.object({
   // has no "convert" milestone. The submit is guarded to run once per session,
   // so a later terminal screen won't fire it a second time.
   submitLeadOnAdvance: z.boolean().optional(),
+  // On success/referral/sign endings: show the optional "add more details" form.
+  // On sign it sits below the contract. Undefined = on.
+  showMoreDetail: z.boolean().optional(),
   // Call-to-action buttons, shown on terminal/ending screens (call, website…).
   cta: z.array(ctaSchema).optional(),
   // Signing config for a "sign" page. `url` is a DocuSeal link/embed to open

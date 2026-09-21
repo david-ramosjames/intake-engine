@@ -9,6 +9,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { postSlackContractSent } from "@/modules/automations/run";
 import { extractContact } from "@/modules/journeys/runtime/engine";
 import { readSigningDefaults } from "@/modules/settings/signingDefaults";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
@@ -23,6 +24,7 @@ const bodySchema = z.object({
   locale: z.string().optional(),
   answers: z.record(z.unknown()).default({}),
   org: z.string().optional(),
+  leadId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  const { slug, pageId, locale = "en", answers, org: orgParam } = parsed.data;
+  const { slug, pageId, locale = "en", answers, org: orgParam, leadId } = parsed.data;
 
   const org = await resolvePublicOrg(orgParam);
   if (!org) return NextResponse.json({ ok: false, error: "Unknown tenant." }, { status: 404 });
@@ -57,8 +59,27 @@ export async function POST(req: NextRequest) {
   // No template configured → fall back to the static link, if any.
   const base = process.env.SIGNFLOW_BASE_URL?.trim().replace(/\/+$/, "");
   const token = process.env.SIGNFLOW_INTAKE_TOKEN?.trim();
+
+  async function respondWithSigningUrl(signingUrl: string) {
+    if (leadId) {
+      try {
+        const lead = await store.getLead(org.id, leadId);
+        if (lead && lead.context?.contractSent !== "1") {
+          await postSlackContractSent(journey, lead);
+          await store.updateLead(org.id, lead.id, {
+            answers: lead.answers,
+            context: { ...lead.context, contractSent: "1" },
+          });
+        }
+      } catch (e) {
+        console.error("[sign] Slack contract-sent notify failed", e);
+      }
+    }
+    return NextResponse.json({ ok: true, signingUrl });
+  }
+
   if (!templateId || !base || !token) {
-    if (signing.url) return NextResponse.json({ ok: true, signingUrl: signing.url });
+    if (signing.url) return respondWithSigningUrl(signing.url);
     console.error("[sign] not configured", {
       slug,
       pageId,
@@ -109,10 +130,10 @@ export async function POST(req: NextRequest) {
         error: data.error ?? null,
       });
       // Fall back to a static link if provided.
-      if (signing.url) return NextResponse.json({ ok: true, signingUrl: signing.url });
+      if (signing.url) return respondWithSigningUrl(signing.url);
       return NextResponse.json({ ok: false, error: msg }, { status: 502 });
     }
-    return NextResponse.json({ ok: true, signingUrl: data.signingUrl });
+    return respondWithSigningUrl(data.signingUrl);
   } catch (e) {
     console.error("[sign] could not reach Sign Flow", {
       slug,
@@ -121,7 +142,7 @@ export async function POST(req: NextRequest) {
       base,
       error: e instanceof Error ? e.message : String(e),
     });
-    if (signing.url) return NextResponse.json({ ok: true, signingUrl: signing.url });
+    if (signing.url) return respondWithSigningUrl(signing.url);
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Could not reach Sign Flow." },
       { status: 502 },

@@ -2019,6 +2019,33 @@ export function JourneyEditor({
               </div>
             )}
 
+            {(page.type === "success" || page.type === "referral" || page.type === "sign") && (
+              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+                <label className="flex items-start gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 accent-blue-600"
+                    checked={page.showMoreDetail !== false}
+                    onChange={(e) =>
+                      mutate((d) => {
+                        // Persist explicit off; leave unset when on so new journeys
+                        // keep the default without cluttering the definition.
+                        d.pages[pi]!.showMoreDetail = e.target.checked ? undefined : false;
+                      })
+                    }
+                  />
+                  <span>
+                    Show optional &ldquo;add more details&rdquo; form
+                    <span className="block text-xs font-normal text-gray-400">
+                      {page.type === "sign"
+                        ? "Shown below the contract / Sign button so signing stays first. Saves on the same lead and can thread in Slack."
+                        : "After they finish, let them type extra info under the Call button. It saves on the same lead and can thread in Slack."}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
+
             {(terminalTypes.has(page.type) || page.type === "statement") && page.type !== "review" && (
               <CtaEditor
                 cta={page.cta ?? []}

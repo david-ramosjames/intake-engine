@@ -44,6 +44,9 @@ function leadContext(journey: StoredJourney, lead: StoredLead): Ctx {
     campaign: lead.campaign ?? "",
     // Internal flag (not a real answer token) used to gate Slack on declines.
     _hasMessage: leadHasMessage(journey, lead) ? "1" : "",
+    // Internal: lead is heading to (or on) a Sign step — SMS apps should wait
+    // for a "Contract sent" thread reply before following up.
+    _contractPath: lead.context?.contractPath === "1" ? "1" : "",
     // Internal: the full, human-readable lead detail block for Slack.
     _detail: buildLeadDetail(journey, lead),
   };
@@ -144,7 +147,10 @@ async function runSlack(action: SlackAction, ctx: Ctx): Promise<SlackPostResult>
   const header = `${label}${ctx.journey ? ` · ${ctx.journey}` : ""}`;
   const name = ctx.name?.trim();
   const note = renderTemplate(action.message, ctx).trim();
-  const text = [header, "_From Intake Engine landing page_", name ? `*${name}*` : "", note, ctx._detail]
+  // Marker for SMS follow-up apps: wait for a threaded "Contract sent" before
+  // texting; if it never arrives, treat as abandoned and send SMS.
+  const contractPath = ctx._contractPath === "1" ? "📝 *Contract path*" : "";
+  const text = [header, "_From Intake Engine landing page_", contractPath, name ? `*${name}*` : "", note, ctx._detail]
     .filter((s) => s && s.trim())
     .join("\n");
   return postSlackMessage(action, text);
@@ -220,10 +226,13 @@ export async function runLeadAutomations(
   return slackMeta;
 }
 
-/** Thread extra details onto the original Slack lead post when we have a ts. */
-export async function postSlackMoreDetail(journey: StoredJourney, lead: StoredLead, extra: string): Promise<void> {
-  const text = extra.trim();
-  if (!text) return;
+/** Thread or post a follow-up Slack note for an existing lead. */
+async function postSlackLeadFollowUp(
+  journey: StoredJourney,
+  lead: StoredLead,
+  threadedBody: string,
+  standaloneBody: string,
+): Promise<void> {
   let automations: StoredAutomation[];
   try {
     automations = await store.listAutomations(journey.orgId);
@@ -234,14 +243,9 @@ export async function postSlackMoreDetail(journey: StoredJourney, lead: StoredLe
   const matched = automations.filter(
     (a) => a.enabled && (!a.journeyId || a.journeyId === journey.id),
   );
-  const name = lead.displayName?.trim();
   const threadTs = lead.context?.slackTs;
   const threadChannel = lead.context?.slackChannel;
-  const body = threadTs
-    ? ["*More details they added:*", "", text].join("\n")
-    : ["↪️ *More details they added*", name ? `*${name}*` : "", "_From Intake Engine landing page_", "", text]
-        .filter((s) => s && s.trim())
-        .join("\n");
+  const body = threadTs ? threadedBody : standaloneBody;
   for (const auto of matched) {
     for (const action of auto.actions ?? []) {
       if (action.type !== "slack") continue;
@@ -252,8 +256,36 @@ export async function postSlackMoreDetail(journey: StoredJourney, lead: StoredLe
           threadTs ? { ts: threadTs, channel: threadChannel || action.channel } : undefined,
         );
       } catch (e) {
-        console.error(`[automation] "${auto.name}" more-detail Slack failed:`, e);
+        console.error(`[automation] "${auto.name}" Slack follow-up failed:`, e);
       }
     }
   }
+}
+
+/** Thread extra details onto the original Slack lead post when we have a ts. */
+export async function postSlackMoreDetail(journey: StoredJourney, lead: StoredLead, extra: string): Promise<void> {
+  const text = extra.trim();
+  if (!text) return;
+  const name = lead.displayName?.trim();
+  await postSlackLeadFollowUp(
+    journey,
+    lead,
+    ["*More details they added:*", "", text].join("\n"),
+    ["↪️ *More details they added*", name ? `*${name}*` : "", "_From Intake Engine landing page_", "", text]
+      .filter((s) => s && s.trim())
+      .join("\n"),
+  );
+}
+
+/** Note on the lead's Slack post that a contract was created for them to sign. */
+export async function postSlackContractSent(journey: StoredJourney, lead: StoredLead): Promise<void> {
+  const name = lead.displayName?.trim();
+  await postSlackLeadFollowUp(
+    journey,
+    lead,
+    "📝 *Contract sent to be signed*",
+    ["📝 *Contract sent to be signed*", name ? `*${name}*` : "", "_From Intake Engine landing page_"]
+      .filter((s) => s && s.trim())
+      .join("\n"),
+  );
 }

@@ -50,6 +50,14 @@ export async function submitLead(
   // logged as "direct".
   const derived = deriveAttribution(attribution, context);
 
+  // Finishing on (or heading into) a Sign step — SMS follow-up should wait for
+  // "Contract sent" rather than firing on this first Slack post alone.
+  const contractPath = endingType === "sign" || context.contractPath === "1";
+  const leadContext = {
+    ...context,
+    ...(contractPath ? { contractPath: "1" } : {}),
+  };
+
   const lead = await store.createLead({
     orgId: journey.orgId,
     journeyId: journey.id,
@@ -59,7 +67,7 @@ export async function submitLead(
     referral: outcome === "referral",
     score,
     answers,
-    context,
+    context: leadContext,
     displayName: contact.displayName,
     email: contact.email,
     phone: contact.phone,
