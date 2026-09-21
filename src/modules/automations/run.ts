@@ -89,13 +89,51 @@ function summary(ctx: Ctx): string {
   return lines.join("\n");
 }
 
-async function runSlack(action: SlackAction, ctx: Ctx): Promise<void> {
+type SlackPostResult = { ts?: string; channel?: string };
+
+async function postSlackMessage(
+  action: SlackAction,
+  text: string,
+  thread?: { ts: string; channel?: string },
+): Promise<SlackPostResult> {
+  const token = action.botToken?.trim();
+  const channel = (thread?.channel || action.channel || "").trim();
+  if (token && (channel || thread?.ts)) {
+    const body: Record<string, unknown> = { text, unfurl_links: false, unfurl_media: false };
+    if (channel) body.channel = channel;
+    if (thread?.ts) {
+      body.thread_ts = thread.ts;
+      body.reply_broadcast = false;
+    }
+    const res = await fetch("https://slack.com/api/chat.postMessage", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json()) as { ok?: boolean; ts?: string; channel?: string; error?: string };
+    if (json.ok) return { ts: json.ts, channel: json.channel };
+    // Fall through to the webhook so a missing channel invite doesn't drop the lead.
+    console.error("[automation] Slack API post failed", json.error ?? res.status);
+  }
   const url = action.webhookUrl?.trim();
-  if (!url) return;
+  if (!url) return {};
+  const payload: Record<string, unknown> = { text };
+  if (thread?.ts) payload.thread_ts = thread.ts;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Slack webhook ${res.status}`);
+  return {};
+}
+
+async function runSlack(action: SlackAction, ctx: Ctx): Promise<SlackPostResult> {
+  if (!action.webhookUrl?.trim() && !action.botToken?.trim()) return {};
   // Ping Slack for actionable outcomes (lead / referral). Skip a "not a fit"
   // (declined) ONLY when the visitor didn't type a message — if they wrote
   // something (e.g. an inquiry), notify so the team can decide whether to reply.
-  if (ctx.outcome === "declined" && ctx._hasMessage !== "1") return;
+  if (ctx.outcome === "declined" && ctx._hasMessage !== "1") return {};
   // Type label so the channel can tell at a glance what kind of submission it is.
   const label =
     ctx.outcome === "referral"
@@ -103,21 +141,13 @@ async function runSlack(action: SlackAction, ctx: Ctx): Promise<void> {
       : ctx.outcome === "declined"
         ? "🟠 *Not a fit — visitor left a message*"
         : "🟢 *New lead*";
-  // Build a complete message: label · journey, where it came from, the person's
-  // name, then the full contact + source + every answer.
   const header = `${label}${ctx.journey ? ` · ${ctx.journey}` : ""}`;
   const name = ctx.name?.trim();
-  // An optional custom note the org configured (blank by default now).
   const note = renderTemplate(action.message, ctx).trim();
   const text = [header, "_From Intake Engine landing page_", name ? `*${name}*` : "", note, ctx._detail]
     .filter((s) => s && s.trim())
     .join("\n");
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-  if (!res.ok) throw new Error(`Slack webhook ${res.status}`);
+  return postSlackMessage(action, text);
 }
 
 async function runEmail(action: EmailAction, ctx: Ctx): Promise<void> {
@@ -145,7 +175,7 @@ async function runEmail(action: EmailAction, ctx: Ctx): Promise<void> {
   if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text().catch(() => "")}`);
 }
 
-async function runAction(action: AutomationAction, ctx: Ctx): Promise<void> {
+async function runAction(action: AutomationAction, ctx: Ctx): Promise<SlackPostResult | void> {
   if (action.type === "slack") return runSlack(action, ctx);
   if (action.type === "email") return runEmail(action, ctx);
 }
@@ -155,7 +185,45 @@ async function runAction(action: AutomationAction, ctx: Ctx): Promise<void> {
  * automations (no journeyId) and ones scoped to this journey both fire.
  * Best-effort: individual action failures are caught and logged.
  */
-export async function runLeadAutomations(journey: StoredJourney, lead: StoredLead): Promise<void> {
+export async function runLeadAutomations(
+  journey: StoredJourney,
+  lead: StoredLead,
+): Promise<{ slackTs?: string; slackChannel?: string }> {
+  let automations: StoredAutomation[];
+  try {
+    automations = await store.listAutomations(journey.orgId);
+  } catch (e) {
+    console.error("[automation] failed to load automations", e);
+    return {};
+  }
+  const matched = automations.filter(
+    (a) =>
+      a.enabled &&
+      (a.trigger?.event ?? "LEAD_COMPLETED") === "LEAD_COMPLETED" &&
+      (!a.journeyId || a.journeyId === journey.id),
+  );
+  if (matched.length === 0) return {};
+  const ctx = leadContext(journey, lead);
+  let slackMeta: { slackTs?: string; slackChannel?: string } = {};
+  for (const auto of matched) {
+    for (const action of auto.actions ?? []) {
+      try {
+        const posted = await runAction(action, ctx);
+        if (posted && posted.ts) {
+          slackMeta = { slackTs: posted.ts, slackChannel: posted.channel };
+        }
+      } catch (e) {
+        console.error(`[automation] "${auto.name}" ${action.type} action failed:`, e);
+      }
+    }
+  }
+  return slackMeta;
+}
+
+/** Thread extra details onto the original Slack lead post when we have a ts. */
+export async function postSlackMoreDetail(journey: StoredJourney, lead: StoredLead, extra: string): Promise<void> {
+  const text = extra.trim();
+  if (!text) return;
   let automations: StoredAutomation[];
   try {
     automations = await store.listAutomations(journey.orgId);
@@ -164,19 +232,27 @@ export async function runLeadAutomations(journey: StoredJourney, lead: StoredLea
     return;
   }
   const matched = automations.filter(
-    (a) =>
-      a.enabled &&
-      (a.trigger?.event ?? "LEAD_COMPLETED") === "LEAD_COMPLETED" &&
-      (!a.journeyId || a.journeyId === journey.id),
+    (a) => a.enabled && (!a.journeyId || a.journeyId === journey.id),
   );
-  if (matched.length === 0) return;
-  const ctx = leadContext(journey, lead);
+  const name = lead.displayName?.trim();
+  const threadTs = lead.context?.slackTs;
+  const threadChannel = lead.context?.slackChannel;
+  const body = threadTs
+    ? ["*More details they added:*", "", text].join("\n")
+    : ["↪️ *More details they added*", name ? `*${name}*` : "", "_From Intake Engine landing page_", "", text]
+        .filter((s) => s && s.trim())
+        .join("\n");
   for (const auto of matched) {
     for (const action of auto.actions ?? []) {
+      if (action.type !== "slack") continue;
       try {
-        await runAction(action, ctx);
+        await postSlackMessage(
+          action,
+          body,
+          threadTs ? { ts: threadTs, channel: threadChannel || action.channel } : undefined,
+        );
       } catch (e) {
-        console.error(`[automation] "${auto.name}" ${action.type} action failed:`, e);
+        console.error(`[automation] "${auto.name}" more-detail Slack failed:`, e);
       }
     }
   }

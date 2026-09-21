@@ -128,6 +128,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
   // with the answers gathered after an early (conversion-point) submission
   // instead of creating a duplicate or dropping them.
   const leadIdRef = useRef<string | null>(null);
+  const [savedLeadId, setSavedLeadId] = useState<string | null>(null);
   const outcomeRef = useRef<Outcome | null>(null);
   const sessionRef = useRef<string>("");
   const startedRef = useRef(false);
@@ -303,6 +304,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
         if (!res.ok || !data.ok) throw new Error(data.error ?? "Something went wrong.");
         const outcome = data.outcome ?? "lead";
         leadIdRef.current = data.leadId ?? null;
+        if (data.leadId) setSavedLeadId(data.leadId);
         outcomeRef.current = outcome;
         if (data.leadId) measureOpenAILead(data.leadId);
         emit("completed", { outcome });
@@ -786,10 +788,15 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                   locale={locale}
                   onCtaClick={() => emit("cta_click")}
                   onPhoneClick={trackPhoneClick}
+                  moreDetail={
+                    terminalPage.type === "success" && savedLeadId
+                      ? { slug, org: attribution?.org, leadId: savedLeadId }
+                      : undefined
+                  }
                 />
               )
             ) : (
-              <FallbackEnding locale={locale} />
+              <FallbackEnding locale={locale} moreDetail={savedLeadId ? { slug, org: attribution?.org, leadId: savedLeadId } : undefined} />
             )
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-4 md:space-y-2.5">
@@ -2373,7 +2380,13 @@ function SignView({
 // Built-in confirmation shown only when a lead submits successfully but the
 // journey defines no ending page. A safety net so a completed visitor is never
 // dropped back on the start form.
-function FallbackEnding({ locale }: { locale: string }) {
+function FallbackEnding({
+  locale,
+  moreDetail,
+}: {
+  locale: string;
+  moreDetail?: { slug: string; org?: string; leadId: string };
+}) {
   const es = locale?.toLowerCase().startsWith("es");
   const title = es ? "Gracias — hemos recibido tu información." : "Thank you — we've got your information.";
   const body = es
@@ -2383,6 +2396,7 @@ function FallbackEnding({ locale }: { locale: string }) {
     <div className="animate-fade-up space-y-6">
       <h1 className="whitespace-pre-line text-3xl font-semibold sm:text-4xl">{title}</h1>
       <p className="text-lg leading-relaxed opacity-70">{body}</p>
+      {moreDetail ? <MoreDetailForm locale={locale} {...moreDetail} /> : null}
     </div>
   );
 }
@@ -2393,12 +2407,14 @@ function EndingView({
   locale,
   onCtaClick,
   onPhoneClick,
+  moreDetail,
 }: {
   page: Page;
   L: Localize;
   locale: string;
   onCtaClick?: () => void;
   onPhoneClick?: () => void;
+  moreDetail?: { slug: string; org?: string; leadId: string };
 }) {
   return (
     <div className="animate-fade-up space-y-6">
@@ -2416,6 +2432,84 @@ function EndingView({
         ),
       )}
       <CtaBlock page={page} L={L} onCtaClick={onCtaClick} onPhoneClick={onPhoneClick} />
+      {moreDetail ? <MoreDetailForm locale={locale} {...moreDetail} /> : null}
+    </div>
+  );
+}
+
+function MoreDetailForm({
+  locale,
+  slug,
+  org,
+  leadId,
+}: {
+  locale: string;
+  slug: string;
+  org?: string;
+  leadId: string;
+}) {
+  const es = locale?.toLowerCase().startsWith("es");
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    const extraDetail = text.trim();
+    if (!extraDetail || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({ slug, org, extraDetail }),
+      });
+      const data = (await res.json()) as { ok?: boolean };
+      if (!res.ok || !data.ok) throw new Error("Could not send.");
+      setSent(true);
+    } catch {
+      setError(es ? "No se pudo enviar. Inténtalo de nuevo." : "Couldn’t send. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <p className="text-sm opacity-70">
+        {es ? "Listo — gracias por el detalle extra." : "Got it — thanks for the extra detail."}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3 border-t border-[color:color-mix(in_srgb,var(--text)_12%,transparent)] pt-6">
+      <div className="text-sm font-medium opacity-80">
+        {es ? "¿Quieres agregar algo más? (opcional)" : "Want to add anything else? (optional)"}
+      </div>
+      <textarea
+        className="j-input-onbg w-full rounded-xl px-3 py-3 text-base transition focus-ring"
+        rows={3}
+        placeholder={
+          es ? "Cualquier detalle extra que debamos saber…" : "Anything else we should know…"
+        }
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setError(null);
+        }}
+      />
+      {error ? <p className="text-sm text-[color:var(--acc)]">{error}</p> : null}
+      <button
+        type="button"
+        disabled={busy || !text.trim()}
+        onClick={() => void submit()}
+        className="j-cta j-cta-primary inline-flex min-h-[3rem] items-center justify-center rounded-[var(--radius)] px-8 text-base font-semibold focus-ring disabled:opacity-50"
+      >
+        {busy ? (es ? "Enviando…" : "Sending…") : es ? "Enviar" : "Send"}
+      </button>
     </div>
   );
 }

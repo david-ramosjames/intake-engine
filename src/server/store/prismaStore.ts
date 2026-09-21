@@ -376,7 +376,13 @@ export const prismaStore: PlatformStore = {
     if (input.displayName !== undefined) data.displayName = input.displayName;
     if (input.email !== undefined) data.email = input.email;
     if (input.phone !== undefined) data.phone = input.phone;
-    if (input.context !== undefined) data.context = input.context as object;
+    if (input.context !== undefined) {
+      const prev =
+        existing.context && typeof existing.context === "object" && !Array.isArray(existing.context)
+          ? (existing.context as Record<string, unknown>)
+          : {};
+      data.context = { ...prev, ...input.context };
+    }
     if (input.outcome !== undefined) {
       data.status =
         input.outcome === "referral" ? "REFERRED" : input.outcome === "declined" ? "DISQUALIFIED" : "QUALIFIED";

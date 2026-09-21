@@ -136,6 +136,10 @@ export interface SlackAction {
   type: "slack";
   webhookUrl: string;
   message: string;
+  // Bot User OAuth token (xoxb-…) + channel ID so follow-up details can thread
+  // onto the original post. Incoming webhooks cannot return a message ts.
+  botToken?: string;
+  channel?: string;
 }
 export type AutomationAction = EmailAction | SlackAction;
 

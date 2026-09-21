@@ -296,7 +296,9 @@ export const demoStore: PlatformStore = {
     if (input.displayName !== undefined) lead.displayName = input.displayName;
     if (input.email !== undefined) lead.email = input.email;
     if (input.phone !== undefined) lead.phone = input.phone;
-    if (input.context !== undefined) lead.context = input.context;
+    if (input.context !== undefined) {
+      lead.context = { ...(lead.context ?? {}), ...input.context };
+    }
     if (input.outcome !== undefined) {
       lead.outcome = input.outcome;
       lead.status =

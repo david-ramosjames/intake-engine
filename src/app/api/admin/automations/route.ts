@@ -18,7 +18,13 @@ async function guard() {
 
 const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("email"), to: z.string(), subject: z.string(), body: z.string() }),
-  z.object({ type: z.literal("slack"), webhookUrl: z.string(), message: z.string() }),
+  z.object({
+    type: z.literal("slack"),
+    webhookUrl: z.string(),
+    message: z.string(),
+    botToken: z.string().optional(),
+    channel: z.string().optional(),
+  }),
 ]);
 
 const bodySchema = z.object({

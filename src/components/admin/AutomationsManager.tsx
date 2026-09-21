@@ -7,7 +7,7 @@
 import { useState } from "react";
 
 type EmailAction = { type: "email"; to: string; subject: string; body: string };
-type SlackAction = { type: "slack"; webhookUrl: string; message: string };
+type SlackAction = { type: "slack"; webhookUrl: string; message: string; botToken?: string; channel?: string };
 type Action = EmailAction | SlackAction;
 type Automation = {
   id: string;
@@ -163,6 +163,8 @@ function AutomationForm({
       "You have a new lead from {{journey}}.\n\nName: {{name}}\nPhone: {{phone}}\nEmail: {{email}}\nMessage: {{description}}",
   );
   const [webhookUrl, setWebhookUrl] = useState(existingSlack?.webhookUrl ?? "");
+  const [botToken, setBotToken] = useState(existingSlack?.botToken ?? "");
+  const [channel, setChannel] = useState(existingSlack?.channel ?? "");
   // Optional custom note shown above the auto-generated full lead detail.
   // Blank by default now — the Slack message already includes everything.
   const [message, setMessage] = useState(existingSlack?.message ?? "");
@@ -178,8 +180,16 @@ function AutomationForm({
       actions.push({ type: "email", to, subject, body });
     }
     if (slackOn) {
-      if (!webhookUrl.trim()) return setError("Enter your Slack webhook URL.");
-      actions.push({ type: "slack", webhookUrl, message });
+      if (!webhookUrl.trim() && !(botToken.trim() && channel.trim())) {
+        return setError("Enter a Slack webhook URL, or a bot token and channel ID.");
+      }
+      actions.push({
+        type: "slack",
+        webhookUrl,
+        message,
+        botToken: botToken.trim() || undefined,
+        channel: channel.trim() || undefined,
+      });
     }
     if (actions.length === 0) return setError("Turn on Email and/or Slack.");
 
@@ -286,14 +296,27 @@ function AutomationForm({
             />
             <input
               className={`${input} w-full`}
+              placeholder="Bot token (xoxb-…) — needed to thread extra details onto the original post"
+              value={botToken}
+              onChange={(e) => setBotToken(e.target.value)}
+              autoComplete="off"
+            />
+            <input
+              className={`${input} w-full`}
+              placeholder="Channel ID (e.g. C0123456789) — with the bot token, extra details reply in-thread"
+              value={channel}
+              onChange={(e) => setChannel(e.target.value)}
+            />
+            <input
+              className={`${input} w-full`}
               placeholder="Optional note to add at the top (leave blank — the full lead detail is included automatically)"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
             <p className="text-xs text-gray-400">
-              Create a webhook at api.slack.com → Your app → Incoming Webhooks, pick the channel, and paste the URL
-              here. Each Slack post now includes the full lead — name, phone, email, source, and every answer — so you
-              can leave the note blank. Tokens like <code>{"{{name}}"}</code> still work in the note.
+              A webhook posts the first lead. To <strong>thread</strong> extra details the visitor adds after finishing,
+              also add a Bot User OAuth Token with <code>chat:write</code> and the channel ID (right-click the channel
+              → View channel details → copy the ID at the bottom). Invite the bot to that channel.
             </p>
             <div className="rounded-md border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">
               <div className="font-medium text-gray-600">When a Slack message is posted</div>
@@ -316,7 +339,8 @@ function AutomationForm({
               </ul>
               <p className="mt-2 border-t border-gray-100 pt-2">
                 Every post includes the <strong>full lead</strong>: name, phone, email, source, and each question with
-                its answer.
+                its answer. Extra details they add on the thank-you screen reply in the same Slack thread (when a bot
+                token and channel ID are set).
               </p>
             </div>
           </div>

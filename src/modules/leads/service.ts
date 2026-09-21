@@ -5,9 +5,9 @@
 
 import { extractContact, scoreLead, type Answers } from "@/modules/journeys/runtime/engine";
 import { deriveAttribution } from "@/modules/leads/attribution";
-import { answersIndicateReferral } from "@/modules/leads/answers";
+import { answersIndicateReferral, MORE_DETAIL_KEY } from "@/modules/leads/answers";
 import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/schema";
-import { runLeadAutomations } from "@/modules/automations/run";
+import { runLeadAutomations, postSlackMoreDetail } from "@/modules/automations/run";
 import { callRailConfig, forwardLeadToCallRail } from "@/modules/integrations/callrail";
 import { openaiAdsConfig, forwardLeadToOpenAIAds } from "@/modules/integrations/openaiAds";
 import { store, type LeadOutcome, type StoredJourney, type StoredLead } from "@/server/store";
@@ -72,7 +72,17 @@ export async function submitLead(
   // so it runs before the serverless function returns, but wrapped so a failure
   // never affects the lead submission.
   try {
-    await runLeadAutomations(journey, lead);
+    const slackMeta = await runLeadAutomations(journey, lead);
+    if (slackMeta.slackTs) {
+      await store.updateLead(journey.orgId, lead.id, {
+        answers: lead.answers,
+        context: {
+          ...lead.context,
+          slackTs: slackMeta.slackTs,
+          ...(slackMeta.slackChannel ? { slackChannel: slackMeta.slackChannel } : {}),
+        },
+      });
+    }
   } catch (e) {
     console.error("[automation] runLeadAutomations threw", e);
   }
@@ -139,6 +149,32 @@ export async function enrichLead(
     }
   }
   return Boolean(updated);
+}
+
+/** Save optional extra details written on the success screen. Slack-threads when possible. */
+export async function addLeadMoreDetail(
+  journey: StoredJourney,
+  leadId: string,
+  extraDetail: string,
+): Promise<boolean> {
+  const text = extraDetail.trim();
+  if (!text) return false;
+  const current = await store.getLead(journey.orgId, leadId);
+  if (!current) return false;
+  const prev =
+    typeof current.answers?.[MORE_DETAIL_KEY] === "string" ? String(current.answers[MORE_DETAIL_KEY]).trim() : "";
+  const merged = prev ? `${prev}\n\n${text}` : text;
+  const updated = await store.updateLead(journey.orgId, leadId, {
+    answers: { ...current.answers, [MORE_DETAIL_KEY]: merged },
+    context: current.context,
+  });
+  if (!updated) return false;
+  try {
+    await postSlackMoreDetail(journey, updated, text);
+  } catch (e) {
+    console.error("[automation] more-detail Slack threw", e);
+  }
+  return true;
 }
 
 /** Promote a stored lead to referral when its answers say they wanted one. No Slack re-fire. */

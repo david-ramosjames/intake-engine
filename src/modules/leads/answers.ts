@@ -5,6 +5,10 @@
 
 import type { JourneyDefinition } from "@/modules/journeys/domain/schema";
 
+export const MORE_DETAIL_KEY = "more_detail";
+
+const MORE_DETAIL_LABEL = "More details";
+
 export interface AnswerRow {
   key: string;
   label: string;
@@ -32,7 +36,7 @@ export function answerRows(
         : Array.isArray(raw)
           ? raw.join(", ")
           : String(raw);
-      return { key, label: meta?.label ?? key, value: display };
+      return { key, label: meta?.label ?? (key === MORE_DETAIL_KEY ? MORE_DETAIL_LABEL : key), value: display };
     });
 }
 
