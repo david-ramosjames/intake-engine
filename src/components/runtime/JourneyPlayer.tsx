@@ -790,7 +790,7 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                   org={attribution?.org}
                   leadId={savedLeadId}
                   moreDetail={
-                    terminalPage.showMoreDetail !== false && savedLeadId
+                    terminalPage.showMoreDetail !== false
                       ? { slug, org: attribution?.org, leadId: savedLeadId }
                       : undefined
                   }
@@ -804,15 +804,17 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
                   onPhoneClick={trackPhoneClick}
                   moreDetail={
                     (terminalPage.type === "success" || terminalPage.type === "referral") &&
-                    terminalPage.showMoreDetail !== false &&
-                    savedLeadId
+                    terminalPage.showMoreDetail !== false
                       ? { slug, org: attribution?.org, leadId: savedLeadId }
                       : undefined
                   }
                 />
               )
             ) : (
-              <FallbackEnding locale={locale} moreDetail={savedLeadId ? { slug, org: attribution?.org, leadId: savedLeadId } : undefined} />
+              <FallbackEnding
+                locale={locale}
+                moreDetail={{ slug, org: attribution?.org, leadId: savedLeadId }}
+              />
             )
           ) : (
             <div key={page?.id} className="animate-fade-up space-y-4 md:space-y-2.5">
@@ -2303,7 +2305,7 @@ function SignView({
   answers: Answers;
   org?: string;
   leadId?: string | null;
-  moreDetail?: { slug: string; org?: string; leadId: string };
+  moreDetail?: { slug: string; org?: string; leadId: string | null };
 }) {
   const signing = page.signing;
   const mode = signing?.mode ?? "embed";
@@ -2429,7 +2431,7 @@ function FallbackEnding({
   moreDetail,
 }: {
   locale: string;
-  moreDetail?: { slug: string; org?: string; leadId: string };
+  moreDetail?: { slug: string; org?: string; leadId: string | null };
 }) {
   const es = locale?.toLowerCase().startsWith("es");
   const title = es ? "Gracias — hemos recibido tu información." : "Thank you — we've got your information.";
@@ -2458,7 +2460,7 @@ function EndingView({
   locale: string;
   onCtaClick?: () => void;
   onPhoneClick?: () => void;
-  moreDetail?: { slug: string; org?: string; leadId: string };
+  moreDetail?: { slug: string; org?: string; leadId: string | null };
 }) {
   return (
     <div className="animate-fade-up space-y-6">
@@ -2490,13 +2492,17 @@ function MoreDetailForm({
   locale: string;
   slug: string;
   org?: string;
-  leadId: string;
+  leadId: string | null;
 }) {
   const es = locale?.toLowerCase().startsWith("es");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Lead POST often finishes after the thank-you paints — keep the latest id
+  // so Send can wait briefly instead of hiding the form until then.
+  const leadIdRef = useRef(leadId);
+  leadIdRef.current = leadId;
 
   async function submit() {
     const extraDetail = text.trim();
@@ -2504,7 +2510,13 @@ function MoreDetailForm({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/leads/${leadId}`, {
+      const deadline = Date.now() + 8000;
+      while (!leadIdRef.current && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const id = leadIdRef.current;
+      if (!id) throw new Error("Lead not ready.");
+      const res = await fetch(`/api/leads/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         keepalive: true,
@@ -2531,7 +2543,7 @@ function MoreDetailForm({
   return (
     <div className="space-y-3 border-t border-[color:color-mix(in_srgb,var(--text)_12%,transparent)] pt-6">
       <div className="text-sm font-medium opacity-80">
-        {es ? "¿Quieres agregar algo más? (opcional)" : "Want to add anything else? (optional)"}
+        {es ? "¿Quieres compartir más sobre tu caso? (opcional)" : "Want to share more about your case? (optional)"}
       </div>
       <textarea
         className="j-input-onbg w-full rounded-xl px-3 py-3 text-base transition focus-ring"
