@@ -10,6 +10,7 @@ import { outcomeForPageType, type PageType } from "@/modules/journeys/domain/sch
 import { runLeadAutomations, postSlackMoreDetail } from "@/modules/automations/run";
 import { callRailConfig, forwardLeadToCallRail } from "@/modules/integrations/callrail";
 import { openaiAdsConfig, forwardLeadToOpenAIAds } from "@/modules/integrations/openaiAds";
+import { contactIsBlocked, readBlockedLeads } from "@/modules/settings/blockedLeads";
 import { store, type LeadOutcome, type StoredJourney, type StoredLead } from "@/server/store";
 
 export interface SubmitResult {
@@ -35,6 +36,20 @@ export async function submitLead(
   const def = journey.definition;
   const { score, qualified } = scoreLead(def, answers);
   const contact = extractContact(def, answers);
+  const settings = await store.getOrgSettings(journey.orgId);
+
+  // Spam / testers on the org block list: still return ok so the visitor sees
+  // thank-you, but do not persist a lead or fire Slack / CallRail / ads.
+  if (contactIsBlocked(readBlockedLeads(settings), contact)) {
+    console.warn("[leads] blocked contact — skip create", {
+      orgId: journey.orgId,
+      slug: journey.slug,
+      name: contact.displayName ?? "",
+      email: contact.email ?? "",
+      phone: contact.phone ?? "",
+    });
+    return { leadId: "", score, qualified: false, outcome: "lead" };
+  }
 
   // A referral is a *successful* referral only: the visitor chose the affirmative
   // answer on a "Want a referral?" question (an option flagged markReferral), or
@@ -94,8 +109,6 @@ export async function submitLead(
   } catch (e) {
     console.error("[automation] runLeadAutomations threw", e);
   }
-
-  const settings = await store.getOrgSettings(journey.orgId);
 
   // Forward to CallRail as a form submission (attribution for Google Ads), when
   // the org has configured the integration. Best-effort.

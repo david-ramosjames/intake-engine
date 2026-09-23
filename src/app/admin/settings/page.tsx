@@ -1,3 +1,4 @@
+import { BlockedLeadsSettings } from "@/components/admin/BlockedLeadsSettings";
 import { BusinessPhoneSettings } from "@/components/admin/BusinessPhoneSettings";
 import { CallbackTextSettings } from "@/components/admin/CallbackTextSettings";
 import { CallRailSettings } from "@/components/admin/CallRailSettings";
@@ -9,6 +10,7 @@ import { SiteChatSettings } from "@/components/admin/SiteChatSettings";
 import { callRailConfig } from "@/modules/integrations/callrail";
 import { openaiAdsConfig } from "@/modules/integrations/openaiAds";
 import { normalizeSiteChatPlacement, publicSiteChat, siteChatConfig } from "@/modules/integrations/siteChat";
+import { blockedLeadsCount, readBlockedLeads } from "@/modules/settings/blockedLeads";
 import { readBusinessPhone } from "@/modules/settings/businessPhone";
 import { readCallbackDefaults } from "@/modules/settings/callbackDefaults";
 import { readNoindexLandings } from "@/modules/settings/indexing";
@@ -45,6 +47,8 @@ export default async function Settings() {
   const callbackText = readCallbackDefaults(settings);
   const callbackSet = Object.values(callbackText).some((v) => v);
   const noindexLandings = readNoindexLandings(settings);
+  const blockedLeads = readBlockedLeads(settings);
+  const blockedCount = blockedLeadsCount(blockedLeads);
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -140,6 +144,30 @@ export default async function Settings() {
         </p>
         <div className="mt-5">
           <CallbackTextSettings initial={callbackText} />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">Blocked contacts</h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              blockedCount ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {blockedCount ? `${blockedCount} blocked` : "None"}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-gray-400">
+          People you do not want as leads — repeat spam, testers, known bad numbers. If their name, phone, or email
+          matches, they still see the thank-you screen, but we skip the lead, Slack, and contract.
+        </p>
+        <div className="mt-5">
+          <BlockedLeadsSettings
+            initialNames={blockedLeads.names}
+            initialPhones={blockedLeads.phones}
+            initialEmails={blockedLeads.emails}
+          />
         </div>
       </div>
 

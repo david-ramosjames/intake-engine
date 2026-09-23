@@ -11,6 +11,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { postSlackContractSent } from "@/modules/automations/run";
 import { extractContact } from "@/modules/journeys/runtime/engine";
+import { contactIsBlocked, readBlockedLeads } from "@/modules/settings/blockedLeads";
 import { readSigningDefaults } from "@/modules/settings/signingDefaults";
 import { getPublishedJourneyCached } from "@/server/journeyCache";
 import { store, type StoredJourney } from "@/server/store";
@@ -74,10 +75,24 @@ export async function POST(req: NextRequest) {
   // step's own IDs win; when blank, fall back to the business-level default
   // contracts set in Settings — so contracts can be managed in one place.
   const isEs = locale.toLowerCase().startsWith("es");
-  const defaults = readSigningDefaults(await store.getOrgSettings(orgId));
+  const settings = await store.getOrgSettings(orgId);
+  const defaults = readSigningDefaults(settings);
   const templateIdEn = signing.templateIdEn || defaults.templateIdEn;
   const templateIdEs = signing.templateIdEs || defaults.templateIdEs;
   const templateId = (isEs ? templateIdEs : templateIdEn) || templateIdEn;
+
+  const contactEarly = extractContact(journey.definition, answers);
+  if (contactIsBlocked(readBlockedLeads(settings), contactEarly)) {
+    console.warn("[sign] blocked contact — skip contract", {
+      slug,
+      pageId,
+      name: contactEarly.displayName ?? "",
+      email: contactEarly.email ?? "",
+      phone: contactEarly.phone ?? "",
+    });
+    // Same Sign screen, no Sign Flow, Slack, or signing URL.
+    return NextResponse.json({ ok: true });
+  }
 
   // No template configured → fall back to the static link, if any.
   const base = process.env.SIGNFLOW_BASE_URL?.trim().replace(/\/+$/, "");
@@ -98,7 +113,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Signing isn’t configured." }, { status: 400 });
   }
 
-  const contact = extractContact(journey.definition, answers);
+  const contact = contactEarly;
 
   // Date of loss for the contract — a Date field answer (yyyy-MM-dd). Use the
   // configured key, else auto-detect the first Date question in the journey.

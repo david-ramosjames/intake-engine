@@ -306,8 +306,12 @@ export function JourneyPlayer({ slug, definition, attribution, initialLocale, si
         leadIdRef.current = data.leadId ?? null;
         if (data.leadId) setSavedLeadId(data.leadId);
         outcomeRef.current = outcome;
-        if (data.leadId) measureOpenAILead(data.leadId);
-        emit("completed", { outcome });
+        if (data.leadId) {
+          measureOpenAILead(data.leadId);
+          // Blocked contacts return ok without a lead — don't count them as
+          // conversions in funnel analytics or the OpenAI pixel.
+          emit("completed", { outcome });
+        }
         return outcome;
       } catch (e) {
         submittedRef.current = false;
