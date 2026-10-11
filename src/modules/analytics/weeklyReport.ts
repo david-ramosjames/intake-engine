@@ -12,6 +12,7 @@ import {
   type PeriodStats,
   type WeekOverWeekWindows,
 } from "@/modules/analytics/period";
+import { sendEmail } from "@/modules/integrations/email";
 import { retagReferralLeads } from "@/modules/leads/service";
 import type { StoredOrg } from "@/server/store";
 import { store } from "@/server/store";
@@ -313,23 +314,10 @@ export function weeklyReportSubject(report: WeeklyReport): string {
 }
 
 export async function sendWeeklyReportEmail(to: string[], report: WeeklyReport): Promise<void> {
-  const key = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.AUTOMATION_EMAIL_FROM?.trim();
-  if (!key || !from) {
-    throw new Error("Email isn’t configured. Set RESEND_API_KEY and AUTOMATION_EMAIL_FROM.");
-  }
-  const recipients = to.map((s) => s.trim()).filter(Boolean);
-  if (!recipients.length) throw new Error("Add at least one recipient.");
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      from,
-      to: recipients,
-      subject: weeklyReportSubject(report),
-      html: weeklyReportHtml(report),
-      text: weeklyReportText(report),
-    }),
+  await sendEmail({
+    to,
+    subject: weeklyReportSubject(report),
+    html: weeklyReportHtml(report),
+    text: weeklyReportText(report),
   });
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text().catch(() => "")}`);
 }

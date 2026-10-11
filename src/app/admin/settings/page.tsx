@@ -11,6 +11,7 @@ import { SiteChatSettings } from "@/components/admin/SiteChatSettings";
 import { callRailConfig } from "@/modules/integrations/callrail";
 import { openaiAdsConfig } from "@/modules/integrations/openaiAds";
 import { normalizeSiteChatPlacement, publicSiteChat, siteChatConfig } from "@/modules/integrations/siteChat";
+import { emailDeliveryConfigured } from "@/modules/integrations/email";
 import { blockedLeadsCount, readBlockedLeads } from "@/modules/settings/blockedLeads";
 import { readWeeklyReport } from "@/modules/settings/weeklyReport";
 import { readBusinessPhone } from "@/modules/settings/businessPhone";
@@ -52,7 +53,7 @@ export default async function Settings() {
   const blockedLeads = readBlockedLeads(settings);
   const blockedCount = blockedLeadsCount(blockedLeads);
   const weeklyReport = readWeeklyReport(settings);
-  const emailConfigured = Boolean(process.env.RESEND_API_KEY && process.env.AUTOMATION_EMAIL_FROM);
+  const emailConfigured = emailDeliveryConfigured();
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -198,6 +199,9 @@ export default async function Settings() {
           <WeeklyReportSettings
             initialEnabled={weeklyReport.enabled}
             initialEmails={weeklyReport.emails}
+            initialWeekday={weeklyReport.weekday}
+            initialHour={weeklyReport.hour}
+            initialMinute={weeklyReport.minute}
             emailConfigured={emailConfigured}
           />
         </div>

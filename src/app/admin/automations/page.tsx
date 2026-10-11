@@ -1,4 +1,5 @@
 import { AutomationsManager } from "@/components/admin/AutomationsManager";
+import { emailDeliveryConfigured } from "@/modules/integrations/email";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -20,7 +21,7 @@ export default async function Automations() {
     store.listAutomations(org.id),
     store.listJourneys(org.id),
   ]);
-  const emailConfigured = Boolean(process.env.RESEND_API_KEY && process.env.AUTOMATION_EMAIL_FROM);
+  const emailConfigured = emailDeliveryConfigured();
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">

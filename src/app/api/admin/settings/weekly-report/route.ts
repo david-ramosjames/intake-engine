@@ -3,8 +3,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { auth, authEnabled } from "@/auth";
-import { buildWeeklyReport, sendWeeklyReportEmail } from "@/modules/analytics/weeklyReport";
-import { parseWeeklyReportEmails, readWeeklyReport } from "@/modules/settings/weeklyReport";
+import { sendWeeklyReportForOrg } from "@/modules/analytics/weeklyScheduler";
+import { emailDeliveryConfigured } from "@/modules/integrations/email";
+import { parseWeeklyReportEmails, readWeeklyReport, weeklyReportBlob } from "@/modules/settings/weeklyReport";
 import { getAdminOrg } from "@/server/currentOrg";
 import { store } from "@/server/store";
 
@@ -24,13 +25,16 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     ...readWeeklyReport(await store.getOrgSettings(g.org.id)),
-    emailConfigured: Boolean(process.env.RESEND_API_KEY && process.env.AUTOMATION_EMAIL_FROM),
+    emailConfigured: emailDeliveryConfigured(),
   });
 }
 
 const bodySchema = z.object({
   enabled: z.boolean(),
   emails: z.string(),
+  weekday: z.number().int().min(0).max(6),
+  hour: z.number().int().min(0).max(23),
+  minute: z.number().int().min(0).max(59),
 });
 
 export async function PUT(req: NextRequest) {
@@ -46,26 +50,26 @@ export async function PUT(req: NextRequest) {
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
 
-  const weeklyReport = {
+  const settings = await store.getOrgSettings(g.org.id);
+  const prev = readWeeklyReport(settings);
+  const weeklyReport = weeklyReportBlob({
     enabled: parsed.data.enabled,
     emails: parseWeeklyReportEmails(parsed.data.emails),
-  };
-  const settings = await store.getOrgSettings(g.org.id);
+    weekday: parsed.data.weekday,
+    hour: parsed.data.hour,
+    minute: parsed.data.minute,
+    lastSentPeriodEnd: prev.lastSentPeriodEnd,
+  });
   await store.saveOrgSettings(g.org.id, { ...settings, weeklyReport });
-  return NextResponse.json({ ok: true, ...weeklyReport });
+  return NextResponse.json({ ok: true, ...readWeeklyReport({ weeklyReport }) });
 }
 
 export async function POST() {
   const g = await guard();
   if (g.error) return g.error;
-  const cfg = readWeeklyReport(await store.getOrgSettings(g.org.id));
-  if (!cfg.emails.length) {
-    return NextResponse.json({ ok: false, error: "Add at least one recipient and save first." }, { status: 400 });
-  }
   try {
-    const report = await buildWeeklyReport(g.org);
-    await sendWeeklyReportEmail(cfg.emails, report);
-    return NextResponse.json({ ok: true, subject: `${report.orgName}: weekly intake` });
+    await sendWeeklyReportForOrg(g.org);
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Could not send." },

@@ -2,11 +2,10 @@
 // automations and run their actions (email, Slack). Everything here is
 // best-effort: a failing action is logged and never blocks the lead response.
 //
-// Config (env):
-//   RESEND_API_KEY         — enables the email action (https://resend.com)
-//   AUTOMATION_EMAIL_FROM  — the From address for emails (e.g. "Firm <leads@firm.com>")
+// Config (env): Gmail service account (preferred) or Resend. See sendEmail().
 // Slack needs no env: each Slack action carries its own incoming-webhook URL.
 
+import { emailDeliveryConfigured, sendEmail } from "@/modules/integrations/email";
 import { answerRows } from "@/modules/leads/answers";
 import { store, type StoredAutomation, type StoredJourney, type StoredLead } from "@/server/store";
 import type { AutomationAction, EmailAction, SlackAction } from "@/server/store/types";
@@ -157,28 +156,20 @@ async function runSlack(action: SlackAction, ctx: Ctx): Promise<SlackPostResult>
 }
 
 async function runEmail(action: EmailAction, ctx: Ctx): Promise<void> {
-  const key = process.env.RESEND_API_KEY;
-  const from = process.env.AUTOMATION_EMAIL_FROM;
-  if (!key || !from) {
-    console.warn("[automation] email skipped — set RESEND_API_KEY and AUTOMATION_EMAIL_FROM to enable email.");
+  if (!emailDeliveryConfigured()) {
+    console.warn("[automation] email skipped — set the Gmail service account (or Resend) env vars.");
     return;
   }
   const to = renderTemplate(action.to, ctx).trim();
   if (!to) return;
   const subject = renderTemplate(action.subject, ctx).trim() || `New lead${ctx.journey ? ` — ${ctx.journey}` : ""}`;
   const bodyText = renderTemplate(action.body, ctx).trim() || summary(ctx);
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      from,
-      to: to.split(",").map((s) => s.trim()).filter(Boolean),
-      subject,
-      html: bodyText.replace(/\n/g, "<br>"),
-      text: bodyText,
-    }),
+  await sendEmail({
+    to: to.split(",").map((s) => s.trim()).filter(Boolean),
+    subject,
+    text: bodyText,
+    html: bodyText.replace(/\n/g, "<br>"),
   });
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text().catch(() => "")}`);
 }
 
 async function runAction(action: AutomationAction, ctx: Ctx): Promise<SlackPostResult | void> {

@@ -252,9 +252,9 @@ function AutomationForm({
           <div className="mt-3 space-y-2">
             {!emailConfigured && (
               <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                Email delivery isn&apos;t configured yet. Set <code>RESEND_API_KEY</code> and{" "}
-                <code>AUTOMATION_EMAIL_FROM</code> in the app&apos;s environment to send emails. You can still save
-                this — it&apos;ll start sending once configured.
+                Email delivery isn&apos;t configured yet. Set <code>GMAIL_SERVICE_ACCOUNT_EMAIL</code>,{" "}
+                <code>GMAIL_SERVICE_ACCOUNT_PRIVATE_KEY</code>, and <code>GMAIL_SEND_AS</code> on Railway. You can
+                still save this — it&apos;ll start sending once configured.
               </p>
             )}
             <input
