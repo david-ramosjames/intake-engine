@@ -1,5 +1,5 @@
-// Optional backup poke. The app also sends on its own from the Settings day/time.
-// GET/POST with Authorization: Bearer $CRON_SECRET.
+// Settings day/time send. instrumentation.ts pokes this on loopback each minute.
+// External cron can also GET/POST with Authorization: Bearer $CRON_SECRET.
 
 import { NextResponse, type NextRequest } from "next/server";
 import { sendDueWeeklyReports } from "@/modules/analytics/weeklyScheduler";
@@ -7,7 +7,16 @@ import { sendDueWeeklyReports } from "@/modules/analytics/weeklyScheduler";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+function isLoopback(req: NextRequest): boolean {
+  // Same-process poke from instrumentation (`http://127.0.0.1:$PORT/...`).
+  // Public Railway traffic arrives with x-forwarded-for.
+  if (req.headers.get("x-forwarded-for")) return false;
+  const host = req.nextUrl.hostname;
+  return host === "127.0.0.1" || host === "localhost" || host === "::1";
+}
+
 function authorized(req: NextRequest): boolean {
+  if (isLoopback(req)) return true;
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) return false;
   const header = req.headers.get("authorization") ?? "";

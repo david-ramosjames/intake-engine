@@ -1,6 +1,5 @@
-// In-process weekly send. The Railway `next start` process stays up, so we
-// check every minute whether Settings says it's time (Central) and we haven't
-// already sent this week's report.
+// Weekly send. instrumentation.ts pokes /api/cron/weekly-report every minute;
+// this module checks Settings (Central day/time) and whether this week already sent.
 
 import { lastSevenVsPriorSeven } from "@/modules/analytics/period";
 import { buildWeeklyReport, sendWeeklyReportEmail } from "@/modules/analytics/weeklyReport";

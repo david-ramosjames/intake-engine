@@ -45,9 +45,13 @@ export function WeeklyReportSettings({
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
 
-  function clock() {
-    const [h, m] = time.split(":").map((x) => Number(x));
-    return { hour: Number.isFinite(h) ? h : 8, minute: Number.isFinite(m) ? m : 0 };
+  function clock(): { hour: number; minute: number } {
+    const hour = Number(time.split(":")[0]);
+    const minute = Number(time.split(":")[1]);
+    return {
+      hour: Number.isFinite(hour) ? hour : 8,
+      minute: Number.isFinite(minute) ? minute : 0,
+    };
   }
 
   function payload() {
@@ -82,10 +86,13 @@ export function WeeklyReportSettings({
         setTime(`${pad(data.hour)}:${pad(data.minute)}`);
       }
       const day = DAYS.find((d) => d.value === (data.weekday ?? weekday))?.label ?? "Monday";
+      const shown = clock();
+      const hh = data.hour ?? shown.hour;
+      const mm = data.minute ?? shown.minute;
       setStatus({
         kind: "ok",
         msg: data.enabled
-          ? `Saved. It will send ${day}s at ${data.hour !== undefined ? pad(data.hour) : pad(clock().hour)}:${data.minute !== undefined ? pad(data.minute) : pad(clock().minute)} Central.`
+          ? `Saved. It will send ${day}s at ${pad(hh)}:${pad(mm)} Central.`
           : "Saved. Weekly email is off until you turn it on.",
       });
     } catch (err) {
